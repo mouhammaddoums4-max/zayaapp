@@ -59,4 +59,9 @@ export async function assistanceTests({ db, test, assert, as, rpc, fails, U }) {
     const r = await as(null, `select value from app_config where key = 'active_languages'`);
     assert(r.rows.length === 1 && JSON.stringify(r.rows[0].value) === '["fr","en"]', JSON.stringify(r.rows));
   });
+
+  await test('délai avant renvoi du code (0011) : réglage public, 60 secondes au départ', async () => {
+    const r = await as(null, `select value from app_config where key = 'otp_resend_seconds'`);
+    assert(r.rows.length === 1 && r.rows[0].value === 60, JSON.stringify(r.rows));
+  });
 }

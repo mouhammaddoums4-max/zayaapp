@@ -115,6 +115,16 @@ abstract class ZStrings {
   String supportStatus(String status);
   String get supportReplyLabel;
 
+  // ── Fin d'inscription et code de connexion
+  String get signupDoneTitle;
+  String get signupDoneBody;
+  List<String> get photoTips;
+  String get signupDoneAddPhotos;
+  String get signupDoneLater;
+  String otpResendIn(int seconds);
+  String get otpResend;
+  String get otpResent;
+
   // ── Matchs terminés
   String get endedMatchesTitle;
   String get endedMatchesEntrySubtitle;

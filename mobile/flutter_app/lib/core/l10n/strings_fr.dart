@@ -266,6 +266,30 @@ class ZStringsFr extends ZStrings {
   @override
   String get supportReplyLabel => 'Réponse de l’assistance';
 
+  // ── Fin d'inscription et code de connexion
+  @override
+  String get signupDoneTitle => 'Votre profil est créé';
+  @override
+  String get signupDoneBody => 'Il sera proposé aux autres membres une fois vérifié par l’équipe ZAYA : ajoutez vos '
+      'photos, puis prenez un selfie de contrôle. Le selfie n’apparaît jamais sur votre profil.';
+  @override
+  List<String> get photoTips => const [
+        'Votre visage bien visible, sans lunettes de soleil',
+        'Vous seul(e) sur la photo principale',
+        'Des photos récentes, de vous uniquement',
+        'Rien de suggestif, ni coordonnées sur les photos',
+      ];
+  @override
+  String get signupDoneAddPhotos => 'Ajouter mes photos';
+  @override
+  String get signupDoneLater => 'Plus tard';
+  @override
+  String otpResendIn(int seconds) => 'Vous pourrez demander un nouveau code dans $seconds s';
+  @override
+  String get otpResend => 'Renvoyer le code';
+  @override
+  String get otpResent => 'Nouveau code envoyé.';
+
   // ── Matchs terminés
   @override
   String get endedMatchesTitle => 'Matchs terminés';

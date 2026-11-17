@@ -9,6 +9,7 @@ import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/models.dart';
 import 'phone_login_screen.dart';
+import 'signup_done_screen.dart';
 
 const _draftKey = 'zaya_onboarding_draft';
 
@@ -148,6 +149,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       }
       await session.refresh();
       navigator.popUntil((route) => route.isFirst);
+      // Fin d'inscription (B12) : le profil n'est proposé qu'après vérification ; photos et selfie en un geste.
+      navigator.push(zRoute<void>(const SignupDoneScreen()));
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);

@@ -71,6 +71,9 @@ Future<void> finishOnboarding(WidgetTester tester) async {
   await tester.enterText(find.byType(TextField).first, '622112233');
   await tester.pump();
   await tapText(tester, 'Recevoir le code');
+  // Compte à rebours avant de pouvoir redemander un code (CDC §9).
+  expect(find.textContaining('Vous pourrez demander un nouveau code dans'), findsOneWidget);
+  expect(find.text('Renvoyer le code'), findsNothing);
   await tester.enterText(find.byType(TextField).last, DemoRepository.demoOtp);
   await tester.pump();
   await tapText(tester, 'Vérifier');
@@ -81,6 +84,11 @@ Future<void> finishOnboarding(WidgetTester tester) async {
   await tester.tap(find.byType(CheckboxListTile).first);
   await settle(tester);
   await tapText(tester, 'Entrer sur ZAYA');
+
+  // Fin d'inscription : le profil sera proposé après vérification ; photos et selfie maintenant ou plus tard.
+  expect(find.text('Votre profil est créé'), findsOneWidget);
+  expect(find.text('Ajouter mes photos'), findsOneWidget);
+  await tapText(tester, 'Plus tard');
 }
 
 /// Retour à l'écran précédent par le bouton de la barre supérieure.

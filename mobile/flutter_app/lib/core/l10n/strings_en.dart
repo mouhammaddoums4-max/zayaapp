@@ -262,6 +262,30 @@ class ZStringsEn extends ZStrings {
   @override
   String get supportReplyLabel => 'Answer from support';
 
+  // ── End of sign-up and sign-in code
+  @override
+  String get signupDoneTitle => 'Your profile is created';
+  @override
+  String get signupDoneBody => 'It will be shown to other members once the ZAYA team has verified it: add your '
+      'photos, then take a check selfie. The selfie never appears on your profile.';
+  @override
+  List<String> get photoTips => const [
+        'Your face clearly visible, no sunglasses',
+        'Only you in the main photo',
+        'Recent photos, of you only',
+        'Nothing suggestive, and no contact details in photos',
+      ];
+  @override
+  String get signupDoneAddPhotos => 'Add my photos';
+  @override
+  String get signupDoneLater => 'Later';
+  @override
+  String otpResendIn(int seconds) => 'You can request a new code in $seconds s';
+  @override
+  String get otpResend => 'Resend the code';
+  @override
+  String get otpResent => 'New code sent.';
+
   // ── Ended matches
   @override
   String get endedMatchesTitle => 'Ended matches';

@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
 import '../../app.dart';
+import '../../core/l10n/l10n.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import 'onboarding_flow.dart';
@@ -27,17 +30,45 @@ class PhoneOtpForm extends StatefulWidget {
 }
 
 class _PhoneOtpFormState extends State<PhoneOtpForm> {
+  /// Délai par défaut avant de pouvoir redemander un code, si `app_config.otp_resend_seconds` est illisible.
+  static const _defaultResendSeconds = 60;
+
   late final _phone = TextEditingController(text: widget.initialPhone);
   final _code = TextEditingController();
   bool _codeSent = false;
   bool _busy = false;
   String? _error;
+  Timer? _timer;
+  int _resendIn = 0;
 
   @override
   void dispose() {
+    _timer?.cancel();
     _phone.dispose();
     _code.dispose();
     super.dispose();
+  }
+
+  /// Compte à rebours avant renvoi (CDC §9) : évite les demandes répétées, donc les envois facturés inutiles.
+  Future<void> _startCountdown() async {
+    var seconds = _defaultResendSeconds;
+    try {
+      final value = (await Session.read(context).repo.publicConfig())['otp_resend_seconds'];
+      if (value is num && value > 0) seconds = value.toInt();
+    } catch (_) {
+      // Valeur par défaut.
+    }
+    if (!mounted) return;
+    _timer?.cancel();
+    setState(() => _resendIn = seconds);
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted || _resendIn <= 1) {
+        timer.cancel();
+        if (mounted) setState(() => _resendIn = 0);
+        return;
+      }
+      setState(() => _resendIn--);
+    });
   }
 
   Future<void> _run(Future<void> Function() action) async {
@@ -56,6 +87,7 @@ class _PhoneOtpFormState extends State<PhoneOtpForm> {
 
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
     final repo = Session.of(context).repo;
     final phone = normalizeGuineaPhone(_phone.text);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -86,13 +118,28 @@ class _PhoneOtpFormState extends State<PhoneOtpForm> {
           ),
           onChanged: (_) => setState(() {}),
         ),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton(
+        Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, children: [
+          TextButton(
             onPressed: _busy ? null : () => setState(() => _codeSent = false),
             child: const Text('Modifier le numéro'),
           ),
-        ),
+          if (_resendIn > 0)
+            Text(s.otpResendIn(_resendIn), style: Theme.of(context).textTheme.bodySmall)
+          else
+            TextButton(
+              onPressed: _busy
+                  ? null
+                  : () => _run(() async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        await repo.requestOtp(phone);
+                        if (!mounted) return;
+                        messenger
+                            .showSnackBar(SnackBar(content: Text(s.otpResent), behavior: SnackBarBehavior.floating));
+                        await _startCountdown();
+                      }),
+              child: Text(s.otpResend),
+            ),
+        ]),
       ],
       if (_error != null) ...[
         const SizedBox(height: 8),
@@ -106,7 +153,9 @@ class _PhoneOtpFormState extends State<PhoneOtpForm> {
           onPressed: isValidGuineaPhone(_phone.text)
               ? () => _run(() async {
                     await repo.requestOtp(phone);
-                    if (mounted) setState(() => _codeSent = true);
+                    if (!mounted) return;
+                    setState(() => _codeSent = true);
+                    await _startCountdown();
                   })
               : null,
         )
