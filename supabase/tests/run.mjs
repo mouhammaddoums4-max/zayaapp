@@ -6,6 +6,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildInstallSql, installPath, normalizeEol } from '../deploy/build.mjs';
+import { assistanceTests } from './assistance_tests.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const db = new PGlite();
@@ -754,6 +755,8 @@ await test('valider les comptes d’essai : seulement les numéros listés, au n
     const sub = await db.query(`select coalesce(current_setting('request.jwt.claim.sub', true), '') as s`);
     assert(sub.rows[0].s === '', 'l’identité du modérateur ne doit pas rester active après le script');
   });
+
+await assistanceTests({ db, test, assert, as, rpc, fails, U });
 
 console.log('\nFichier d’installation Supabase');
 await test('le fichier d’installation est à jour (régénéré à partir des migrations et du seed)', async () => {
