@@ -32,13 +32,15 @@ L'interface est **originale** : elle reprend des conventions génériques d'appl
 - Rayons : 14 (champs, boutons), 20 (cartes), 28 (carte de découverte), pilule pour les puces.
 - Cibles tactiles ≥ 48 × 48 dp.
 
-## Navigation principale (4 onglets)
+## Navigation principale (5 onglets, décision C16)
 1. **Découvrir** — cartes de profils (glisser ou boutons ✕ / ♥).
-2. **Matchs** — intérêts reçus (compteur gratuit, liste Premium) + matchs.
-3. **Messages** — conversations, bouclier de sécurité.
-4. **Profil** — mon profil, vérification, centre de confidentialité, abonnements, paiements.
+2. **Explorer** — intérêts reçus en tête (compteur gratuit, liste Premium), puis sélections thématiques.
+3. **Messages** — nouveaux matchs, conversations, bouclier de sécurité.
+4. **Communauté** — fil « Pour vous » et communautés thématiques ; publier ou commenter exige un profil vérifié.
+5. **Profil** — mon profil, vérification, centre de confidentialité, abonnements, paiements.
 
-(Onglet Communauté prévu au lot C, après mise en place de la modération.)
+Pastilles : intérêts reçus sur Explorer, messages non lus sur Messages. Détail des écrans :
+[CARTE_ECRANS.md](CARTE_ECRANS.md).
 
 ## Mouvement
 - Durées : 150 ms (micro), 250 ms (transitions), 600 ms max (animation de match).

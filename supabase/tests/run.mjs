@@ -608,6 +608,60 @@ await test('fonctions internes de la communauté non appelables ; export avec me
     JSON.stringify(data.community_posts));
 });
 
+console.log('\nOutil de préproduction (supabase/preproduction)');
+await test('valider les comptes d’essai : seulement les numéros listés, au nom d’un modérateur, tracé, sans effet si relancé',
+  async () => {
+    const script = readFileSync(join(here, '..', 'preproduction', 'valider_verifications_essai.sql'), 'utf8');
+    const essai = {
+      a: ['00000000-0000-0000-0000-0000000000e1', '224620000001', 'homme'],
+      b: ['00000000-0000-0000-0000-0000000000e2', '224620000002', 'femme'],
+      horsListe: ['00000000-0000-0000-0000-0000000000e3', '224620000003', 'femme'],
+    };
+    for (const [id, phone, gender] of Object.values(essai)) {
+      await db.query(`insert into auth.users (id, phone, phone_confirmed_at) values ($1, $2, now())`, [id, phone]);
+      await db.query(
+        `insert into profiles (id, display_name, birth_date, gender, seeking_gender, country_code, city_id, status,
+                               is_phone_verified)
+         values ($1, 'Essai', '1995-05-05', $2, $3, 'GN', (select id from cities limit 1), 'active', true)`,
+        [id, gender, gender === 'homme' ? 'femme' : 'homme'],
+      );
+      for (let i = 0; i < 3; i++) {
+        await db.query(`insert into profile_photos (user_id, storage_path, position) values ($1, $2, $3)`,
+          [id, `${id}/p${i}.jpg`, i]);
+      }
+      await as(id, `insert into consents (user_id, kind, document_version, granted) values ($1, 'biometric', 'v0-draft', true)`,
+        [id]);
+      assert((await rpc(id, 'request_verification', [`${id}/selfie.jpg`])).status === 'pending');
+    }
+    const ids = Object.values(essai).map(([id]) => id);
+    const statut = async () => Object.fromEntries((await db.query(
+      `select id, verification_status::text as s from profiles where id = any($1::uuid[])`, [ids])).rows.map((r) => [r.id, r.s]));
+    const validations = async () => (await db.query(
+      `select count(*)::int as n from audit_log where action = 'verification.approved' and actor = $1`, [essai.a[0]])).rows[0].n;
+
+    // Premier numéro inconnu : refus explicite, rien n'est modifié.
+    await fails(db.exec(script.replace("array['224620000001'", "array['224699999999'")), /Aucun compte avec le numéro/);
+    assert(Object.values(await statut()).every((s) => s === 'pending'), JSON.stringify(await statut()));
+
+    const resultats = await db.exec(script);
+    const s = await statut();
+    assert(s[essai.a[0]] === 'approved' && s[essai.b[0]] === 'approved', JSON.stringify(s));
+    assert(s[essai.horsListe[0]] === 'pending', 'un numéro hors liste ne doit pas être validé');
+    const photos = await db.query(`select count(*)::int as n from profile_photos where user_id = any($1::uuid[])
+                                   and moderation = 'approved'`, [[essai.a[0], essai.b[0]]]);
+    assert(photos.rows[0].n === 6, 'les photos des comptes validés sont approuvées');
+    const roles = await db.query(`select role::text as r from staff_roles where user_id = $1`, [essai.a[0]]);
+    assert(roles.rows.length === 1 && roles.rows[0].r === 'moderator', JSON.stringify(roles.rows));
+    assert((await validations()) === 2, 'deux validations tracées au nom du modérateur');
+    const tableau = resultats.at(-1).rows.find((r) => r.numero === '224620000002');
+    assert(tableau && tableau.verification === 'approved', 'le tableau final montre l’état des comptes');
+
+    await db.exec(script);
+    assert((await validations()) === 2, 'relancer le script ne doit rien valider de plus');
+    const sub = await db.query(`select coalesce(current_setting('request.jwt.claim.sub', true), '') as s`);
+    assert(sub.rows[0].s === '', 'l’identité du modérateur ne doit pas rester active après le script');
+  });
+
 console.log('\nFichier d’installation Supabase');
 await test('le fichier d’installation est à jour (régénéré à partir des migrations et du seed)', async () => {
   assert(normalizeEol(readFileSync(installPath, 'utf8')) === buildInstallSql(),
