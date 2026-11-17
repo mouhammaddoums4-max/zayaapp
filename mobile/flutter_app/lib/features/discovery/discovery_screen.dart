@@ -117,9 +117,20 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
   Future<void> _pass(DiscoveryProfile profile) async {
     if (_acting) return;
     final session = Session.read(context);
+    // Passer consomme un swipe (0016) : quota atteint, l'écran de limite s'ouvre et la carte reste en place.
+    final quota = session.feed.quota;
+    if (quota != null && quota.remaining <= 0) {
+      await showQuotaSheet(context, quota.resetsAt);
+      return;
+    }
     setState(() => _acting = true);
     // Sans réseau, le profil pourra simplement être proposé à nouveau plus tard.
-    session.repo.pass(profile.id).then((_) {}, onError: (_) {});
+    session.repo.pass(profile.id).then((_) {
+      final q = session.feed.quota;
+      if (q != null && q.remaining > 0) session.feed.setRemaining(q.remaining - 1);
+    }, onError: (Object e) {
+      if (e.toString().contains('SWIPE_QUOTA_REACHED')) session.feed.setRemaining(0);
+    });
     await _animateTo(_exit(-1));
     if (!mounted) return;
     // Remise au centre et retrait de la carte dans la même image : la suivante prend sa place sans saut.

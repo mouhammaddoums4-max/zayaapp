@@ -9,6 +9,7 @@ import '../../data/models.dart';
 import '../chat/chat_screen.dart';
 import 'profile_detail_screen.dart';
 import 'profile_widgets.dart';
+import 'swipe_limit_screen.dart';
 
 /// Envoie le like au serveur. Retourne `null` si l'envoi a échoué (l'erreur est déjà affichée).
 Future<LikeResult?> sendLike(BuildContext context, DiscoveryProfile profile) async {
@@ -85,38 +86,10 @@ Future<void> openProfileWithActions(BuildContext context, DiscoveryProfile profi
 }
 
 /// Quota quotidien atteint : explication claire, sans pression commerciale ni fausse urgence.
+/// Quota de swipes atteint : écran plein avec le compte à rebours jusqu'à la reprise et l'accès à Premium.
 Future<void> showQuotaSheet(BuildContext context, DateTime? resetsAt) {
-  final when = resetsAt == null ? 'demain' : 'à ${formatTime(resetsAt)}';
-  return showModalBottomSheet<void>(
-    context: context,
-    showDragHandle: true,
-    builder: (sheetContext) => SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const Center(
-            child: CircleAvatar(
-              radius: 30,
-              backgroundColor: ZColors.primarySoft,
-              child: Icon(Icons.hourglass_bottom, color: ZColors.primary, size: 28),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text('Vous avez utilisé vos likes du jour',
-              style: Theme.of(sheetContext).textTheme.titleLarge, textAlign: TextAlign.center),
-          const SizedBox(height: 8),
-          Text(
-            'Vos likes gratuits se renouvellent $when. D’ici là, vous pouvez continuer à parcourir les profils '
-            'et à discuter avec vos matchs.',
-            style: Theme.of(sheetContext).textTheme.bodyLarge,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-          FilledButton(onPressed: () => Navigator.of(sheetContext).pop(), child: const Text('D’accord')),
-        ]),
-      ),
-    ),
-  );
+  final reprise = resetsAt ?? DateTime.now().add(const Duration(hours: 8));
+  return Navigator.of(context).push<void>(zRoute<void>(SwipeLimitScreen(resetsAt: reprise)));
 }
 
 /// Écran de match. Retourne `true` si le membre choisit d'ouvrir la conversation.
