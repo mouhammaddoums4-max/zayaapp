@@ -45,6 +45,9 @@ class DemoRepository implements ZayaRepository {
   final Set<String> _seen = <String>{};
   final Map<String, String> _blocked = <String, String>{};
   final Set<String> _likedMe = <String>{};
+
+  /// Profils que j'ai aimés sans réponse, du plus récent au plus ancien.
+  final List<String> _likedByMe = <String>[];
   final List<MatchSummary> _matches = <MatchSummary>[];
   final Map<String, List<ChatMessage>> _messages = <String, List<ChatMessage>>{};
   final Map<String, StreamController<List<ChatMessage>>> _streams = <String, StreamController<List<ChatMessage>>>{};
@@ -314,6 +317,7 @@ class DemoRepository implements ZayaRepository {
     _seen.clear();
     _blocked.clear();
     _likedMe.clear();
+    _likedByMe.clear();
     _matches.clear();
     _messages.clear();
     _likesUsed = 0;
@@ -587,6 +591,7 @@ class DemoRepository implements ZayaRepository {
       _messages[matchId] = <ChatMessage>[];
       return LikeResult(LikeStatus.matched, matchId: matchId);
     }
+    _likedByMe.insert(0, userId);
     return LikeResult(LikeStatus.liked, remaining: freeDailyLikes - _likesUsed);
   }
 
@@ -604,6 +609,13 @@ class DemoRepository implements ZayaRepository {
 
   @override
   Future<List<DiscoveryProfile>> receivedInterests() async => throw Exception('PREMIUM_REQUIRED');
+
+  @override
+  Future<List<DiscoveryProfile>> sentInterests() async => [
+        for (final id in _likedByMe)
+          if (!_blocked.containsKey(id) && !_matches.any((m) => m.userId == id) && _person(id) != null)
+            _person(id)!.profile,
+      ];
 
   @override
   Future<List<MatchSummary>> matches() async => [

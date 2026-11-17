@@ -346,6 +346,12 @@ class SupabaseRepository implements ZayaRepository {
   }
 
   @override
+  Future<List<DiscoveryProfile>> sentInterests() async {
+    final rows = await _db.rpc('my_sent_interests') as List;
+    return [for (final r in rows) DiscoveryProfile.fromRow(Map<String, dynamic>.from(r as Map))];
+  }
+
+  @override
   Future<List<MatchSummary>> matches() async {
     final rows = await _db.rpc('my_matches') as List;
     final result = <MatchSummary>[];

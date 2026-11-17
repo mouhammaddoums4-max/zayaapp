@@ -64,6 +64,9 @@ abstract class ZayaRepository {
 
   /// Liste nominative des personnes qui ont aimé mon profil — avantage Premium (échoue sinon).
   Future<List<DiscoveryProfile>> receivedInterests();
+
+  /// Profils que j'ai aimés et qui n'ont pas encore répondu — gratuit pour tous (migration 0024).
+  Future<List<DiscoveryProfile>> sentInterests();
   Future<List<MatchSummary>> matches();
   Future<void> unmatch(String matchId);
 

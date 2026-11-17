@@ -7,6 +7,7 @@ import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/models.dart';
 import '../discovery/like_actions.dart';
+import '../discovery/profile_detail_screen.dart';
 import '../discovery/profile_widgets.dart';
 import '../premium/premium_screens.dart';
 
@@ -53,45 +54,56 @@ class _LikesScreenState extends State<LikesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Likes')),
-      body: FutureBuilder<_LikesData>(
-        future: _future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return GridView.builder(
-              padding: const EdgeInsets.all(16),
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: _gridDelegate,
-              itemCount: 4,
-              itemBuilder: (_, __) => const Skeleton(radius: 20),
-            );
-          }
-          final data = snapshot.data;
-          if (snapshot.hasError || data == null) {
-            return EmptyState(
-              icon: Icons.wifi_off,
-              title: 'Connexion interrompue',
-              message: 'Impossible de charger vos likes.',
-              action: FilledButton(onPressed: _reload, child: const Text('Réessayer')),
-            );
-          }
-          if (data.count == 0) {
-            return EmptyState(
-              icon: Icons.favorite_border,
-              title: 'Pas encore de like',
-              message: 'Lorsqu’une personne aimera votre profil, vous le saurez ici. '
-                  'Un profil complet et vérifié est plus souvent consulté.',
-              action: OutlinedButton(onPressed: widget.onDiscover, child: const Text('Découvrir des profils')),
-            );
-          }
-          return RefreshIndicator(
-            color: ZColors.primary,
-            onRefresh: () async => _reload(),
-            child: data.premium ? _premiumList(context, data) : _freeView(context, data),
-          );
-        },
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Likes'),
+          bottom: const TabBar(tabs: [Tab(text: 'Reçus'), Tab(text: 'Envoyés')]),
+        ),
+        body: TabBarView(children: [_received(context), _SentLikes(onDiscover: widget.onDiscover)]),
       ),
+    );
+  }
+
+  /// Likes reçus : le nombre pour tous, l'identité pour Premium.
+  Widget _received(BuildContext context) {
+    return FutureBuilder<_LikesData>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return GridView.builder(
+            padding: const EdgeInsets.all(16),
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: _gridDelegate,
+            itemCount: 4,
+            itemBuilder: (_, __) => const Skeleton(radius: 20),
+          );
+        }
+        final data = snapshot.data;
+        if (snapshot.hasError || data == null) {
+          return EmptyState(
+            icon: Icons.wifi_off,
+            title: 'Connexion interrompue',
+            message: 'Impossible de charger vos likes.',
+            action: FilledButton(onPressed: _reload, child: const Text('Réessayer')),
+          );
+        }
+        if (data.count == 0) {
+          return EmptyState(
+            icon: Icons.favorite_border,
+            title: 'Pas encore de like',
+            message: 'Lorsqu’une personne aimera votre profil, vous le saurez ici. '
+                'Un profil complet et vérifié est plus souvent consulté.',
+            action: OutlinedButton(onPressed: widget.onDiscover, child: const Text('Découvrir des profils')),
+          );
+        }
+        return RefreshIndicator(
+          color: ZColors.primary,
+          onRefresh: () async => _reload(),
+          child: data.premium ? _premiumList(context, data) : _freeView(context, data),
+        );
+      },
     );
   }
 
@@ -176,6 +188,95 @@ class _LikesScreenState extends State<LikesScreen> {
         child: const Text('En savoir plus sur ZAYA Premium'),
       ),
     ]);
+  }
+}
+
+/// Likes envoyés : les profils que j'ai aimés et qui n'ont pas encore répondu (gratuit pour tous, migration 0024).
+/// Un match les retire de cette liste : la conversation se trouve alors dans Messages.
+class _SentLikes extends StatefulWidget {
+  const _SentLikes({required this.onDiscover});
+  final VoidCallback onDiscover;
+
+  @override
+  State<_SentLikes> createState() => _SentLikesState();
+}
+
+class _SentLikesState extends State<_SentLikes> {
+  late Future<List<DiscoveryProfile>> _future = Session.read(context).repo.sentInterests();
+
+  void _reload() => setState(() {
+        _future = Session.read(context).repo.sentInterests();
+      });
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<DiscoveryProfile>>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return GridView.builder(
+            padding: const EdgeInsets.all(16),
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: _gridDelegate,
+            itemCount: 4,
+            itemBuilder: (_, __) => const Skeleton(radius: 20),
+          );
+        }
+        final profiles = snapshot.data;
+        if (snapshot.hasError || profiles == null) {
+          return EmptyState(
+            icon: Icons.wifi_off,
+            title: 'Connexion interrompue',
+            message: 'Impossible de charger vos likes envoyés.',
+            action: FilledButton(onPressed: _reload, child: const Text('Réessayer')),
+          );
+        }
+        if (profiles.isEmpty) {
+          return EmptyState(
+            icon: Icons.favorite_border,
+            title: 'Aucun like en attente',
+            message: 'Les profils que vous aimez apparaissent ici jusqu’à leur réponse.',
+            action: OutlinedButton(onPressed: widget.onDiscover, child: const Text('Découvrir des profils')),
+          );
+        }
+        return RefreshIndicator(
+          color: ZColors.primary,
+          onRefresh: () async => _reload(),
+          child: CustomScrollView(slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                child: Text(
+                    profiles.length == 1 ? 'Vous avez aimé 1 profil' : 'Vous avez aimé ${profiles.length} profils',
+                    style: Theme.of(context).textTheme.titleLarge),
+              ),
+            ),
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 24 + MediaQuery.paddingOf(context).bottom),
+              sliver: SliverGrid.builder(
+                gridDelegate: _gridDelegate,
+                itemCount: profiles.length,
+                itemBuilder: (context, i) {
+                  final p = profiles[i];
+                  return FadeSlideIn(
+                    index: i,
+                    child: ProfileTile(
+                      profile: p,
+                      heroTag: 'likes-envoyes-${p.id}',
+                      onTap: () async {
+                        await Navigator.of(context).push(zRoute<void>(ProfileDetailScreen(
+                            userId: p.id, name: p.displayName, preview: p, heroTag: 'likes-envoyes-${p.id}')));
+                        if (mounted) _reload();
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
+          ]),
+        );
+      },
+    );
   }
 }
 
