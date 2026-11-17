@@ -64,4 +64,16 @@ export async function assistanceTests({ db, test, assert, as, rpc, fails, U }) {
     const r = await as(null, `select value from app_config where key = 'otp_resend_seconds'`);
     assert(r.rows.length === 1 && r.rows[0].value === 60, JSON.stringify(r.rows));
   });
+
+  await test('mises à jour et avis (0014) : réglages publics lisibles avant la connexion', async () => {
+    const r = await as(null, `select key, value from app_config where key in
+      ('latest_app_version', 'min_app_version', 'app_update_url', 'rating_prompt_enabled', 'rating_min_days',
+       'rating_min_sessions', 'rating_interval_days') order by key`);
+    const v = Object.fromEntries(r.rows.map((x) => [x.key, x.value]));
+    assert(r.rows.length === 7, JSON.stringify(r.rows));
+    assert(v.latest_app_version === '0.1.0' && v.min_app_version === '0.1.0' && v.app_update_url === '',
+      JSON.stringify(v));
+    assert(v.rating_prompt_enabled === true && v.rating_min_sessions === 5 && v.rating_interval_days === 90,
+      JSON.stringify(v));
+  });
 }
