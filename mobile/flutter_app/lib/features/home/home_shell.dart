@@ -1,17 +1,18 @@
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../app.dart';
 import '../../core/motion.dart';
 import '../../core/tab_bar.dart';
 import '../chat/conversations_screen.dart';
+import '../community/community_screen.dart';
 import '../discovery/discovery_screen.dart';
 import '../discovery/explore_screen.dart';
-import '../likes/likes_screen.dart';
 import '../profile/profile_screen.dart';
 
-/// Navigation principale : Découvrir · Explorer · Likes · Messages · Profil.
-/// Le changement d'onglet s'accompagne d'un fondu glissé ; l'état de chaque onglet est conservé.
+/// Navigation principale : Découvrir · Explorer · Messages · Communauté · Profil (décision C16).
+/// Les likes reçus sont en tête d'Explorer. Le changement d'onglet s'accompagne d'un fondu glissé ;
+/// l'état de chaque onglet est conservé.
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
 
@@ -20,15 +21,15 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMixin {
-  static const _likesTab = 2;
-  static const _messagesTab = 3;
+  static const _exploreTab = 1;
+  static const _messagesTab = 2;
+  static const _communityTab = 3;
 
   late final AnimationController _switch = AnimationController(vsync: this, duration: ZMotion.medium, value: 1);
   int _index = 0;
   int _direction = 1;
   // Un onglet n'est construit (et ne charge ses données) qu'à sa première visite.
   final Set<int> _visited = <int>{0};
-  int _likesReload = 0;
   int _messagesReload = 0;
 
   @override
@@ -52,8 +53,7 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
       _direction = index > _index ? 1 : -1;
       _index = index;
       _visited.add(index);
-      // Likes et Messages se rechargent à chaque visite pour rester à jour.
-      if (index == _likesTab) _likesReload++;
+      // Messages se recharge à chaque visite pour rester à jour.
       if (index == _messagesTab) _messagesReload++;
     });
     if (ZMotion.reduced(context)) {
@@ -78,12 +78,12 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
           position: _switch.drive(slide),
           child: IndexedStack(index: _index, children: [
             _lazy(0, const DiscoveryScreen()),
-            _lazy(1, const ExploreScreen()),
-            _lazy(_likesTab, LikesScreen(key: ValueKey<String>('likes-$_likesReload'), onDiscover: () => _select(0))),
+            _lazy(_exploreTab, ExploreScreen(onDiscover: () => _select(0))),
             _lazy(
               _messagesTab,
               ConversationsScreen(key: ValueKey<String>('messages-$_messagesReload'), onDiscover: () => _select(0)),
             ),
+            _lazy(_communityTab, const CommunityScreen()),
             _lazy(4, const ProfileScreen()),
           ]),
         ),
@@ -91,12 +91,12 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
       bottomNavigationBar: ZayaTabBar(
         index: _index,
         onChanged: _select,
-        badges: <int, int>{_likesTab: session.likesBadge, _messagesTab: session.unreadBadge},
+        badges: <int, int>{_exploreTab: session.likesBadge, _messagesTab: session.unreadBadge},
         items: const [
           ZTabItem(icon: Icons.style_outlined, activeIcon: Icons.style, label: 'Découvrir'),
           ZTabItem(icon: Icons.explore_outlined, activeIcon: Icons.explore, label: 'Explorer'),
-          ZTabItem(icon: Icons.favorite_border, activeIcon: Icons.favorite, label: 'Likes'),
           ZTabItem(icon: Icons.chat_bubble_outline, activeIcon: Icons.chat_bubble, label: 'Messages'),
+          ZTabItem(icon: Icons.groups_outlined, activeIcon: Icons.groups, label: 'Communauté'),
           ZTabItem(icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profil'),
         ],
       ),

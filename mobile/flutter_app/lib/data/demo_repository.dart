@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import '../core/content_rules.dart';
+import 'demo_community.dart';
 import 'models.dart';
 import 'repository.dart';
 
@@ -43,6 +45,22 @@ class DemoRepository implements ZayaRepository {
   final List<MatchSummary> _matches = <MatchSummary>[];
   final Map<String, List<ChatMessage>> _messages = <String, List<ChatMessage>>{};
   final Map<String, StreamController<List<ChatMessage>>> _streams = <String, StreamController<List<ChatMessage>>>{};
+  late final DemoCommunityStore _community = DemoCommunityStore(
+    meId: _me,
+    myName: () => _profile?.displayName ?? 'Moi',
+    isVerified: () => _profile?.isVerified ?? false,
+    isBlocked: _blocked.containsKey,
+    violation: _communityViolation,
+  );
+
+  /// Même ordre que le serveur : termes interdits d'abord, puis coordonnées.
+  String? _communityViolation(String text) {
+    final lower = text.toLowerCase();
+    for (final e in _blockedTerms.entries) {
+      if (lower.contains(e.key)) return e.value;
+    }
+    return containsContactDetails(text) ? 'contact_details' : null;
+  }
 
   static const _women = <_DemoPerson>[
     _DemoPerson(
@@ -282,6 +300,7 @@ class DemoRepository implements ZayaRepository {
     _matches.clear();
     _messages.clear();
     _likesUsed = 0;
+    _community.reset();
   }
 
   @override
@@ -576,7 +595,7 @@ class DemoRepository implements ZayaRepository {
 
   @override
   Future<void> block(String userId) async {
-    _blocked[userId] = _person(userId)?.profile.displayName ?? 'Membre';
+    _blocked[userId] = _person(userId)?.profile.displayName ?? _community.authorName(userId) ?? 'Membre';
     _matches.removeWhere((m) => m.userId == userId);
   }
 
@@ -641,4 +660,71 @@ class DemoRepository implements ZayaRepository {
 
   @override
   Future<List<PaymentTx>> payments() async => const <PaymentTx>[];
+
+  // ── Communauté (délégué au magasin de démonstration)
+  @override
+  Future<List<Community>> communities() async => _community.communities();
+
+  @override
+  Future<void> joinCommunity(String communityId) async => _community.join(communityId);
+
+  @override
+  Future<void> leaveCommunity(String communityId) async => _community.leave(communityId);
+
+  @override
+  Future<void> setCommunityNotifications(String communityId, String level) async =>
+      _community.setNotifications(communityId, level);
+
+  @override
+  Future<List<CommunityPost>> communityFeed({String? communityId, DateTime? before}) async =>
+      _community.feed(communityId: communityId, before: before);
+
+  @override
+  Future<CommunityPost> communityPost(String postId) async => _community.post(postId);
+
+  @override
+  Future<List<CommunityPost>> savedPosts() async => _community.saved();
+
+  @override
+  Future<PublishResult> createPost({required String communityId, required String kind, required String body}) async =>
+      _community.create(communityId: communityId, kind: kind, body: body);
+
+  @override
+  Future<PublishResult> editPost(String postId, String body) async => _community.edit(postId, body);
+
+  @override
+  Future<void> deletePost(String postId) async => _community.delete(postId);
+
+  @override
+  Future<void> setPostComments(String postId, bool enabled) async => _community.setComments(postId, enabled);
+
+  @override
+  Future<int> reactToPost(String postId, bool on) async => _community.react(postId, on);
+
+  @override
+  Future<void> savePost(String postId, bool saved) async => _community.save(postId, saved);
+
+  @override
+  Future<void> hidePost(String postId) async => _community.hide(postId);
+
+  @override
+  Future<List<PostComment>> postComments(String postId) async => _community.comments(postId);
+
+  @override
+  Future<PublishResult> addComment(String postId, String body) async => _community.addComment(postId, body);
+
+  @override
+  Future<PublishResult> editComment(String commentId, String body) async =>
+      _community.editComment(commentId, body);
+
+  @override
+  Future<void> deleteComment(String commentId) async => _community.deleteComment(commentId);
+
+  @override
+  Future<void> reportPost(String postId, {required String reason, String? details}) async =>
+      _community.reportPost(postId);
+
+  @override
+  Future<void> reportComment(String commentId, {required String reason, String? details}) async =>
+      _community.reportComment(commentId);
 }

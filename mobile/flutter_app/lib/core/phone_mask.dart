@@ -11,7 +11,9 @@ class MessageSegment {
 // Suite de 8 à 15 chiffres, séparés éventuellement par espace, point ou tiret, avec préfixe + ou 00 facultatif.
 // Les barres obliques ne sont pas des séparateurs : une date (12/05/2026) n'est donc pas reconnue.
 final RegExp _candidate = RegExp(r'(?<![\w/])(?:\+|00)?\d(?:[ .\-]?\d){7,14}(?![\w/])');
-final RegExp _currencyAfter = RegExp(r'^\s*(gnf|fg|francs?|fcfa|cfa|euros?|usd|dollars?|€|\$)', caseSensitive: false);
+// Montant suivi d'une devise, éventuellement précédée de « de » (« 25 000 000 de francs »).
+final RegExp _currencyAfter =
+    RegExp(r"^\s*(de\s+|d['’])?(gnf|fg|francs?|fcfa|cfa|euros?|eur|usd|dollars?|€|\$)", caseSensitive: false);
 final RegExp _referenceBefore =
     RegExp(r'(commande|référence|reference|réf|ref|ticket|dossier|n°)\s*[:#]?\s*$', caseSensitive: false);
 

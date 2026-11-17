@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dégradé de marque ZAYA : #FF2D55 (haut gauche) vers #EC0677 (bas droite). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient
+        android:angle="315"
+        android:startColor="#FF2D55"
+        android:endColor="#EC0677"
+        android:type="linear"/>
+</shape>

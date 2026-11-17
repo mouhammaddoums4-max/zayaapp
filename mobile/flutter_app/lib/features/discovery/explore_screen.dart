@@ -6,6 +6,7 @@ import '../../core/motion.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/models.dart';
+import '../likes/likes_screen.dart';
 import 'like_actions.dart';
 import 'profile_widgets.dart';
 
@@ -72,9 +73,12 @@ const _gridDelegate = SliverGridDelegateWithFixedCrossAxisCount(
   childAspectRatio: 0.72,
 );
 
-/// Onglet Explorer : sélections thématiques et grille de tous les profils proposés.
+/// Onglet Explorer : likes reçus en tête, sélections thématiques et grille de tous les profils proposés.
 class ExploreScreen extends StatefulWidget {
-  const ExploreScreen({super.key});
+  const ExploreScreen({super.key, required this.onDiscover});
+
+  /// Ramène à l'onglet Découvrir (depuis l'écran des likes).
+  final VoidCallback onDiscover;
 
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
@@ -90,6 +94,22 @@ class _ExploreScreenState extends State<ExploreScreen> {
     }
   }
 
+  Future<void> _openLikes() async {
+    final navigator = Navigator.of(context);
+    final session = Session.read(context);
+    await navigator.push(zRoute<void>(LikesScreen(onDiscover: () {
+      navigator.pop();
+      widget.onDiscover();
+    })));
+    session.refreshBadges();
+  }
+
+  Future<void> _refresh() async {
+    final session = Session.read(context);
+    await session.feed.load();
+    await session.refreshBadges();
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = Session.of(context);
@@ -99,21 +119,50 @@ class _ExploreScreenState extends State<ExploreScreen> {
         listenable: session.feed,
         builder: (context, _) {
           final feed = session.feed;
-          if (feed.loading && feed.profiles.isEmpty) return const _GridSkeleton();
-          if (feed.error != null && feed.profiles.isEmpty) {
-            return EmptyState(
+          final likes = SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+              child: _LikesCard(count: session.likesBadge, onTap: _openLikes),
+            ),
+          );
+          final Widget? placeholder;
+          if (feed.loading && feed.profiles.isEmpty) {
+            placeholder = null;
+          } else if (feed.error != null && feed.profiles.isEmpty) {
+            placeholder = EmptyState(
               icon: Icons.wifi_off,
               title: 'Connexion interrompue',
               message: feed.error!,
               action: FilledButton(onPressed: feed.load, child: const Text('Réessayer')),
             );
-          }
-          if (feed.profiles.isEmpty) {
-            return EmptyState(
+          } else if (feed.profiles.isEmpty) {
+            placeholder = EmptyState(
               icon: Icons.explore_outlined,
               title: 'Rien à explorer pour le moment',
               message: 'Les profils qui correspondent à vos préférences apparaîtront ici.',
               action: OutlinedButton(onPressed: feed.load, child: const Text('Actualiser')),
+            );
+          } else {
+            placeholder = const SizedBox.shrink();
+          }
+          if (placeholder == null || feed.profiles.isEmpty) {
+            return RefreshIndicator(
+              color: ZColors.primary,
+              onRefresh: _refresh,
+              child: CustomScrollView(slivers: [
+                likes,
+                if (placeholder == null)
+                  SliverPadding(
+                    padding: const EdgeInsets.all(16),
+                    sliver: SliverGrid.builder(
+                      gridDelegate: _gridDelegate,
+                      itemCount: 4,
+                      itemBuilder: (_, __) => const Skeleton(radius: 20),
+                    ),
+                  )
+                else
+                  SliverFillRemaining(hasScrollBody: false, child: placeholder),
+              ]),
             );
           }
           final collections = [
@@ -122,8 +171,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
           ];
           return RefreshIndicator(
             color: ZColors.primary,
-            onRefresh: feed.load,
+            onRefresh: _refresh,
             child: CustomScrollView(slivers: [
+              likes,
               if (collections.isNotEmpty) ...[
                 const SliverToBoxAdapter(
                   child:
@@ -231,17 +281,70 @@ class _CollectionCard extends StatelessWidget {
       );
 }
 
-class _GridSkeleton extends StatelessWidget {
-  const _GridSkeleton();
+/// Carte des likes reçus : le nombre est gratuit et réel (jamais de faux like) ; l'identité des
+/// personnes fait partie de Premium (CDC V3.0 §4.2–4.3).
+class _LikesCard extends StatelessWidget {
+  const _LikesCard({required this.count, required this.onTap});
+  final int count;
+  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => GridView.builder(
-        padding: const EdgeInsets.all(16),
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: _gridDelegate,
-        itemCount: 6,
-        itemBuilder: (_, __) => const Skeleton(radius: 20),
-      );
+  Widget build(BuildContext context) {
+    final title = switch (count) {
+      0 => 'Vos likes',
+      1 => '1 personne a aimé votre profil',
+      _ => '$count personnes ont aimé votre profil',
+    };
+    final subtitle = count == 0
+        ? 'Les personnes qui aimeront votre profil apparaîtront ici.'
+        : 'Aimez-les en retour dans Découvrir : le match est immédiat.';
+    return Semantics(
+      button: true,
+      label: '$title. $subtitle',
+      excludeSemantics: true,
+      onTap: onTap,
+      child: PressScale(
+        pressedScale: 0.97,
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: count > 0 ? ZColors.brandGradient : null,
+            color: count > 0 ? null : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: count > 0 ? null : Border.all(color: ZColors.line),
+          ),
+          child: Row(children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: count > 0 ? Colors.white.withValues(alpha: 0.22) : ZColors.primarySoft,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(count > 0 ? Icons.favorite : Icons.favorite_border,
+                  color: count > 0 ? Colors.white : ZColors.primary),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(title,
+                    style: GoogleFonts.sora(
+                        fontSize: 16, fontWeight: FontWeight.w700, color: count > 0 ? Colors.white : ZColors.ink)),
+                const SizedBox(height: 3),
+                Text(subtitle,
+                    style: GoogleFonts.inter(
+                        fontSize: 13,
+                        height: 1.35,
+                        color: count > 0 ? Colors.white.withValues(alpha: 0.95) : ZColors.muted)),
+              ]),
+            ),
+            Icon(Icons.chevron_right, color: count > 0 ? Colors.white : ZColors.muted),
+          ]),
+        ),
+      ),
+    );
+  }
 }
 
 /// Grille des profils d'une sélection. Se met à jour quand un profil est aimé, passé ou bloqué.

@@ -443,4 +443,115 @@ class SupabaseRepository implements ZayaRepository {
         ),
     ];
   }
+
+  // ── Communauté : uniquement des fonctions serveur (aucune lecture directe des publications)
+  List<Map<String, dynamic>> _rows(Object? result) =>
+      [for (final r in (result as List? ?? const <dynamic>[])) Map<String, dynamic>.from(r as Map)];
+
+  PublishResult _publishResult(Object? result) {
+    final r = Map<String, dynamic>.from(result as Map);
+    return r['status'] == 'blocked'
+        ? PublishResult.blocked(r['category'] as String)
+        : PublishResult.published(r['id'] as String);
+  }
+
+  @override
+  Future<List<Community>> communities() async =>
+      _rows(await _db.rpc('list_communities')).map(Community.fromRow).toList();
+
+  @override
+  Future<void> joinCommunity(String communityId) async {
+    await _db.rpc('join_community', params: {'p_community': communityId});
+  }
+
+  @override
+  Future<void> leaveCommunity(String communityId) async {
+    await _db.rpc('leave_community', params: {'p_community': communityId});
+  }
+
+  @override
+  Future<void> setCommunityNotifications(String communityId, String level) async {
+    await _db.rpc('set_community_notifications', params: {'p_community': communityId, 'p_level': level});
+  }
+
+  @override
+  Future<List<CommunityPost>> communityFeed({String? communityId, DateTime? before}) async {
+    final result = await _db.rpc('community_feed', params: {
+      'p_community': communityId,
+      'p_before': before?.toUtc().toIso8601String(),
+      'p_limit': 20,
+    });
+    return _rows(result).map(CommunityPost.fromRow).toList();
+  }
+
+  @override
+  Future<CommunityPost> communityPost(String postId) async {
+    final rows = _rows(await _db.rpc('community_post', params: {'p_post': postId}));
+    if (rows.isEmpty) throw Exception('POST_NOT_FOUND');
+    return CommunityPost.fromRow(rows.first);
+  }
+
+  @override
+  Future<List<CommunityPost>> savedPosts() async =>
+      _rows(await _db.rpc('saved_community_posts')).map(CommunityPost.fromRow).toList();
+
+  @override
+  Future<PublishResult> createPost({required String communityId, required String kind, required String body}) async =>
+      _publishResult(
+          await _db.rpc('create_post', params: {'p_community': communityId, 'p_kind': kind, 'p_body': body}));
+
+  @override
+  Future<PublishResult> editPost(String postId, String body) async =>
+      _publishResult(await _db.rpc('edit_post', params: {'p_post': postId, 'p_body': body}));
+
+  @override
+  Future<void> deletePost(String postId) async {
+    await _db.rpc('delete_post', params: {'p_post': postId});
+  }
+
+  @override
+  Future<void> setPostComments(String postId, bool enabled) async {
+    await _db.rpc('set_post_comments', params: {'p_post': postId, 'p_enabled': enabled});
+  }
+
+  @override
+  Future<int> reactToPost(String postId, bool on) async =>
+      ((await _db.rpc('react_to_post', params: {'p_post': postId, 'p_on': on})) as num).toInt();
+
+  @override
+  Future<void> savePost(String postId, bool saved) async {
+    await _db.rpc('save_post', params: {'p_post': postId, 'p_on': saved});
+  }
+
+  @override
+  Future<void> hidePost(String postId) async {
+    await _db.rpc('hide_post', params: {'p_post': postId});
+  }
+
+  @override
+  Future<List<PostComment>> postComments(String postId) async =>
+      _rows(await _db.rpc('post_comments', params: {'p_post': postId})).map(PostComment.fromRow).toList();
+
+  @override
+  Future<PublishResult> addComment(String postId, String body) async =>
+      _publishResult(await _db.rpc('add_comment', params: {'p_post': postId, 'p_body': body}));
+
+  @override
+  Future<PublishResult> editComment(String commentId, String body) async =>
+      _publishResult(await _db.rpc('edit_comment', params: {'p_comment': commentId, 'p_body': body}));
+
+  @override
+  Future<void> deleteComment(String commentId) async {
+    await _db.rpc('delete_comment', params: {'p_comment': commentId});
+  }
+
+  @override
+  Future<void> reportPost(String postId, {required String reason, String? details}) async {
+    await _db.rpc('report_post', params: {'p_post': postId, 'p_reason': reason, 'p_details': details});
+  }
+
+  @override
+  Future<void> reportComment(String commentId, {required String reason, String? details}) async {
+    await _db.rpc('report_comment', params: {'p_comment': commentId, 'p_reason': reason, 'p_details': details});
+  }
 }

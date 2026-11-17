@@ -21,8 +21,26 @@ Future<void> showReportSheet(
   required String name,
   required String reportContext,
   String? matchId,
-}) async {
+}) {
   final repo = Session.read(context).repo;
+  return showContentReportSheet(
+    context,
+    title: 'Signaler $name',
+    subtitle: 'Votre signalement est confidentiel : $name n’en sera pas informé(e).',
+    submit: (reason, details) =>
+        repo.report(userId, context: reportContext, reason: reason, details: details, matchId: matchId),
+  );
+}
+
+/// Feuille de signalement générique (profil, conversation, publication, commentaire) :
+/// motif structuré, précisions facultatives, puis envoi par [submit] et message de confirmation.
+/// Retourne `true` si le signalement a été envoyé.
+Future<bool> showContentReportSheet(
+  BuildContext context, {
+  required String title,
+  required String subtitle,
+  required Future<void> Function(String reason, String? details) submit,
+}) async {
   final details = TextEditingController();
   String? reason;
   var sending = false;
@@ -37,10 +55,9 @@ Future<void> showReportSheet(
         child: SafeArea(
           child: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Text('Signaler $name', style: Theme.of(sheetContext).textTheme.titleLarge),
+              Text(title, style: Theme.of(sheetContext).textTheme.titleLarge),
               const SizedBox(height: 4),
-              Text('Votre signalement est confidentiel : $name n’en sera pas informé(e).',
-                  style: Theme.of(sheetContext).textTheme.bodyMedium),
+              Text(subtitle, style: Theme.of(sheetContext).textTheme.bodyMedium),
               const SizedBox(height: 14),
               for (final e in reportReasons.entries)
                 ChoiceTile(label: e.value, selected: reason == e.key, onTap: () => setSheet(() => reason = e.key)),
@@ -62,11 +79,7 @@ Future<void> showReportSheet(
                         setSheet(() => sending = true);
                         try {
                           final text = details.text.trim();
-                          await repo.report(userId,
-                              context: reportContext,
-                              reason: reason!,
-                              details: text.isEmpty ? null : text,
-                              matchId: matchId);
+                          await submit(reason!, text.isEmpty ? null : text);
                           navigator.pop(true);
                         } catch (_) {
                           navigator.pop(false);
@@ -80,7 +93,8 @@ Future<void> showReportSheet(
       ),
     ),
   );
-  if (!context.mounted || sent == null) return;
+  // Le contrôleur n'est pas libéré ici : la feuille l'utilise encore pendant son animation de fermeture.
+  if (!context.mounted || sent == null) return false;
   showZayaSnack(
     context,
     sent
@@ -88,6 +102,7 @@ Future<void> showReportSheet(
         : 'Le signalement n’a pas pu être envoyé. Vérifiez votre connexion et réessayez.',
     error: !sent,
   );
+  return sent;
 }
 
 /// Blocage immédiat : met fin au match et empêche toute interaction future.

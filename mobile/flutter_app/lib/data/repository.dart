@@ -78,4 +78,33 @@ abstract class ZayaRepository {
   // ── Premium & paiements (lecture seule dans ce lot)
   Future<List<PremiumGrant>> premiumHistory();
   Future<List<PaymentTx>> payments();
+
+  // ── Communauté (CDC V2.3 §2, V6.0 §26). Les erreurs serveur arrivent sous forme de code :
+  // COMMUNITY_DISABLED, VERIFICATION_REQUIRED, RATE_LIMITED, COMMENTS_DISABLED, POST_NOT_FOUND…
+  Future<List<Community>> communities();
+  Future<void> joinCommunity(String communityId);
+  Future<void> leaveCommunity(String communityId);
+  Future<void> setCommunityNotifications(String communityId, String level);
+
+  /// Une communauté, ou « Pour vous » si [communityId] est nul : les communautés suivies, toutes si aucune.
+  Future<List<CommunityPost>> communityFeed({String? communityId, DateTime? before});
+  Future<CommunityPost> communityPost(String postId);
+  Future<List<CommunityPost>> savedPosts();
+  Future<PublishResult> createPost({required String communityId, required String kind, required String body});
+  Future<PublishResult> editPost(String postId, String body);
+  Future<void> deletePost(String postId);
+  Future<void> setPostComments(String postId, bool enabled);
+
+  /// Ajoute ou retire ma réaction ; retourne le nouveau nombre de réactions.
+  Future<int> reactToPost(String postId, bool on);
+  Future<void> savePost(String postId, bool saved);
+  Future<void> hidePost(String postId);
+  Future<List<PostComment>> postComments(String postId);
+  Future<PublishResult> addComment(String postId, String body);
+  Future<PublishResult> editComment(String commentId, String body);
+  Future<void> deleteComment(String commentId);
+
+  /// Le contenu signalé disparaît aussitôt pour la personne qui signale.
+  Future<void> reportPost(String postId, {required String reason, String? details});
+  Future<void> reportComment(String commentId, {required String reason, String? details});
 }

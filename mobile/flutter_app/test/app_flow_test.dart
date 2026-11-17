@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:zaya/app.dart';
 import 'package:zaya/data/demo_repository.dart';
+import 'package:zaya/features/community/post_detail_screen.dart';
 
 /// Parcours complets à l'écran, en mode démo, sur un petit téléphone Android (360 × 640 dp).
 /// Tout débordement d'affichage ou toute exception pendant une animation fait échouer le test.
@@ -175,14 +177,12 @@ void main() {
     await tapText(tester, 'J’aime ce profil');
     expect(find.text('Vérifications'), findsNothing);
 
-    // ── Explorer
+    // ── Explorer : les likes reçus sont en tête. Le compteur est gratuit, l'identité ne l'est pas.
     await tapText(tester, 'Explorer');
     expect(find.text('Tous les profils'), findsOneWidget);
-
-    // ── Likes : le compteur est gratuit, l'identité ne l'est pas
-    await tapText(tester, 'Likes');
-    expect(find.text('1 personne a aimé votre profil'), findsOneWidget);
+    await tapText(tester, '1 personne a aimé votre profil');
     expect(find.text('Profil masqué'), findsOneWidget);
+    await goBack(tester);
 
     // ── Messages : nouveau match + conversation avec numéro masqué dans l'aperçu
     await tapText(tester, 'Messages');
@@ -260,5 +260,79 @@ void main() {
     await tapText(tester, 'Envoyer un message');
     // « Envoyer un message » ouvre directement la conversation du nouveau match.
     expect(find.textContaining('Dites bonjour à Kadiatou'), findsOneWidget);
+  });
+
+  testWidgets('Communauté : lire, réagir, commenter et publier après vérification', (tester) async {
+    usePhoneScreen(tester);
+    SharedPreferences.setMockInitialValues(draftAtHorizonStep());
+    final repo = DemoRepository();
+    await tester.pumpWidget(ZayaApp(repository: repo));
+    await settle(tester);
+    await finishOnboarding(tester);
+
+    await tapText(tester, 'Communauté');
+    expect(find.textContaining('Bienvenue dans la communauté'), findsOneWidget);
+    // Appui direct (le bouton est visible) : ensureVisible ferait défiler le fil vers le bas.
+    await tester.tap(find.text('J’ai compris'));
+    await settle(tester);
+    expect(find.textContaining('Bienvenue dans la communauté'), findsNothing);
+
+    // « Pour vous » montre toutes les communautés tant qu'aucune n'est suivie.
+    expect(find.textContaining('Quels sujets avez-vous abordés'), findsOneWidget);
+    expect(find.text('Choisissez vos communautés'), findsOneWidget);
+
+    // Réagir puis retirer sa réaction : le compteur suit.
+    await tester.tap(find.bySemanticsLabel('J’aime (2)').first);
+    await settle(tester);
+    expect(find.bySemanticsLabel('Retirer mon j’aime (3)'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('Retirer mon j’aime (3)'));
+    await settle(tester);
+    expect(find.bySemanticsLabel('J’aime (2)'), findsWidgets);
+
+    // Ouvrir la publication : commenter exige un profil vérifié, et le refus est expliqué.
+    await tester.tap(find.textContaining('Quels sujets avez-vous abordés'));
+    await settle(tester);
+    expect(find.text('Publication'), findsOneWidget);
+    expect(find.textContaining('Les finances, clairement'), findsOneWidget);
+    expect(find.textContaining('Pour commenter, votre profil doit d’abord être vérifié'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'Merci pour ces conseils !');
+    await tester.tap(find.byTooltip('Publier le commentaire'));
+    await settle(tester);
+    expect(find.text('Pour publier ou commenter, votre profil doit d’abord être vérifié.'), findsOneWidget);
+
+    // Profil vérifié (mode démo) : un commentaire contenant un numéro est refusé avant publication.
+    final bytes = Uint8List(0);
+    for (var i = 0; i < 3; i++) {
+      await repo.addPhoto(bytes);
+    }
+    await repo.requestVerification(bytes);
+    await Session.read(tester.element(find.byType(PostDetailScreen))).refresh();
+    await settle(tester);
+    expect(find.textContaining('Pour commenter, votre profil'), findsNothing);
+    await tester.enterText(find.byType(TextField), 'Appelle-moi au 622 11 22 33');
+    await tester.tap(find.byTooltip('Publier le commentaire'));
+    await settle(tester);
+    expect(find.textContaining('n’a pas été publié'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'Merci pour ces conseils !');
+    await tester.tap(find.byTooltip('Publier le commentaire'));
+    await settle(tester);
+    expect(find.textContaining('n’a pas été publié'), findsNothing);
+    expect(find.text('Merci pour ces conseils !'), findsOneWidget);
+    expect(find.text('Commentaires (3)'), findsOneWidget);
+    await goBack(tester);
+
+    // Publier : la publication apparaît, et « Pour vous » ne montre plus que la communauté suivie.
+    await tester.tap(find.text('Publier'));
+    await settle(tester);
+    expect(find.text('Nouvelle publication'), findsOneWidget);
+    await tapText(tester, 'Choisir une communauté');
+    await tapText(tester, 'Préparation au mariage');
+    await tapText(tester, 'Conseil');
+    await tester.enterText(find.byType(TextField), 'Parlez de vos projets tôt : cela évite les malentendus.');
+    await tester.pump();
+    await tapText(tester, 'Publier');
+    expect(find.text('Publication en ligne.'), findsOneWidget);
+    expect(find.textContaining('Parlez de vos projets tôt'), findsOneWidget);
+    expect(find.textContaining('Un conseil qui m’a servi'), findsNothing);
   });
 }

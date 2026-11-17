@@ -1,0 +1,12 @@
+{
+  "name": "zaya-icons",
+  "private": true,
+  "type": "module",
+  "description": "Génère les icônes Android, iOS et Web de ZAYA à partir de assets/brand/zaya_logo.png.",
+  "scripts": {
+    "icons": "node make_icons.mjs"
+  },
+  "dependencies": {
+    "sharp": "^0.34.0"
+  }
+}

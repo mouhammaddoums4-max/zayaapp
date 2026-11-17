@@ -524,6 +524,7 @@ const blockedCategoryLabels = <String, String>{
   'credential_request': 'les demandes de code ou de mot de passe',
   'sexual_content': 'les contenus sexuels',
   'threat': 'les menaces',
+  'contact_details': 'le partage de coordonnées (numéro, e-mail, lien de messagerie)',
 };
 
 String formatDate(DateTime d) {
@@ -534,4 +535,207 @@ String formatDate(DateTime d) {
 String formatTime(DateTime d) {
   final l = d.toLocal();
   return '${l.hour.toString().padLeft(2, '0')}:${l.minute.toString().padLeft(2, '0')}';
+}
+
+/// « à l’instant », « il y a 5 min », « il y a 3 h », « hier », « il y a 4 j », puis la date.
+String formatRelative(DateTime time, {DateTime? now}) {
+  final current = now ?? DateTime.now();
+  final diff = current.difference(time);
+  if (diff.inMinutes < 1) return 'à l’instant';
+  if (diff.inMinutes < 60) return 'il y a ${diff.inMinutes} min';
+  if (diff.inHours < 24) return 'il y a ${diff.inHours} h';
+  if (diff.inDays < 2) return 'hier';
+  if (diff.inDays < 7) return 'il y a ${diff.inDays} j';
+  return formatDate(time);
+}
+
+// ───────────────────────────── Communauté (CDC V2.3 §2, V6.0 §26)
+
+const postKindLabels = <String, String>{
+  'question': 'Question',
+  'advice': 'Conseil',
+  'experience': 'Expérience',
+};
+
+const communityNotifLabels = <String, String>{
+  'all': 'Toutes les publications',
+  'important': 'Annonces importantes',
+  'events': 'Événements seulement',
+  'none': 'Aucune',
+};
+
+class Community {
+  const Community({
+    required this.id,
+    required this.slug,
+    required this.name,
+    required this.description,
+    this.icon = 'groups',
+    this.memberCount = 0,
+    this.joined = false,
+    this.notifLevel,
+  });
+
+  final String id;
+  final String slug;
+  final String name;
+  final String description;
+  final String icon;
+  final int memberCount;
+  final bool joined;
+  final String? notifLevel;
+
+  Community copyWith({bool? joined, int? memberCount, String? notifLevel}) => Community(
+        id: id,
+        slug: slug,
+        name: name,
+        description: description,
+        icon: icon,
+        memberCount: memberCount ?? this.memberCount,
+        joined: joined ?? this.joined,
+        notifLevel: notifLevel ?? this.notifLevel,
+      );
+
+  static Community fromRow(Map<String, dynamic> r) => Community(
+        id: r['community_id'] as String,
+        slug: r['slug'] as String,
+        name: r['name'] as String,
+        description: (r['description'] as String?) ?? '',
+        icon: (r['icon'] as String?) ?? 'groups',
+        memberCount: (r['member_count'] as num?)?.toInt() ?? 0,
+        joined: r['joined'] == true,
+        notifLevel: r['notif_level'] as String?,
+      );
+}
+
+/// Publication telle que la voit le membre connecté : l'auteur n'est identifié que par son nom
+/// de profil et son badge vérifié (aucune photo, décision C15).
+class CommunityPost {
+  const CommunityPost({
+    required this.id,
+    required this.communityId,
+    required this.communityName,
+    required this.authorId,
+    required this.authorName,
+    required this.kind,
+    required this.body,
+    required this.createdAt,
+    this.authorVerified = false,
+    this.commentsEnabled = true,
+    this.edited = false,
+    this.reactionCount = 0,
+    this.commentCount = 0,
+    this.reacted = false,
+    this.saved = false,
+    this.isMine = false,
+  });
+
+  final String id;
+  final String communityId;
+  final String communityName;
+  final String authorId;
+  final String authorName;
+  final bool authorVerified;
+  final String kind;
+  final String body;
+  final bool commentsEnabled;
+  final DateTime createdAt;
+  final bool edited;
+  final int reactionCount;
+  final int commentCount;
+  final bool reacted;
+  final bool saved;
+  final bool isMine;
+
+  CommunityPost copyWith({
+    String? body,
+    bool? edited,
+    bool? commentsEnabled,
+    int? reactionCount,
+    int? commentCount,
+    bool? reacted,
+    bool? saved,
+  }) =>
+      CommunityPost(
+        id: id,
+        communityId: communityId,
+        communityName: communityName,
+        authorId: authorId,
+        authorName: authorName,
+        authorVerified: authorVerified,
+        kind: kind,
+        body: body ?? this.body,
+        commentsEnabled: commentsEnabled ?? this.commentsEnabled,
+        createdAt: createdAt,
+        edited: edited ?? this.edited,
+        reactionCount: reactionCount ?? this.reactionCount,
+        commentCount: commentCount ?? this.commentCount,
+        reacted: reacted ?? this.reacted,
+        saved: saved ?? this.saved,
+        isMine: isMine,
+      );
+
+  static CommunityPost fromRow(Map<String, dynamic> r) => CommunityPost(
+        id: r['post_id'] as String,
+        communityId: r['community_id'] as String,
+        communityName: (r['community_name'] as String?) ?? '',
+        authorId: r['author_id'] as String,
+        authorName: (r['author_name'] as String?) ?? 'Membre',
+        authorVerified: r['author_verified'] == true,
+        kind: (r['kind'] as String?) ?? 'question',
+        body: (r['body'] as String?) ?? '',
+        commentsEnabled: r['comments_enabled'] != false,
+        createdAt: DateTime.parse(r['created_at'] as String),
+        edited: r['edited'] == true,
+        reactionCount: (r['reaction_count'] as num?)?.toInt() ?? 0,
+        commentCount: (r['comment_count'] as num?)?.toInt() ?? 0,
+        reacted: r['reacted'] == true,
+        saved: r['saved'] == true,
+        isMine: r['is_mine'] == true,
+      );
+}
+
+class PostComment {
+  const PostComment({
+    required this.id,
+    required this.authorId,
+    required this.authorName,
+    required this.body,
+    required this.createdAt,
+    this.authorVerified = false,
+    this.edited = false,
+    this.isMine = false,
+  });
+
+  final String id;
+  final String authorId;
+  final String authorName;
+  final bool authorVerified;
+  final String body;
+  final DateTime createdAt;
+  final bool edited;
+  final bool isMine;
+
+  static PostComment fromRow(Map<String, dynamic> r) => PostComment(
+        id: r['comment_id'] as String,
+        authorId: r['author_id'] as String,
+        authorName: (r['author_name'] as String?) ?? 'Membre',
+        authorVerified: r['author_verified'] == true,
+        body: (r['body'] as String?) ?? '',
+        createdAt: DateTime.parse(r['created_at'] as String),
+        edited: r['edited'] == true,
+        isMine: r['is_mine'] == true,
+      );
+}
+
+/// Résultat d'une publication ou d'un commentaire : `blockedCategory` non nul = refusé avant publication.
+class PublishResult {
+  const PublishResult.published(String this.id) : blockedCategory = null;
+  const PublishResult.blocked(String category)
+      : id = null,
+        blockedCategory = category;
+
+  final String? id;
+  final String? blockedCategory;
+  bool get isBlocked => blockedCategory != null;
 }

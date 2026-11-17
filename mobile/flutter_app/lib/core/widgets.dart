@@ -411,6 +411,18 @@ const _knownErrors = <String, String>{
   'Token has expired or is invalid': 'Code incorrect ou expiré. Demandez un nouveau code.',
   'over_sms_send_rate_limit': 'Trop de demandes de code. Réessayez dans quelques minutes.',
   'sms_send_failed': 'Le SMS n’a pas pu être envoyé. Réessayez dans quelques minutes.',
+  'phone_provider_disabled': 'La connexion par téléphone n’est pas encore activée sur le serveur.',
+  'Unsupported phone provider': 'La connexion par téléphone n’est pas encore activée sur le serveur.',
+  // Communauté
+  'COMMUNITY_DISABLED': 'La communauté ouvrira bientôt.',
+  'VERIFICATION_REQUIRED': 'Pour publier ou commenter, votre profil doit d’abord être vérifié.',
+  'ACCOUNT_RESTRICTED': 'Votre compte ne peut pas publier pour le moment. Contactez l’assistance.',
+  'RATE_LIMITED': 'Vous avez beaucoup publié récemment. Réessayez un peu plus tard.',
+  'COMMENTS_DISABLED': 'Les commentaires sont désactivés sur cette publication.',
+  'POST_NOT_FOUND': 'Cette publication n’est plus disponible.',
+  'COMMENT_NOT_FOUND': 'Ce commentaire n’est plus disponible.',
+  'COMMUNITY_NOT_FOUND': 'Cette communauté n’est plus disponible.',
+  'NOT_A_MEMBER': 'Rejoignez d’abord cette communauté.',
 };
 
 String friendlyError(Object error) {

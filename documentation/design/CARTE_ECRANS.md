@@ -20,16 +20,16 @@ Lancement
    ├─ suspendu / banni ───► Compte restreint (A05)
    └─ compte actif ───────► Barre d'onglets
         ├─ Découvrir (C01) ─► Filtres (C03) · Notifications (N01) · Boost (P04) · Fiche profil (C02) · Likes épuisés (C04) · Match (C05)
-        ├─ Explorer (X01) ──► Sélection (X02) ─► Fiche profil (C02)
-        ├─ Likes (D01) ─────► Intérêts reçus (D02) · Visites (D03)
+        ├─ Explorer (X01) ──► Likes reçus (D01) ─► Intérêts reçus (D02) · Visites (D03) ; Sélection (X02) ─► Fiche profil (C02)
         ├─ Messages (E01) ──► Conversation (E02) ─► Bouclier (E03) · Fiche profil (C02)
+        ├─ Communauté (K01) ► Publication (K02) · Publier (K03) · Communautés (K04) · Enregistrées (K05) · Règles (K06)
         └─ Profil (F01) ────► Modifier (F02) · Photos (F03) · Vérification (F04) · Confidentialité (F06)
                               · Abonnements (F10) · Paiements (F11) · Aide (F12) · Documents légaux (F13)
 ```
 
 ### 1.2 Règles
 
-1. **Cinq onglets** (choix du propriétaire, en place dans le code au 17/11/2026) : Découvrir, Explorer, Likes, Messages, Profil. Les nouveaux matchs apparaissent en tête de Messages. Jamais plus de cinq onglets : la Communauté (lot C) devra trouver sa place sans en ajouter un sixième (Q6).
+1. **Cinq onglets** (décision C16 du propriétaire, 17/11/2026) : Découvrir, Explorer, Messages, Communauté, Profil. Les likes reçus (D01) sont en tête d’Explorer ; les nouveaux matchs en tête de Messages. Jamais plus de cinq onglets.
 2. La barre d'onglets n'apparaît que sur les quatre écrans racines. Un écran ouvert depuis un onglet la recouvre. Chaque onglet conserve sa position de défilement.
 3. **Bouton retour Android** : écran ouvert → écran précédent ; onglet autre que Découvrir → Découvrir ; Découvrir → sortie de l'application. Dans l'inscription : étape précédente, brouillon conservé (CDC §3, §23.2).
 4. **Aiguillage (A01)** selon `profiles.status` :
@@ -106,13 +106,13 @@ Les champs **obligatoires** sont ceux qu'exige `complete_onboarding` : nom d'aff
 | C05 | Match (superposition) | Animation courte, deux photos, « Envoyer un message » → E02, « Continuer à découvrir » | Résultat `matched` de `send_like` | §22.10, §13 | A |
 | N01 | Notifications | Événements réels seulement (match, message, décision de vérification) ; état vide en attendant les notifications push ; jamais de fausse pastille | FCM au lot B | §9, §22.17 | A (vide), B |
 
-### 2.4 Explorer (onglet 2) et Likes (onglet 3)
+### 2.4 Explorer (onglet 2), avec les likes reçus en tête
 
 | ID | Écran | Contenu essentiel | Serveur | CDC | Lot |
 |---|---|---|---|---|---|
 | X01 | Explorer | Sélections thématiques construites à partir des réponses réelles et des préférences (horizon de mariage proche, près de chez vous, même langue, mêmes centres d'intérêt, prennent leur temps), avec le nombre de profils de chacune | Mêmes règles serveur que Découvrir : filtres réciproques, blocages, vérification | §22.1, §31 | A |
 | X02 | Sélection | Profils d'une sélection, puis « Vous avez tout vu » | Idem X01 | §22.1 | A |
-| D01 | Likes | Compteur des intérêts reçus (gratuit, jamais de faux like) ; identités masquées en Gratuit ; « Parcourir les profils » | `received_interests_count` | V3.0 §4.2 | A |
+| D01 | Likes | Carte en tête d’Explorer avec le nombre d’intérêts reçus (gratuit, jamais de faux like), qui ouvre l’écran des likes : identités masquées en Gratuit ; « Parcourir les profils » | `received_interests_count` | V3.0 §4.2 | A |
 | D02 | Intérêts reçus | Liste nominative ; aimer en retour (match immédiat) ou refuser | `received_interests` (refus serveur `PREMIUM_REQUIRED`) | V3.0 §4.3, §32 | B |
 | D03 | Visites du profil | Vues totales et visiteurs uniques sur 7 et 30 jours ; identités seulement en Premium et hors navigation discrète | `my_profile_view_stats` | §22.7 | B |
 
@@ -127,6 +127,21 @@ Les champs **obligatoires** sont ceux qu'exige `complete_onboarding` : nom d'aff
 | E05 | Afficher un numéro (dialogue) | Texte de sécurité du CDC §34.2, « Afficher le numéro » / « Annuler » | Aucun : masquage à l'affichage, le texte complet est transmis au client | §34.1–34.2 | A |
 | E06 | Mettre fin au match (dialogue) | Explique la différence avec le blocage | `unmatch` | §32 | A |
 
+### 2.5 bis Communauté (onglet 4)
+
+Phase 1 du CDC V2.3 §4 : publications texte, commentaires, signalement, blocage, règles et modération. L'auteur n'est identifié que par son nom de profil, son initiale et son badge vérifié, jamais par sa photo (C15). Ouverture au public conditionnée à une modération opérationnelle (C13).
+
+| ID | Écran | Contenu essentiel | Serveur (RPC · `app_config`) | CDC | Lot |
+|---|---|---|---|---|---|
+| K01 | Communauté | Pastilles « Pour vous » (communautés suivies, toutes si aucune) et communautés suivies ; bandeau d’accueil au premier passage ; invitation à choisir ses communautés ; fil (auteur, communauté, date, type, texte), réagir, commenter, enregistrer, options ; bouton « Publier » | `community_feed`, `list_communities`, `react_to_post`, `save_post` · `community_enabled` (C13) | V2.3 §2.2, §3 | A |
+| K02 | Publication | Texte complet, commentaires, champ de réponse ; refus avant publication expliqué au-dessus du champ ; défilement jusqu’au commentaire publié ; menu : modifier ou supprimer (auteur), signaler ou bloquer (autres) | `community_post`, `post_comments`, `add_comment`, `edit_comment`, `delete_comment`, `report_comment` | V2.3 §2.2, §2.5 | A |
+| K03 | Publier, modifier | Communauté, type (question, conseil, expérience), texte de 2 000 caractères au plus, rappel des règles ; profil vérifié exigé ; coordonnées et termes interdits refusés | `create_post`, `edit_post` · `community_post_requires_verification`, `community_posts_per_day` (C14) | V2.3 §2.4, V6.0 §26.1 | A |
+| K04 | Communautés | 8 communautés de départ ; rejoindre, quitter ; niveau de notifications | `join_community`, `leave_community`, `set_community_notifications` | V2.3 §2.3, V6.0 §26.4–26.5 | A |
+| K05 | Enregistrées | Publications enregistrées | `saved_community_posts` | V2.3 §2.2 | A |
+| K06 | Règles | Interdits (V2.3 §2.4) et identité visible (nom et badge, pas de photo) | — | V2.3 §2.4, §2.6 | A |
+
+Modération : `admin_moderate_post` et `admin_moderate_comment` (retirer, restaurer, avec audit) existent côté serveur ; leur écran viendra avec la console d’administration.
+
 ### 2.6 Sécurité (partagé)
 
 | ID | Écran | Contenu essentiel | Serveur | CDC | Lot |
@@ -134,7 +149,7 @@ Les champs **obligatoires** sont ceux qu'exige `complete_onboarding` : nom d'aff
 | S01 | Signaler (feuille) | Motifs structurés, précisions facultatives, signalement confidentiel | `report_user` | §7, V2.2 §3.2 | A |
 | S02 | Bloquer (dialogue) | Conséquences (fin du match, plus d'interaction), confirmation | `block_user` | §7 | A |
 
-### 2.7 Profil (onglet 4)
+### 2.7 Profil (onglet 5)
 
 | ID | Écran | Contenu essentiel | Serveur (RPC · `app_config`) | CDC | Lot |
 |---|---|---|---|---|---|
@@ -168,7 +183,7 @@ Les champs **obligatoires** sont ceux qu'exige `complete_onboarding` : nom d'aff
 
 | Module | Écrans | CDC | Lot |
 |---|---|---|---|
-| Communauté (5ᵉ onglet) | Fil et thèmes, explorer, détail d'une communauté, créer une publication, publication et commentaires, favoris, notifications, règles, suivi des signalements | V2.3 §2–3, V6.0 §26 | C |
+| Communauté, phase 2 | Photos et vidéos, réponses en fil, communautés privées, création de communautés par les membres, outils des modérateurs, contenus sponsorisés identifiés | V2.3 §4, V6.0 §26.3 | C |
 | Messagerie enrichie | Photos modérées, notes vocales, invitation de rendez-vous avec conseils, cartes de questions, Zaya AI (suggestions validées par le membre), appels | §22.10–22.11, §34.6 | C |
 | Cercle de confiance | Invitation d'un proche, permissions détaillées, révocation | §8 (règles à confirmer) | C |
 | Projet Mariage, Compatibilité, ZAYA Voice, Academy | Entrées depuis le Profil | V2.2 §1–6 | B–C |
@@ -253,9 +268,10 @@ Valeurs ZAYA issues de DESIGN_SYSTEM.md et de `lib/core/theme.dart` :
 | `features/onboarding/welcome_screen.dart` | A02 |
 | `features/onboarding/phone_login_screen.dart` | A03, B10 |
 | `features/onboarding/onboarding_flow.dart` | 7 étapes : B01, B02, B03, B04, B05 (+ situation matrimoniale et présentation), B10, B11 ; brouillon sauvegardé |
-| `features/home/home_shell.dart` | Barre d'onglets (4 destinations) |
+| `features/home/home_shell.dart` | Barre d'onglets (5 destinations : Découvrir, Explorer, Messages, Communauté, Profil) |
 | `features/discovery/discovery_screen.dart` | C01, C04, C05, bandeau de vérification |
-| `features/matches/matches_screen.dart` | D01 |
+| `features/likes/likes_screen.dart` | D01, ouvert depuis la carte en tête d'Explorer |
+| `features/community/` | K01 (`community_screen.dart`), K02 (`post_detail_screen.dart`), K03 (`compose_post_screen.dart`), K04 (`communities_screen.dart`), K05 (`saved_posts_screen.dart`), K06 (`community_widgets.dart`) |
 | `features/chat/conversations_screen.dart` | E01 |
 | `features/chat/chat_screen.dart` | E02 (avec info-box), E03, E05, E06 ; E04 sans « Modifier » |
 | `features/safety/safety_sheets.dart` | S01, S02 |
@@ -273,7 +289,7 @@ Valeurs ZAYA issues de DESIGN_SYSTEM.md et de `lib/core/theme.dart` :
 | Q3 | Visites du profil (D03) : dans l'onglet Likes, à côté des intérêts reçus, ou dans le Profil ? |
 | Q4 | Mode incognito : gratuit ou avantage Premium (CDC V3.0 §5.2) ? La navigation discrète (§22.7) est une option distincte. |
 | Q5 | Étapes facultatives B06 à B08 : dans l'inscription avec « Passer », ou seulement dans la complétude du profil ? |
-| Q6 | Communauté (lot C) : les cinq onglets sont pris. Entrée depuis Explorer ou le Profil, ou remplacement d'un onglet ? Le CDC prévoit de trancher par des tests d'ergonomie. |
+| Q6 | ~~Place de la Communauté~~ : tranché le 17/11/2026 (C16) — 4ᵉ onglet, likes reçus en tête d’Explorer. |
 | Q7 | Présentation vidéo : dans l'inscription ou seulement dans le profil, selon le coût de modération ? |
 
 ---
