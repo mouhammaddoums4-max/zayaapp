@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:zaya/data/models.dart';
+import 'package:zaya/features/discovery/photo_viewer.dart';
 import 'package:zaya/features/discovery/profile_widgets.dart';
 
 /// Galerie de la fiche profil : libellés honnêtes selon la raison du floutage (addendum V6.4 §2.2 et §3).
@@ -17,9 +18,8 @@ void main() {
     ]);
   });
 
-  testWidgets('photo floutée par le forfait : « Premium » et ouverture de l’offre ; floutée par la propriétaire : pas d’offre',
-      (tester) async {
-    var ouvertures = 0;
+  testWidgets('libellés honnêtes ; une photo nette ou floutée s’ouvre en grand, jamais une photo privée', (tester) async {
+    final ouvertes = <String>[];
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: ProfilePhotoGallery(
@@ -30,20 +30,28 @@ void main() {
             ProfilePhoto(id: 'c', visibility: 'blurred', access: 'blurred'),
             ProfilePhoto(id: 'd', visibility: 'private', access: 'none'),
           ],
-          onUnlock: () => ouvertures++,
+          onOpen: (p) => ouvertes.add(p.id),
         ),
       ),
     ));
     await tester.pump();
 
-    expect(find.text('Premium'), findsOneWidget);
-    expect(find.text('Floutée'), findsOneWidget);
+    expect(find.text('Premium'), findsOneWidget, reason: 'floutée par le forfait');
+    expect(find.text('Floutée'), findsOneWidget, reason: 'floutée par la propriétaire : Premium ne la rend pas nette');
     expect(find.text('Privée'), findsOneWidget);
 
     await tester.tap(find.text('Premium'));
-    expect(ouvertures, 1);
-    await tester.tap(find.text('Floutée'), warnIfMissed: false);
+    await tester.tap(find.text('Floutée'));
     await tester.tap(find.text('Privée'), warnIfMissed: false);
-    expect(ouvertures, 1, reason: 'une photo protégée par sa propriétaire ne doit pas mener à l’offre Premium');
+    expect(ouvertes, ['b', 'c'], reason: 'la photo privée ne doit pas s’ouvrir');
+  });
+
+  test('la visionneuse ne montre jamais les photos privées', () {
+    const photos = [
+      ProfilePhoto(id: 'a', visibility: 'public', access: 'original'),
+      ProfilePhoto(id: 'd', visibility: 'private', access: 'none'),
+      ProfilePhoto(id: 'b', visibility: 'public', access: 'blurred'),
+    ];
+    expect(PhotoViewerScreen.viewable(photos).map((p) => p.id), ['a', 'b']);
   });
 }

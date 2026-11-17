@@ -8,6 +8,7 @@ import '../../core/widgets.dart';
 import '../../data/models.dart';
 import '../premium/premium_screens.dart';
 import '../safety/safety_sheets.dart';
+import 'photo_viewer.dart';
 import 'profile_widgets.dart';
 
 /// Fiche complète d'un profil, dans les limites de ce que son propriétaire a choisi de montrer.
@@ -85,6 +86,54 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     );
   }
 
+  /// Photos du profil en plein écran, à partir de la photo touchée (par défaut la première visible).
+  void _openPhotos([String? photoId]) {
+    final detail = _detail;
+    if (detail == null) return;
+    Navigator.of(context).push(zRoute<void>(PhotoViewerScreen(
+      name: detail.base.displayName,
+      photos: detail.photos,
+      initialPhotoId: photoId,
+      onUnlock: () => Navigator.of(context).push(zRoute<void>(const PremiumScreen())),
+    )));
+  }
+
+  /// En-tête : grande photo, voile et nom, âge, badges et ville.
+  Widget _header(Widget photo, String name, DiscoveryProfile? base) {
+    return Stack(fit: StackFit.expand, children: [
+      photo,
+      const PhotoScrim(start: 0.5),
+      Positioned(
+        left: 20,
+        right: 20,
+        bottom: 18,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+          Row(children: [
+            Flexible(
+              child: Text(base == null ? name : '$name, ${base.age}',
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.sora(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.white)),
+            ),
+            if (base?.isVerified ?? false) ...[const SizedBox(width: 8), const VerifiedBadge(size: 24)],
+            if (base?.isPremium ?? false) ...[const SizedBox(width: 8), const PremiumBadge()],
+          ]),
+          if (base?.city != null) ...[
+            const SizedBox(height: 4),
+            Row(children: [
+              const Icon(Icons.place_outlined, size: 16, color: Colors.white),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(base!.city!,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white)),
+              ),
+            ]),
+          ],
+        ]),
+      ),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     final detail = _detail;
@@ -116,39 +165,12 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
               const SizedBox(width: 8),
             ],
             flexibleSpace: FlexibleSpaceBar(
-              background: Stack(fit: StackFit.expand, children: [
-                photo,
-                const PhotoScrim(start: 0.5),
-                Positioned(
-                  left: 20,
-                  right: 20,
-                  bottom: 18,
-                  child:
-                      Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                    Row(children: [
-                      Flexible(
-                        child: Text(base == null ? name : '$name, ${base.age}',
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.sora(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.white)),
-                      ),
-                      if (base?.isVerified ?? false) ...[const SizedBox(width: 8), const VerifiedBadge(size: 24)],
-                      if (base?.isPremium ?? false) ...[const SizedBox(width: 8), const PremiumBadge()],
-                    ]),
-                    if (base?.city != null) ...[
-                      const SizedBox(height: 4),
-                      Row(children: [
-                        const Icon(Icons.place_outlined, size: 16, color: Colors.white),
-                        const SizedBox(width: 5),
-                        Flexible(
-                          child: Text(base!.city!,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white)),
-                        ),
-                      ]),
-                    ],
-                  ]),
-                ),
-              ]),
+              // Toucher la grande photo ouvre les photos du profil en plein écran.
+              background: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: detail == null || PhotoViewerScreen.viewable(detail.photos).isEmpty ? null : () => _openPhotos(),
+                child: _header(photo, name, base),
+              ),
             ),
           ),
           SliverToBoxAdapter(
@@ -200,11 +222,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
       add(_Card(
         title: 'Photos',
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          ProfilePhotoGallery(
-            name: base.displayName,
-            photos: detail.photos,
-            onUnlock: () => Navigator.of(context).push(zRoute<void>(const PremiumScreen())),
-          ),
+          ProfilePhotoGallery(name: base.displayName, photos: detail.photos, onOpen: (p) => _openPhotos(p.id)),
           if (floueesPremium > 0) ...[
             const SizedBox(height: 10),
             Text(

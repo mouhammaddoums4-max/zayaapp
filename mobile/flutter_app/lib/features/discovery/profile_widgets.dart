@@ -16,10 +16,14 @@ class ProfilePhotoView extends StatefulWidget {
     this.initialSize = 120,
     this.avatar = false,
     this.blurred = false,
+    this.fit = BoxFit.cover,
   });
   final String name;
   final String? photoPath;
   final double initialSize;
+
+  /// Cadrage de l'image : remplie (cartes, galerie) ou entière (visionneuse plein écran).
+  final BoxFit fit;
 
   /// `photoPath` désigne la version floutée fabriquée par le serveur (bucket profile-photos-blur).
   final bool blurred;
@@ -76,7 +80,7 @@ class _ProfilePhotoViewState extends State<ProfilePhotoView> {
           placeholder,
           Image.network(
             url,
-            fit: BoxFit.cover,
+            fit: widget.fit,
             gaplessPlayback: true,
             errorBuilder: (_, __, ___) => const SizedBox.shrink(),
             frameBuilder: (context, child, frame, wasSynchronouslyLoaded) => wasSynchronouslyLoaded
@@ -96,12 +100,12 @@ class _ProfilePhotoViewState extends State<ProfilePhotoView> {
 /// Galerie des photos d'un profil consulté, telles que le serveur les autorise (migration 0009) : nettes,
 /// floutées (version fabriquée par le serveur, jamais l'original flouté sur le téléphone) ou privées.
 class ProfilePhotoGallery extends StatelessWidget {
-  const ProfilePhotoGallery({super.key, required this.name, required this.photos, this.onUnlock});
+  const ProfilePhotoGallery({super.key, required this.name, required this.photos, this.onOpen});
   final String name;
   final List<ProfilePhoto> photos;
 
-  /// Ouvre l'offre Premium depuis une photo floutée par la règle du forfait.
-  final VoidCallback? onUnlock;
+  /// Ouvre une photo nette ou floutée en plein écran (les photos privées ne s'ouvrent pas).
+  final ValueChanged<ProfilePhoto>? onOpen;
 
   @override
   Widget build(BuildContext context) => SizedBox(
@@ -110,16 +114,16 @@ class ProfilePhotoGallery extends StatelessWidget {
           scrollDirection: Axis.horizontal,
           itemCount: photos.length,
           separatorBuilder: (_, __) => const SizedBox(width: 10),
-          itemBuilder: (context, i) => _GalleryTile(name: name, photo: photos[i], onUnlock: onUnlock),
+          itemBuilder: (context, i) => _GalleryTile(name: name, photo: photos[i], onOpen: onOpen),
         ),
       );
 }
 
 class _GalleryTile extends StatelessWidget {
-  const _GalleryTile({required this.name, required this.photo, this.onUnlock});
+  const _GalleryTile({required this.name, required this.photo, this.onOpen});
   final String name;
   final ProfilePhoto photo;
-  final VoidCallback? onUnlock;
+  final ValueChanged<ProfilePhoto>? onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -127,7 +131,8 @@ class _GalleryTile extends StatelessWidget {
     // Libellé honnête : une photo floutée par sa propriétaire ne devient pas nette avec Premium.
     final String? label = p.isHidden ? 'Privée' : (p.isBlurred ? (p.blurredByOwner ? 'Floutée' : 'Premium') : null);
     final premium = p.isBlurred && !p.blurredByOwner;
-    final unlockable = premium && onUnlock != null;
+    final open = onOpen;
+    final ouvrable = !p.isHidden && open != null;
 
     final tile = ClipRRect(
       borderRadius: BorderRadius.circular(14),
@@ -167,8 +172,8 @@ class _GalleryTile extends StatelessWidget {
     );
     return Semantics(
       label: label == null ? 'Photo de $name' : 'Photo de $name, $label',
-      button: unlockable,
-      child: unlockable ? GestureDetector(onTap: onUnlock, child: tile) : tile,
+      button: ouvrable,
+      child: ouvrable ? GestureDetector(onTap: () => open(p), child: tile) : tile,
     );
   }
 }
