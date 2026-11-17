@@ -6,6 +6,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildInstallSql, installPath, normalizeEol } from '../deploy/build.mjs';
+import { adsTests } from './ads_tests.mjs';
 import { assistanceTests } from './assistance_tests.mjs';
 import { endedMatchesTests } from './ended_matches_tests.mjs';
 
@@ -267,6 +268,20 @@ await test("Moussa ne voit pas qui l'a aimé sans Premium, mais voit le compteur
   await fails(as(U.moussa, `select * from received_interests()`), /PREMIUM_REQUIRED/);
   const direct = await as(U.moussa, `select * from interests`);
   assert(direct.rows.length === 0, 'intérêts reçus lisibles directement');
+});
+await test("likes envoyés : Aïcha voit Moussa ; un like d'un profil invisible n'est pas compté", async () => {
+  const envoyes = (await as(U.aicha, `select * from my_sent_interests()`)).rows;
+  assert(envoyes.length === 1 && envoyes[0].display_name === 'Moussa', JSON.stringify(envoyes));
+  assert(!('birth_date' in envoyes[0]) && typeof envoyes[0].age === 'number');
+  await db.query(`update profiles set verification_status = 'pending' where id = $1`, [U.aicha]);
+  try {
+    assert((await rpc(U.moussa, 'received_interests_count')) === 0,
+      'le compteur doit suivre la liste : Aïcha, non visible, n’apparaît pas dans la liste');
+  } finally {
+    await db.query(`update profiles set verification_status = 'approved' where id = $1`, [U.aicha]);
+  }
+  assert((await rpc(U.moussa, 'received_interests_count')) === 1);
+  assert((await as(U.moussa, `select * from my_sent_interests()`)).rows.length === 0, 'Moussa n’a encore aimé personne');
 });
 await test("le like réciproque crée le match, révélé aux deux (Gratuit inclus)", async () => {
   const r = await rpc(U.moussa, 'send_like', [U.aicha]);
@@ -778,6 +793,7 @@ await test('valider les comptes d’essai : seulement les numéros listés, au n
 
 await assistanceTests({ db, test, assert, as, rpc, fails, U });
 await endedMatchesTests({ db, test, assert, as, rpc, fails });
+await adsTests({ db, test, assert, as, rpc, fails, U });
 
 console.log('\nFichier d’installation Supabase');
 await test('le fichier d’installation est à jour (régénéré à partir des migrations et du seed)', async () => {
