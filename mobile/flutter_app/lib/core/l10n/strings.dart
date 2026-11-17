@@ -97,7 +97,7 @@ abstract class ZStrings {
   String get chipHelp;
   String get chipSafety;
   String get planFreeTitle;
-  String planFreeLikes(int perDay);
+  String planFreeSwipes(int count, int hours);
   String get planFreeEssentials;
   String get planDiscoverPremium;
   String get planPremiumTitle;

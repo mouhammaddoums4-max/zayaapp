@@ -43,6 +43,12 @@ class FeedStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Remet un profil en tête du fil (retour arrière sur un profil passé, migration 0016).
+  void restore(DiscoveryProfile profile) {
+    profiles = [profile, ...profiles.where((p) => p.id != profile.id)];
+    notifyListeners();
+  }
+
   void setRemaining(int remaining) {
     final current = quota;
     if (current == null) return;
@@ -74,11 +80,16 @@ class Session extends ChangeNotifier {
   UpdateStatus update = const UpdateStatus.none();
   RatingRules ratingRules = const RatingRules();
 
+  /// Durée d'une période de swipes (app_config.swipe_window_hours, 0016).
+  int swipeWindowHours = 8;
+
   Future<void> loadAppConfig() async {
     try {
       final config = await repo.publicConfig();
       update = evaluateUpdate(config);
       ratingRules = RatingRules.fromConfig(config);
+      final hours = config['swipe_window_hours'];
+      if (hours is num && hours > 0) swipeWindowHours = hours.toInt();
       notifyListeners();
     } catch (_) {
       // Hors connexion : rien n'est imposé, nouvel essai au prochain lancement.

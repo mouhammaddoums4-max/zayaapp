@@ -105,7 +105,8 @@ class ProfileScreen extends StatelessWidget {
           index: 2,
           child: PlanCard(
             premium: me.isPremium,
-            freeLikesPerDay: me.isPremium ? null : session.feed.quota?.limit,
+            freeSwipes: me.isPremium ? null : session.feed.quota?.limit,
+            windowHours: session.swipeWindowHours,
             onOpen: () => _push(context, me.isPremium ? const SubscriptionsScreen() : const PremiumScreen()),
           ),
         ),

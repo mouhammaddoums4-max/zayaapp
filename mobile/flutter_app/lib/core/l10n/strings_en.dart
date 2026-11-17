@@ -151,7 +151,7 @@ class ZStringsEn extends ZStrings {
   @override
   String get planFreeTitle => 'Free plan';
   @override
-  String planFreeLikes(int perDay) => '$perDay likes per day';
+  String planFreeSwipes(int count, int hours) => '$count swipes every $hours h';
   @override
   String get planFreeEssentials => 'Discovering, matching, chatting and staying safe remain free.';
   @override
@@ -163,11 +163,11 @@ class ZStringsEn extends ZStrings {
   @override
   String get planMySubscription => 'My subscription';
   @override
-  String get likesLeftTitle => 'Likes left today';
+  String get likesLeftTitle => 'Swipes left';
   @override
-  String likesRenewAt(String time) => 'Renewed at $time';
+  String likesRenewAt(String time) => 'new period at $time';
   @override
-  String get likesMore => 'More likes with Premium';
+  String get likesMore => 'More swipes with Premium';
   @override
   String get likesUnlimitedPremium => 'With Premium, you get more likes every day.';
   @override

@@ -59,9 +59,11 @@ class ProfileShortcuts extends StatelessWidget {
 
 /// Offre en cours : ce qui est inclus, réellement ; une seule entrée Premium, sans compte à rebours (§22.4).
 class PlanCard extends StatelessWidget {
-  const PlanCard({super.key, required this.premium, required this.freeLikesPerDay, required this.onOpen});
+  const PlanCard(
+      {super.key, required this.premium, required this.freeSwipes, required this.windowHours, required this.onOpen});
   final bool premium;
-  final int? freeLikesPerDay;
+  final int? freeSwipes;
+  final int windowHours;
   final VoidCallback onOpen;
 
   @override
@@ -69,7 +71,7 @@ class PlanCard extends StatelessWidget {
     final s = context.s;
     final body = premium
         ? s.planPremiumBody
-        : [if (freeLikesPerDay != null) s.planFreeLikes(freeLikesPerDay!), s.planFreeEssentials].join(' · ');
+        : [if (freeSwipes != null) s.planFreeSwipes(freeSwipes!, windowHours), s.planFreeEssentials].join(' · ');
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -162,7 +164,11 @@ class _LikesLeftCardState extends State<LikesLeftCard> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(s.likesLeftTitle, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 2),
-            Text('${quota.remaining} / ${quota.limit} · ${s.likesRenewAt(time)}',
+            // La fin de période n'a de sens qu'une fois la période commencée (premier swipe).
+            Text(
+                quota.remaining < quota.limit
+                    ? '${quota.remaining} / ${quota.limit} · ${s.likesRenewAt(time)}'
+                    : '${quota.remaining} / ${quota.limit}',
                 style: Theme.of(context).textTheme.bodyMedium),
             if (exhausted && !widget.premium) ...[
               const SizedBox(height: 10),

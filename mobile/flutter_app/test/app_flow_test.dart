@@ -394,8 +394,8 @@ void main() {
     }
     expect(find.text('Offre Gratuit'), findsOneWidget);
     expect(find.text('Découvrir Premium'), findsOneWidget);
-    await scrollToText(tester, 'Likes restants aujourd’hui');
-    expect(find.text('Plus de likes avec Premium'), findsNothing,
+    await scrollToText(tester, 'Swipes restants');
+    expect(find.text('Plus de swipes avec Premium'), findsNothing,
         reason: 'offre seulement une fois la limite atteinte');
     await tester.drag(find.byType(Scrollable).first, const Offset(0, 600));
     await settle(tester);

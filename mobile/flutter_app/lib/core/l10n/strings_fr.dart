@@ -153,7 +153,7 @@ class ZStringsFr extends ZStrings {
   @override
   String get planFreeTitle => 'Offre Gratuit';
   @override
-  String planFreeLikes(int perDay) => '$perDay likes par jour';
+  String planFreeSwipes(int count, int hours) => '$count swipes toutes les $hours h';
   @override
   String get planFreeEssentials => 'Découvrir, matcher, discuter et vous protéger restent gratuits.';
   @override
@@ -165,11 +165,11 @@ class ZStringsFr extends ZStrings {
   @override
   String get planMySubscription => 'Mon abonnement';
   @override
-  String get likesLeftTitle => 'Likes restants aujourd’hui';
+  String get likesLeftTitle => 'Swipes restants';
   @override
-  String likesRenewAt(String time) => 'Renouvelés à $time';
+  String likesRenewAt(String time) => 'nouvelle période à $time';
   @override
-  String get likesMore => 'Plus de likes avec Premium';
+  String get likesMore => 'Plus de swipes avec Premium';
   @override
   String get likesUnlimitedPremium => 'Avec Premium, vous disposez de davantage de likes chaque jour.';
   @override
