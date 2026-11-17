@@ -14,6 +14,7 @@ import '../settings/settings_screen.dart';
 import 'edit_profile_screen.dart';
 import 'preferences_screen.dart';
 import 'privacy_center_screen.dart';
+import 'profile_menu_widgets.dart';
 import 'verification_screen.dart';
 
 /// Onglet Profil : mon profil, sa complétude, la vérification et l'accès aux réglages.
@@ -38,7 +39,7 @@ class ProfileScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profil'),
+        title: Text(s.profileTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.shield_outlined),
@@ -55,6 +56,16 @@ class ProfileScreen extends StatelessWidget {
       ),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 28), children: [
         FadeSlideIn(child: _Header(me: me, onEdit: () => _push(context, const EditProfileScreen()))),
+        const SizedBox(height: 12),
+        ProfileShortcuts(items: [
+          (
+            Icons.workspace_premium_outlined,
+            s.chipSubscription,
+            () => _push(context, me.isPremium ? const SubscriptionsScreen() : const PremiumScreen()),
+          ),
+          (Icons.person_add_alt, s.chipInvite, () => inviteToZaya(context)),
+          (Icons.help_outline, s.chipHelp, () => _push(context, const HelpScreen())),
+        ]),
         const SizedBox(height: 14),
         if (deletion != null) ...[
           InfoBanner(
@@ -89,16 +100,16 @@ class ProfileScreen extends StatelessWidget {
         ],
         FadeSlideIn(
           index: 2,
-          child: _ActionCard(
-            icon: Icons.workspace_premium_outlined,
-            color: ZColors.premium,
-            title: me.isPremium ? 'Vous êtes Premium' : 'ZAYA Premium',
-            text: me.isPremium
-                ? 'Consultez vos avantages et la date de fin de votre abonnement.'
-                : 'Voyez qui vous a aimé et accédez à des filtres avancés. Les fonctions essentielles restent gratuites.',
-            actionLabel: me.isPremium ? 'Mon abonnement' : 'Comparer les offres',
-            onTap: () => _push(context, me.isPremium ? const SubscriptionsScreen() : const PremiumScreen()),
+          child: PlanCard(
+            premium: me.isPremium,
+            freeLikesPerDay: me.isPremium ? null : session.feed.quota?.limit,
+            onOpen: () => _push(context, me.isPremium ? const SubscriptionsScreen() : const PremiumScreen()),
           ),
+        ),
+        const SizedBox(height: 12),
+        FadeSlideIn(
+          index: 3,
+          child: LikesLeftCard(premium: me.isPremium, onMore: () => _push(context, const PremiumScreen())),
         ),
         const SizedBox(height: 18),
         const SectionTitle('Mon profil'),

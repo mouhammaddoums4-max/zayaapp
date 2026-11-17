@@ -131,6 +131,46 @@ class ZStringsEn extends ZStrings {
   @override
   String settingsUpdateAvailable(String latest) => 'Version $latest available: update';
 
+  // ── Profile (menu)
+  @override
+  String get profileTitle => 'Profile';
+  @override
+  String get profileEdit => 'Edit';
+  @override
+  String get profileShare => 'Share';
+  @override
+  String get profileIncomplete => 'Profile incomplete';
+  @override
+  String get chipSubscription => 'Subscription';
+  @override
+  String get chipInvite => 'Invite';
+  @override
+  String get chipHelp => 'Help';
+  @override
+  String get planFreeTitle => 'Free plan';
+  @override
+  String planFreeLikes(int perDay) => '$perDay likes per day';
+  @override
+  String get planFreeEssentials => 'Discovering, matching, chatting and staying safe remain free.';
+  @override
+  String get planDiscoverPremium => 'Discover Premium';
+  @override
+  String get planPremiumTitle => 'You are Premium';
+  @override
+  String get planPremiumBody => 'See your benefits and your subscription dates.';
+  @override
+  String get planMySubscription => 'My subscription';
+  @override
+  String get likesLeftTitle => 'Likes left today';
+  @override
+  String likesRenewAt(String time) => 'Renewed at $time';
+  @override
+  String get likesMore => 'More likes with Premium';
+  @override
+  String get likesUnlimitedPremium => 'With Premium, you get more likes every day.';
+  @override
+  String inviteMessage(String url) => 'Join me on ZAYA, the app for serious relationships leading to marriage: $url';
+
   // ── Language
   @override
   String get languageTitle => 'App language';

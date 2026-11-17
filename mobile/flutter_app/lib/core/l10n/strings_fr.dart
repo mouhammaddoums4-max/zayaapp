@@ -133,6 +133,47 @@ class ZStringsFr extends ZStrings {
   @override
   String settingsUpdateAvailable(String latest) => 'Version $latest disponible : mettre à jour';
 
+  // ── Profil (menu)
+  @override
+  String get profileTitle => 'Profil';
+  @override
+  String get profileEdit => 'Modifier';
+  @override
+  String get profileShare => 'Partager';
+  @override
+  String get profileIncomplete => 'Profil incomplet';
+  @override
+  String get chipSubscription => 'Abonnement';
+  @override
+  String get chipInvite => 'Inviter';
+  @override
+  String get chipHelp => 'Aide';
+  @override
+  String get planFreeTitle => 'Offre Gratuit';
+  @override
+  String planFreeLikes(int perDay) => '$perDay likes par jour';
+  @override
+  String get planFreeEssentials => 'Découvrir, matcher, discuter et vous protéger restent gratuits.';
+  @override
+  String get planDiscoverPremium => 'Découvrir Premium';
+  @override
+  String get planPremiumTitle => 'Vous êtes Premium';
+  @override
+  String get planPremiumBody => 'Retrouvez vos avantages et les dates de votre abonnement.';
+  @override
+  String get planMySubscription => 'Mon abonnement';
+  @override
+  String get likesLeftTitle => 'Likes restants aujourd’hui';
+  @override
+  String likesRenewAt(String time) => 'Renouvelés à $time';
+  @override
+  String get likesMore => 'Plus de likes avec Premium';
+  @override
+  String get likesUnlimitedPremium => 'Avec Premium, vous disposez de davantage de likes chaque jour.';
+  @override
+  String inviteMessage(String url) =>
+      'Je t’invite à découvrir ZAYA, l’application de rencontres sérieuses en vue du mariage : $url';
+
   // ── Langue
   @override
   String get languageTitle => 'Langue de l’application';

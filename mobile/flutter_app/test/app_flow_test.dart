@@ -388,6 +388,17 @@ void main() {
 
     // ── Profil → Réglages : informations personnelles (date de naissance et genre figés)
     await tapText(tester, 'Profil');
+    // Profil : raccourcis, offre en cours avec ce qui est réellement inclus, likes restants du jour.
+    for (final chip in ['Abonnement', 'Inviter', 'Aide']) {
+      expect(find.text(chip), findsOneWidget, reason: chip);
+    }
+    expect(find.text('Offre Gratuit'), findsOneWidget);
+    expect(find.text('Découvrir Premium'), findsOneWidget);
+    await scrollToText(tester, 'Likes restants aujourd’hui');
+    expect(find.text('Plus de likes avec Premium'), findsNothing,
+        reason: 'offre seulement une fois la limite atteinte');
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, 600));
+    await settle(tester);
     await tester.tap(find.byTooltip('Réglages'));
     await settle(tester);
     expect(find.text('Informations personnelles'), findsOneWidget);

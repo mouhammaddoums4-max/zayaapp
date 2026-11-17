@@ -87,6 +87,27 @@ abstract class ZStrings {
   String get settingsUpToDate;
   String settingsUpdateAvailable(String latest);
 
+  // ── Profil (menu)
+  String get profileTitle;
+  String get profileEdit;
+  String get profileShare;
+  String get profileIncomplete;
+  String get chipSubscription;
+  String get chipInvite;
+  String get chipHelp;
+  String get planFreeTitle;
+  String planFreeLikes(int perDay);
+  String get planFreeEssentials;
+  String get planDiscoverPremium;
+  String get planPremiumTitle;
+  String get planPremiumBody;
+  String get planMySubscription;
+  String get likesLeftTitle;
+  String likesRenewAt(String time);
+  String get likesMore;
+  String get likesUnlimitedPremium;
+  String inviteMessage(String url);
+
   // ── Langue
   String get languageTitle;
   String get languageIntro;
