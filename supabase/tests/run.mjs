@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { buildInstallSql, installPath, normalizeEol } from '../deploy/build.mjs';
 import { adsTests } from './ads_tests.mjs';
 import { assistanceTests } from './assistance_tests.mjs';
+import { swipesTests } from './swipes_tests.mjs';
 import { endedMatchesTests } from './ended_matches_tests.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -292,11 +293,11 @@ await test("le like réciproque crée le match, révélé aux deux (Gratuit incl
     assert(m.rows.length === 1, `match invisible pour ${u}`);
   }
 });
-await test("quota quotidien de likes appliqué côté serveur", async () => {
-  await db.query(`update app_config set value = '1' where key = 'free_daily_likes'`);
+await test("quota de swipes appliqué côté serveur (0016 : likes et passages comptés ensemble)", async () => {
+  await db.query(`update app_config set value = '1' where key = 'swipe_quota_free'`);
   const r = await rpc(U.aicha, 'send_like', [U.paul]);
   assert(r.status === 'quota_reached' && r.resets_at, JSON.stringify(r));
-  await db.query(`update app_config set value = '20' where key = 'free_daily_likes'`);
+  await db.query(`update app_config set value = '50' where key = 'swipe_quota_free'`);
 });
 
 console.log('\nMessagerie');
@@ -794,6 +795,7 @@ await test('valider les comptes d’essai : seulement les numéros listés, au n
 await assistanceTests({ db, test, assert, as, rpc, fails, U });
 await endedMatchesTests({ db, test, assert, as, rpc, fails });
 await adsTests({ db, test, assert, as, rpc, fails, U });
+await swipesTests({ db, test, assert, as, rpc, fails, U, seedMember });
 
 console.log('\nFichier d’installation Supabase');
 await test('le fichier d’installation est à jour (régénéré à partir des migrations et du seed)', async () => {
