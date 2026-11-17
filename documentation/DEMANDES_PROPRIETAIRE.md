@@ -18,6 +18,8 @@ Explorer, achats, publicité ».
 | Profils d'essai : 20 femmes + 20 hommes, photos par défaut | S1 | Silhouettes illustrées, comptes `.invalid`, supprimables (`profils_essai.mjs`) |
 | Publications par défaut dans la Communauté | S1 | 16 publications, 18 commentaires, 75 réactions |
 | 100 profils d'essai de plus (140 au total) | S1 | 70 femmes + 70 hommes, tous visibles dans Découvrir, photos floutées comprises |
+| Likes : onglets « Reçus » et « Envoyés » ; compteur aligné sur la liste | S1 | 0024 ; identité des likes reçus réservée à Premium (CDC V3.0 §4.3) |
+| Match entre les comptes 620 00 00 01 et 620 00 00 02 | S1 | Créé directement en base (préproduction) |
 | Toucher la photo d'une personne pour voir ses photos | S1 | Visionneuse plein écran, zoom, sans enregistrement |
 | Floutage des photos (Gratuit : photo principale nette, suivantes floutées) | S1 | Serveur (0009, fonction `blur-photos`) et application (galerie, libellés honnêtes) |
 | Photos des autres membres invisibles (bug) | S1 | Corrigé par 0007 |
@@ -35,14 +37,13 @@ Explorer, achats, publicité ».
 | Demande | Session | État | Notes |
 |---|---|---|---|
 | Confidentialité des photos : choisir publique / floutée / privée, autoriser une personne précise | S1 | à faire | 0013 ; addendum V6.4 §3.2–3.3 |
-| Swipes : 50 toutes les 8 h pour un compte Gratuit (likes + passages), retour arrière sur le dernier profil | S1 | à faire | 0016 ; paramètres dans `app_config` ; swipes gagnés par publicité récompensée : voir régie (S2, SSV) |
-| Likes : voir qui m'a aimé ; voir les profils que j'ai aimés | S1 | à faire | Liste nominative des likes reçus = avantage Premium (CDC V3.0 §4.3), compteur gratuit |
+| Swipes : 50 toutes les 8 h pour un compte Gratuit (likes + passages), retour arrière sur le dernier profil ; écran « limite atteinte » avec temps restant et Premium | S1 | à faire | 0016 ; paramètres dans `app_config` ; swipes gagnés par publicité récompensée : voir régie (S2, SSV) |
 | Communauté : mentions @ | S1 | à faire | 0017 |
 | Communauté : nombre de vues, publication anonyme | S1 | à faire | 0020 ; anonymat vis-à-vis des membres seulement, jamais de la modération |
 | Communauté : photo, GIF, vidéo, appareil photo ; humeur et emoji | S1 | à faire | 0021 ; médias modérés |
 | Communauté : création de communauté réservée aux membres Premium | S1 | à faire | 0018 ; validée par la modération avant d'être publique |
 | Discussions : écrans d'après les captures (conversations, demande de re-match, nouveaux matchs) | S1 | à confirmer | Voir questions ci-dessous |
-| Animations qui « tremblent » | S1 | à faire | Diagnostic à faire |
+| Animations qui « tremblent » | S3 | fait | ebd18b7 (session zaya-app-fa) |
 | Retirer les « bientôt disponible » et les infos peu utiles | S1 + S2 | à faire | Chaque session sur ses écrans ; on garde les avertissements de sécurité et les mentions légales |
 | Écran Profil/Menu d'après les captures, « en mieux » | S2 | en cours | Sans compte à rebours d'offre (addendum V6.4 §1.6) |
 | Formules Premium semaine / mois / trimestre, avec des noms ZAYA | S2 | à faire | Prix fixés par l'administration, jamais en dur |
