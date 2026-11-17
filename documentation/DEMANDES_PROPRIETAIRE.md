@@ -17,6 +17,8 @@ Explorer, achats, publicité ».
 | Code de connexion par Nimba SMS (WhatsApp écarté) | S1 | Hook prêt ; non déployé : solde SMS Nimba à 0. Connexion par numéros de test en attendant |
 | Profils d'essai : 20 femmes + 20 hommes, photos par défaut | S1 | Silhouettes illustrées, comptes `.invalid`, supprimables (`profils_essai.mjs`) |
 | Publications par défaut dans la Communauté | S1 | 16 publications, 18 commentaires, 75 réactions |
+| 100 profils d'essai de plus (140 au total) | S1 | 70 femmes + 70 hommes, tous visibles dans Découvrir, photos floutées comprises |
+| Toucher la photo d'une personne pour voir ses photos | S1 | Visionneuse plein écran, zoom, sans enregistrement |
 | Floutage des photos (Gratuit : photo principale nette, suivantes floutées) | S1 | Serveur (0009, fonction `blur-photos`) et application (galerie, libellés honnêtes) |
 | Photos des autres membres invisibles (bug) | S1 | Corrigé par 0007 |
 | Découvrir : logo retiré, Boost puis notifications | S1 | |
@@ -32,7 +34,6 @@ Explorer, achats, publicité ».
 
 | Demande | Session | État | Notes |
 |---|---|---|---|
-| 100 profils d'essai de plus (140 au total) | S1 | en cours | 50 femmes + 50 hommes générés ; création ralentie par le réseau |
 | Confidentialité des photos : choisir publique / floutée / privée, autoriser une personne précise | S1 | à faire | 0013 ; addendum V6.4 §3.2–3.3 |
 | Swipes : 50 toutes les 8 h pour un compte Gratuit (likes + passages), retour arrière sur le dernier profil | S1 | à faire | 0016 ; paramètres dans `app_config` ; swipes gagnés par publicité récompensée : voir régie (S2, SSV) |
 | Likes : voir qui m'a aimé ; voir les profils que j'ai aimés | S1 | à faire | Liste nominative des likes reçus = avantage Premium (CDC V3.0 §4.3), compteur gratuit |

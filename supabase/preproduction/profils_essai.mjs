@@ -18,6 +18,7 @@
 // La clé se lit dans Supabase → Project Settings → API Keys, ou avec `npx supabase projects api-keys --project-ref <ref>`.
 // Relancer « creer » ne crée pas de doublon : les comptes existants sont complétés.
 import { deflateSync } from 'node:zlib';
+import { flouterRvba } from '../functions/blur-photos/flou.ts'; // Node 24 : types TypeScript retirés à l'import
 
 const BASE = (process.env.SUPABASE_URL ?? '').replace(/\/$/, '');
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
@@ -112,6 +113,82 @@ const HOMMES = [
     'Commerçant établi, père de deux enfants. Je cherche une femme posée pour un mariage dans le respect.'],
 ];
 
+// ───────────────────────────── 50 femmes et 50 hommes de plus, générés de façon déterministe (demande du 17/11/2026)
+const PRENOMS_F = ['Adama', 'Aïssata', 'Assiatou', 'Aïcha', 'Binta', 'Dalanda', 'Diaraye', 'Djeinaba', 'Fatimatou', 'Fatou',
+  'Habibatou', 'Hadiatou', 'Halimatou', 'Hassanatou', 'Kadidiatou', 'Koumba', 'Maimouna', 'Makalé', 'Mamata', 'Mariame',
+  'Massa', 'Nana', 'Ramatoulaye', 'Safiatou', 'Salamata', 'Sayon', 'Sona', 'Tenin', 'Yayé', 'Zénab', 'Béatrice',
+  'Claudine', 'Esther', 'Germaine', 'Hélène', 'Joséphine', 'Juliette', 'Marthe', 'Pauline', 'Rose', 'Thérèse', 'Yvonne',
+  'Finda', 'Siba', 'Mawa', 'Kankou', 'Nassira', 'Kalsoum', 'Bountou', 'Lamarana'];
+const PRENOMS_H = ['Abdourahmane', 'Alhassane', 'Alseny', 'Amara', 'Bakary', 'Bangaly', 'Daouda', 'Djibril', 'Facinet',
+  'Fodéba', 'Habib', 'Ismaël', 'Issiaga', 'Kabinet', 'Kalil', 'Kémoko', 'Lamine', 'Mamady', 'Mory', 'Moustapha', 'Naby',
+  'Oumar', 'Saïdou', 'Salif', 'Sambégou', 'Seydou', 'Siaka', 'Tidiane', 'Yaya', 'Younoussa', 'Zakaria', 'Bernard',
+  'Célestin', 'Emmanuel', 'François', 'Gaston', 'Jacques', 'Joseph', 'Martin', 'Paul', 'Pierre', 'Raymond', 'Faya',
+  'Sékouba', 'Tamba', 'Saa', 'Fassou', 'Moriba', 'Dansa', 'Kéfing'];
+// Prénoms d'usage plutôt chrétien dans ces listes (index) : confession « christian » pour ces profils.
+const CHRETIENS_F = new Set([30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44]);
+const CHRETIENS_H = new Set([31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 44, 45, 46]);
+const VILLES = ['Conakry — Kaloum', 'Conakry — Dixinn', 'Conakry — Matam', 'Conakry — Ratoma', 'Conakry — Matoto',
+  'Coyah', 'Dubréka', 'Kindia', 'Boké', 'Kamsar', 'Labé', 'Mamou', 'Kankan', 'Siguiri', 'Faranah', 'N\'Zérékoré',
+  'Kissidougou', 'Guéckédou'];
+const LANGUE_REGION = {
+  Labé: 'Poular', Mamou: 'Poular', Kankan: 'Malinké', Siguiri: 'Malinké', Faranah: 'Malinké',
+  'N\'Zérékoré': 'Guerzé', Kissidougou: 'Kissi', Guéckédou: 'Kissi',
+};
+const METIERS = {
+  'Administration publique': 'dans l’administration', 'Agriculture / élevage': 'dans l’agriculture',
+  Commerce: 'dans le commerce', Artisanat: 'dans l’artisanat', 'Bâtiment / BTP': 'dans le bâtiment',
+  'Transport / logistique': 'dans la logistique', Santé: 'dans la santé', 'Éducation / enseignement': 'dans l’enseignement',
+  'Informatique / télécoms': 'dans les télécoms', 'Banque / finance': 'dans la finance', Sécurité: 'dans la sécurité',
+  'Industrie / mines': 'dans les mines', Services: 'dans les services', 'Étudiant(e)': null,
+};
+const GOUTS = {
+  Famille: 'les moments en famille', Lecture: 'la lecture', Cuisine: 'la cuisine', Sport: 'le sport', Voyages: 'les voyages',
+  Entrepreneuriat: 'entreprendre', Éducation: 'apprendre', Bénévolat: 'le bénévolat', Musique: 'la musique',
+  Traditions: 'nos traditions', Technologie: 'la technologie', Nature: 'la nature',
+};
+const TRAITS = {
+  femme: ['Calme et souriante', 'Sérieuse et attentionnée', 'Joyeuse et dynamique', 'Discrète mais curieuse',
+    'Franche et bienveillante', 'Patiente et organisée', 'Simple et généreuse'],
+  homme: ['Calme et souriant', 'Sérieux et attentionné', 'Joyeux et dynamique', 'Discret mais curieux',
+    'Franc et bienveillant', 'Patient et organisé', 'Simple et généreux'],
+};
+const PROJETS = {
+  soon: (g) => `Je souhaite me marier bientôt avec ${g === 'femme' ? 'un homme sincère' : 'une femme sincère'}.`,
+  few_months: () => 'Je cherche une relation sérieuse qui mène au mariage dans les prochains mois.',
+  medium_term: () => 'Je prends le temps de bien connaître la personne avant de m’engager.',
+  no_date: () => 'Je cherche avant tout la bonne personne, sans me presser.',
+};
+
+function genererProfils(genre, prenoms, chretiens) {
+  const metiers = Object.keys(METIERS);
+  const horizons = ['few_months', 'soon', 'medium_term', 'few_months', 'no_date'];
+  const etudes = ['Licence', 'Baccalauréat', 'Master', 'BTS', 'Licence', 'Doctorat'];
+  const gouts = Object.keys(GOUTS);
+  return prenoms.map((prenom, i) => {
+    const ville = VILLES[(i * 5 + (genre === 'femme' ? 0 : 3)) % VILLES.length];
+    const metier = metiers[(i * 7 + (genre === 'femme' ? 1 : 4)) % metiers.length];
+    const age = metier === 'Étudiant(e)' ? 21 + (i % 4) : (genre === 'femme' ? 22 + ((i * 7) % 17) : 25 + ((i * 7) % 18));
+    const situation = i % 11 === 5 ? 'divorced' : (i % 17 === 9 ? 'widowed' : 'single');
+    const enfants = situation === 'single' ? 0 : 1 + (i % 2);
+    const horizon = horizons[i % horizons.length];
+    const langues = ['Français', LANGUE_REGION[ville] ?? (i % 3 === 0 ? 'Poular' : 'Soussou')];
+    if (i % 4 === 1) langues.push('Anglais');
+    if (i % 9 === 3 && !chretiens.has(i)) langues.push('Arabe');
+    const interets = [gouts[i % gouts.length], gouts[(i + 4) % gouts.length], gouts[(i + 7) % gouts.length]];
+    const lieu = ville.startsWith('Conakry — ') ? `à ${ville.slice(10)}, à Conakry` : `à ${ville}`;
+    const secteur = METIERS[metier];
+    const intro = secteur ? `Je travaille ${secteur} ${lieu}.` : `${genre === 'femme' ? 'Étudiante' : 'Étudiant'} ${lieu}.`;
+    const famille = enfants ? ` ${genre === 'femme' ? 'Maman' : 'Papa'} de ${enfants === 1 ? 'un enfant' : 'deux enfants'}.` : '';
+    const bio = `${intro} ${TRAITS[genre][i % TRAITS[genre].length]}, j’aime ${GOUTS[interets[0]]} et ${GOUTS[interets[1]]}.`
+      + `${famille} ${PROJETS[horizon](genre)}`;
+    const taille = genre === 'femme' ? 155 + ((i * 3) % 18) : 168 + ((i * 3) % 19);
+    return [prenom, age, ville, metier, chretiens.has(i) ? 'christian' : 'muslim', situation, enfants, horizon,
+      etudes[i % etudes.length], taille, langues, interets, bio];
+  });
+}
+const FEMMES_PLUS = genererProfils('femme', PRENOMS_F, CHRETIENS_F);
+const HOMMES_PLUS = genererProfils('homme', PRENOMS_H, CHRETIENS_H);
+
 // ───────────────────────────── Publications fictives de la Communauté (aucune coordonnée, aucune affirmation sur ZAYA)
 // [auteur, communauté (slug), type, texte, commentaires [[auteur, texte]…]]
 const PUBLICATIONS = [
@@ -178,8 +255,19 @@ async function api(method, path, body, extraHeaders = {}) {
     headers['Content-Type'] = 'application/json';
     payload = JSON.stringify(body);
   }
-  const res = await fetch(BASE + path, { method, headers, body: payload });
-  const text = await res.text();
+  // Connexion parfois instable : jusqu'à 4 tentatives en cas d'erreur réseau ou de saturation passagère.
+  let res, text;
+  for (let essai = 1; ; essai++) {
+    try {
+      res = await fetch(BASE + path, { method, headers, body: payload });
+      text = await res.text();
+      if ((res.status === 429 || res.status >= 502) && essai < 4) throw new Error(`HTTP ${res.status}`);
+      break;
+    } catch (e) {
+      if (essai >= 4) throw e;
+      await new Promise((r) => setTimeout(r, 1500 * essai));
+    }
+  }
   if (!res.ok) throw new Error(`${method} ${path.split('?')[0]} → HTTP ${res.status} : ${text.slice(0, 300)}`);
   return text ? JSON.parse(text) : null;
 }
@@ -225,30 +313,14 @@ function chunk(type, data) {
   return out;
 }
 
-function silhouettePng(palette, decalage) {
-  const W = 480, H = 640;
-  const [haut, bas] = palette;
-  const cx = W / 2 + decalage;
+/** Image RVBA → fichier PNG (RVB 8 bits). */
+function encoderPng(rvba, W, H) {
   const lignes = Buffer.alloc((W * 3 + 1) * H);
-  const lisse = (d) => Math.min(1, Math.max(0, 0.5 - d / 1.5)); // anticrénelage sur 1,5 px
-  const union = (a, b, k) => { // union arrondie de deux formes (raccord doux cou / épaules)
-    const h = Math.max(k - Math.abs(a - b), 0) / k;
-    return Math.min(a, b) - h * h * k * 0.25;
-  };
   for (let y = 0; y < H; y++) {
     const o = y * (W * 3 + 1);
     lignes[o] = 0;
     for (let x = 0; x < W; x++) {
-      const t = Math.min(1, (y + x * 0.25) / (H + W * 0.25));
-      const tete = Math.hypot(x - cx, y - 310) - 104;
-      const cou = Math.max(Math.abs(x - cx) - 46, Math.abs(y - 450) - 50);
-      const ex = (x - cx) / 245, ey = (y - 705) / 225;
-      const epaules = (Math.sqrt(ex * ex + ey * ey) - 1) * 225;
-      const a = lisse(union(tete, union(cou, epaules, 60), 24)) * 0.88;
-      for (let c = 0; c < 3; c++) {
-        const fond = haut[c] + (bas[c] - haut[c]) * t;
-        lignes[o + 1 + x * 3 + c] = Math.round(fond * (1 - a) + 255 * a);
-      }
+      for (let c = 0; c < 3; c++) lignes[o + 1 + x * 3 + c] = rvba[(y * W + x) * 4 + c];
     }
   }
   const ihdr = Buffer.alloc(13);
@@ -263,6 +335,44 @@ function silhouettePng(palette, decalage) {
   ]);
 }
 
+const PHOTO_L = 480, PHOTO_H = 640;
+const silhouettePng = (palette, decalage) => encoderPng(silhouetteRvba(palette, decalage), PHOTO_L, PHOTO_H);
+
+/** Version floutée, avec le même algorithme que la fonction Edge blur-photos (flou.ts). */
+function silhouetteFloutee(palette, decalage) {
+  const flou = flouterRvba(silhouetteRvba(palette, decalage), PHOTO_L, PHOTO_H);
+  return encoderPng(flou.data, flou.width, flou.height);
+}
+
+function silhouetteRvba(palette, decalage) {
+  const W = PHOTO_L, H = PHOTO_H;
+  const [haut, bas] = palette;
+  const cx = W / 2 + decalage;
+  const image = new Uint8ClampedArray(W * H * 4);
+  const lisse = (d) => Math.min(1, Math.max(0, 0.5 - d / 1.5)); // anticrénelage sur 1,5 px
+  const union = (a, b, k) => { // union arrondie de deux formes (raccord doux cou / épaules)
+    const h = Math.max(k - Math.abs(a - b), 0) / k;
+    return Math.min(a, b) - h * h * k * 0.25;
+  };
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const t = Math.min(1, (y + x * 0.25) / (H + W * 0.25));
+      const tete = Math.hypot(x - cx, y - 310) - 104;
+      const cou = Math.max(Math.abs(x - cx) - 46, Math.abs(y - 450) - 50);
+      const ex = (x - cx) / 245, ey = (y - 705) / 225;
+      const epaules = (Math.sqrt(ex * ex + ey * ey) - 1) * 225;
+      const a = lisse(union(tete, union(cou, epaules, 60), 24)) * 0.88;
+      const o = (y * W + x) * 4;
+      for (let c = 0; c < 3; c++) {
+        const fond = haut[c] + (bas[c] - haut[c]) * t;
+        image[o + c] = Math.round(fond * (1 - a) + 255 * a);
+      }
+      image[o + 3] = 255;
+    }
+  }
+  return image;
+}
+
 // ───────────────────────────── Création
 function dateNaissance(age, i) {
   const d = new Date(Date.UTC(new Date().getUTCFullYear() - age, new Date().getUTCMonth(), new Date().getUTCDate()));
@@ -274,9 +384,12 @@ async function creer() {
   const villes = new Map((await api('GET', '/rest/v1/cities?select=id,name&country_code=eq.GN')).map((c) => [c.name, c.id]));
   const metiers = new Map((await api('GET', '/rest/v1/professions?select=id,label_fr')).map((p) => [p.label_fr, p.id]));
   const existants = new Map((await comptesEssai()).map((u) => [u.email, u]));
+  // Les 40 profils d'origine gardent leur rang (dates de naissance et couleurs stables quand on relance).
   const personnes = [
     ...FEMMES.map((p, i) => ({ p, i, genre: 'femme', cherche: 'homme' })),
     ...HOMMES.map((p, i) => ({ p, i, genre: 'homme', cherche: 'femme' })),
+    ...FEMMES_PLUS.map((p, i) => ({ p, i: FEMMES.length + i, genre: 'femme', cherche: 'homme' })),
+    ...HOMMES_PLUS.map((p, i) => ({ p, i: HOMMES.length + i, genre: 'homme', cherche: 'femme' })),
   ];
   let crees = 0, completes = 0;
 
@@ -324,6 +437,17 @@ async function creer() {
         lignes.push({ user_id: id, storage_path: chemin, position: k, visibility: 'public', moderation: 'approved' });
       }
       await api('POST', '/rest/v1/profile_photos', lignes, { Prefer: 'return=minimal' });
+    }
+    // Versions floutées (migration 0009) des photos qui n'en ont pas encore, fabriquées ici comme le serveur le ferait.
+    const aFlouter = await api('GET',
+      `/rest/v1/profile_photos?select=id,position,storage_path&user_id=eq.${id}&blur_path=is.null`).catch(() => []);
+    for (const ph of aFlouter) {
+      const k = Number((/essai-(\d)\.png$/.exec(ph.storage_path) ?? [])[1] ?? ph.position + 1) - 1;
+      const chemin = `${id}/${ph.id}.png`;
+      await api('POST', `/storage/v1/object/profile-photos-blur/${chemin}`,
+        new Uint8Array(silhouetteFloutee(PALETTES[(n * 3 + k) % PALETTES.length], [-24, 0, 24][k])),
+        { 'Content-Type': 'image/png', 'x-upsert': 'true', 'cache-control': '3600' });
+      await api('PATCH', `/rest/v1/profile_photos?id=eq.${ph.id}`, { blur_path: chemin }, { Prefer: 'return=minimal' });
     }
     // Retirer des photos repasse la vérification à « à refaire » (trigger) : on la remet à « validée ».
     await api('PATCH', `/rest/v1/profiles?id=eq.${id}`, { verification_status: 'approved', status: 'active' },
