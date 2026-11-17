@@ -1,30 +1,35 @@
 // Tests ZAYA : applique les migrations + le seed dans PGlite puis vérifie RLS et règles métier.
+// Vérifie aussi que le fichier d'installation Supabase (supabase/deploy) est à jour et s'installe d'un bloc.
 // Usage : npm install && npm test
 import { PGlite } from '@electric-sql/pglite';
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildInstallSql, installPath, normalizeEol } from '../deploy/build.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const db = new PGlite();
 
-// Émulation minimale de l'environnement Supabase (rôles, auth.uid(), storage)
-await db.exec(`
-  create role anon nologin;
-  create role authenticated nologin;
-  create role service_role nologin bypassrls;
-  create schema auth;
-  create table auth.users (id uuid primary key, phone text, phone_confirmed_at timestamptz);
-  create function auth.uid() returns uuid language sql stable as $$
-    select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
-  grant usage on schema auth to anon, authenticated;
-  create schema storage;
-  create table storage.buckets (id text primary key, name text, public boolean);
-  create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text, name text);
-  alter table storage.objects enable row level security;
-  create function storage.foldername(name text) returns text[] language sql immutable as $$
-    select (string_to_array(name, '/'))[1:array_length(string_to_array(name, '/'), 1) - 1] $$;
-`);
+/** Émulation minimale de l'environnement Supabase (rôles, auth.uid(), storage). */
+async function emulateSupabase(target) {
+  await target.exec(`
+    create role anon nologin;
+    create role authenticated nologin;
+    create role service_role nologin bypassrls;
+    create schema auth;
+    create table auth.users (id uuid primary key, phone text, phone_confirmed_at timestamptz);
+    create function auth.uid() returns uuid language sql stable as $$
+      select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+    grant usage on schema auth to anon, authenticated;
+    create schema storage;
+    create table storage.buckets (id text primary key, name text, public boolean);
+    create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text, name text);
+    alter table storage.objects enable row level security;
+    create function storage.foldername(name text) returns text[] language sql immutable as $$
+      select (string_to_array(name, '/'))[1:array_length(string_to_array(name, '/'), 1) - 1] $$;
+  `);
+}
+await emulateSupabase(db);
 
 const migrationsDir = join(here, '..', 'migrations');
 for (const f of readdirSync(migrationsDir).sort()) {
@@ -428,6 +433,200 @@ await test("export des données : mes données uniquement, sans identité d'autr
   const withoutOwnMessages = JSON.stringify({ ...data, messages_sent: [] });
   assert(!withoutOwnMessages.includes('Moussa'), "l'export contient le nom d'un autre membre hors de mes propres messages");
 });
+
+console.log('\nCommunauté');
+const communityId = async (slug) => (await db.query(`select id from communities where slug = $1`, [slug])).rows[0].id;
+const prep = await communityId('preparation-mariage');
+const couple = await communityId('vie-de-couple');
+let postId;
+await test('détection des coordonnées : numéros, e-mails, liens ; pas les montants, dates ni petits nombres', async () => {
+  const yes = [
+    'Appelle-moi au 622 11 22 33',
+    'mon numéro +224622112233',
+    'écris-moi : awa.diallo@gmail.com',
+    'mon whatsapp : wa.me/224622112233',
+    'contacte-moi sur t.me/awa',
+  ];
+  const no = [
+    'La dot était de 5 000 000 GNF',
+    'Budget : 25 000 000 de francs',
+    'Rendez-vous le 12/05/2026 à 18h30',
+    'Nous avons 2 enfants de 4 et 7 ans',
+    'En 2025 nous nous sommes mariés',
+  ];
+  for (const t of yes) {
+    assert((await db.query(`select contains_contact_details($1) as c`, [t])).rows[0].c === true, `non détecté : ${t}`);
+  }
+  for (const t of no) {
+    assert((await db.query(`select contains_contact_details($1) as c`, [t])).rows[0].c === false, `faux positif : ${t}`);
+  }
+});
+await test('les 8 communautés de départ sont listées ; anon n’a accès à rien', async () => {
+  const r = await as(U.aicha, `select * from list_communities()`);
+  assert(r.rows.length === 8 && r.rows.every((c) => c.joined === false), r.rows.map((c) => c.slug).join());
+  await fails(as(null, `select * from list_communities()`), /permission denied/i);
+  await fails(as(null, `select * from community_feed()`), /permission denied/i);
+});
+await test('un profil non vérifié peut lire mais pas publier', async () => {
+  await db.query(`update profiles set verification_status = 'pending' where id = $1`, [U.paul]);
+  await fails(rpc(U.paul, 'create_post', [prep, 'question', 'Bonjour à tous']), /VERIFICATION_REQUIRED/);
+  await fails(rpc(U.paul, 'add_comment', [prep, 'Bonjour']), /VERIFICATION_REQUIRED/);
+  assert(Array.isArray((await as(U.paul, `select * from community_feed()`)).rows));
+  await db.query(`update profiles set verification_status = 'approved' where id = $1`, [U.paul]);
+});
+await test('filtre avant publication : coordonnées et termes interdits jamais enregistrés', async () => {
+  const before = (await db.query(`select count(*)::int as n from posts`)).rows[0].n;
+  const a = await rpc(U.aicha, 'create_post', [prep, 'question', 'Écrivez-moi au 622 11 22 33 pour en parler']);
+  assert(a.status === 'blocked' && a.category === 'contact_details', JSON.stringify(a));
+  const b = await rpc(U.aicha, 'create_post', [prep, 'advice', "Envoie-moi de l'argent et je t'explique"]);
+  assert(b.status === 'blocked' && b.category === 'money_request', JSON.stringify(b));
+  assert((await db.query(`select count(*)::int as n from posts`)).rows[0].n === before, 'contenu bloqué enregistré');
+  const v = await db.query(
+    `select count(*)::int as n from message_violations where user_id = $1 and context = 'post'`, [U.aicha]);
+  assert(v.rows[0].n === 2);
+});
+await test('publier fait suivre la communauté ; « Pour vous » ne montre que les communautés suivies', async () => {
+  const r = await rpc(U.aicha, 'create_post', [prep, 'question', 'Quels sujets aborder avant de s’engager ?']);
+  assert(r.status === 'published' && r.id, JSON.stringify(r));
+  postId = r.id;
+  const mine = await as(U.aicha, `select * from list_communities() where joined`);
+  assert(mine.rows.length === 1 && mine.rows[0].slug === 'preparation-mariage');
+  // Paul ne suit aucune communauté : il voit tout.
+  assert((await as(U.paul, `select * from community_feed()`)).rows.some((p) => p.post_id === postId));
+  // Paul suit une autre communauté : la publication sort de « Pour vous » mais reste dans sa communauté.
+  await as(U.paul, `select join_community($1)`, [couple]);
+  assert(!(await as(U.paul, `select * from community_feed()`)).rows.some((p) => p.post_id === postId));
+  assert((await as(U.paul, `select * from community_feed($1)`, [prep])).rows.some((p) => p.post_id === postId));
+  const row = (await as(U.paul, `select * from community_post($1)`, [postId])).rows[0];
+  assert(row.author_name === 'Aïcha' && row.author_verified === true && row.is_mine === false, JSON.stringify(row));
+  assert(!('author_photo' in row) && !('phone' in row), 'la publication expose plus que le nom et le badge');
+});
+await test('aucune lecture directe des publications par un membre ; la modération y a accès', async () => {
+  assert((await as(U.paul, `select * from posts`)).rows.length === 0);
+  assert((await as(U.paul, `select * from comments`)).rows.length === 0);
+  assert((await as(U.paul, `select * from post_reactions`)).rows.length === 0);
+  assert((await as(U.modo, `select * from posts`)).rows.length >= 1);
+  await fails(as(U.paul, `insert into posts (community_id, author_id, body) values ($1, $2, 'x')`, [prep, U.paul]),
+    /row-level security|permission/i);
+});
+await test('réactions, commentaires filtrés, enregistrement', async () => {
+  assert((await rpc(U.paul, 'react_to_post', [postId, true])) === 1);
+  assert((await rpc(U.paul, 'react_to_post', [postId, true])) === 1, 'double réaction comptée');
+  assert((await rpc(U.fatou, 'react_to_post', [postId, true])) === 2);
+  assert((await rpc(U.fatou, 'react_to_post', [postId, false])) === 1);
+  const c = await rpc(U.paul, 'add_comment', [postId, 'Les finances et le lieu de vie, sans hésiter.']);
+  assert(c.status === 'published', JSON.stringify(c));
+  const blocked = await rpc(U.paul, 'add_comment', [postId, 'Écris-moi : paul@exemple.com']);
+  assert(blocked.status === 'blocked' && blocked.category === 'contact_details', JSON.stringify(blocked));
+  await as(U.fatou, `select save_post($1, true)`, [postId]);
+  const saved = await as(U.fatou, `select * from saved_community_posts()`);
+  assert(saved.rows.length === 1 && saved.rows[0].saved === true);
+  const row = (await as(U.aicha, `select * from community_post($1)`, [postId])).rows[0];
+  assert(row.reaction_count === 1 && row.comment_count === 1 && row.is_mine === true, JSON.stringify(row));
+});
+await test('seul l’auteur peut désactiver les commentaires', async () => {
+  await fails(as(U.paul, `select set_post_comments($1, false)`, [postId]), /POST_NOT_FOUND/);
+  await as(U.aicha, `select set_post_comments($1, false)`, [postId]);
+  await fails(rpc(U.fatou, 'add_comment', [postId, 'Merci pour la question']), /COMMENTS_DISABLED/);
+  await as(U.aicha, `select set_post_comments($1, true)`, [postId]);
+});
+await test('modifier : seul l’auteur ; la version précédente est conservée pour la modération', async () => {
+  await fails(rpc(U.paul, 'edit_post', [postId, 'piraté']), /POST_NOT_FOUND/);
+  const r = await rpc(U.aicha, 'edit_post', [postId, 'Quels sujets avez-vous abordés avant de vous engager ?']);
+  assert(r.status === 'published');
+  const row = (await as(U.paul, `select * from community_post($1)`, [postId])).rows[0];
+  assert(row.edited === true && row.body.startsWith('Quels sujets avez-vous'), JSON.stringify(row));
+  const rev = await db.query(`select previous_body from post_revisions where post_id = $1`, [postId]);
+  assert(rev.rows.length === 1 && rev.rows[0].previous_body.startsWith('Quels sujets aborder'));
+});
+await test('blocage : publications et commentaires invisibles dans les deux sens', async () => {
+  await as(U.fatou, `select block_user($1)`, [U.paul]);
+  assert((await as(U.fatou, `select * from post_comments($1)`, [postId])).rows.length === 0,
+    'commentaire d’une personne bloquée visible');
+  assert((await as(U.fatou, `select * from community_post($1)`, [postId])).rows[0].comment_count === 0,
+    'compteur incluant un commentaire invisible');
+  const pr = await rpc(U.paul, 'create_post', [couple, 'advice', 'Parler des désaccords à tête reposée.']);
+  assert(!(await as(U.fatou, `select * from community_feed()`)).rows.some((p) => p.post_id === pr.id));
+  const pf = await rpc(U.fatou, 'create_post', [couple, 'experience', 'Premier rendez-vous dans un lieu public.']);
+  assert(!(await as(U.paul, `select * from community_feed($1)`, [couple])).rows.some((p) => p.post_id === pf.id));
+  await as(U.fatou, `select unblock_user($1)`, [U.paul]);
+  assert((await as(U.paul, `select * from community_feed($1)`, [couple])).rows.some((p) => p.post_id === pf.id));
+});
+await test('signaler masque aussitôt pour soi ; la modération retire et restaure, avec audit', async () => {
+  const id = await rpc(U.moussa, 'report_post', [postId, 'spam', null]);
+  const rep = await db.query(`select priority, context, post_id from reports where id = $1`, [id]);
+  assert(rep.rows[0].context === 'post' && rep.rows[0].post_id === postId && rep.rows[0].priority === 'low');
+  await fails(as(U.moussa, `select * from community_post($1)`, [postId]), /POST_NOT_FOUND/);
+  assert((await as(U.paul, `select * from community_post($1)`, [postId])).rows.length === 1, 'masqué pour tous');
+  await fails(as(U.aicha, `select admin_moderate_post($1, 'remove', 'test')`, [postId]), /FORBIDDEN/);
+  await as(U.modo, `select admin_moderate_post($1, 'remove', 'Hors sujet')`, [postId]);
+  await fails(as(U.paul, `select * from community_post($1)`, [postId]), /POST_NOT_FOUND/);
+  await as(U.modo, `select admin_moderate_post($1, 'restore', 'Erreur de modération')`, [postId]);
+  assert((await as(U.paul, `select * from community_post($1)`, [postId])).rows.length === 1);
+  const audit = await db.query(
+    `select action, actor from audit_log where entity = 'posts' and entity_id = $1 order by id`, [postId]);
+  assert(audit.rows.map((r) => r.action).join() === 'post.remove,post.restore' && audit.rows[0].actor === U.modo);
+});
+await test('l’auteur supprime sa publication : elle disparaît pour tous, conservée pour la modération', async () => {
+  const r = await rpc(U.paul, 'create_post', [couple, 'question', 'Comment gérer les avis de la famille ?']);
+  await fails(as(U.aicha, `select delete_post($1)`, [r.id]), /POST_NOT_FOUND/);
+  await as(U.paul, `select delete_post($1)`, [r.id]);
+  await fails(as(U.aicha, `select * from community_post($1)`, [r.id]), /POST_NOT_FOUND/);
+  assert((await db.query(`select status from posts where id = $1`, [r.id])).rows[0].status === 'deleted');
+});
+await test('limite de publications par jour ; un compte restreint lit mais ne publie pas', async () => {
+  await db.query(`update app_config set value = '1' where key = 'community_posts_per_day'`);
+  await fails(rpc(U.aicha, 'create_post', [prep, 'question', 'Encore une question']), /RATE_LIMITED/);
+  await db.query(`update app_config set value = '5' where key = 'community_posts_per_day'`);
+  await db.query(
+    `insert into sanctions (user_id, kind, reason, created_by, ends_at)
+     values ($1, 'restriction', 'Test', $2, now() + interval '1 day')`, [U.moussa, U.modo]);
+  await fails(rpc(U.moussa, 'create_post', [prep, 'question', 'Bonjour']), /ACCOUNT_RESTRICTED/);
+  assert(Array.isArray((await as(U.moussa, `select * from community_feed()`)).rows), 'la lecture reste possible');
+  await db.query(`delete from sanctions where user_id = $1`, [U.moussa]);
+});
+await test('communauté fermée par la configuration : lecture et publication refusées', async () => {
+  await db.query(`update app_config set value = 'false' where key = 'community_enabled'`);
+  await fails(as(U.aicha, `select * from community_feed()`), /COMMUNITY_DISABLED/);
+  await fails(rpc(U.aicha, 'create_post', [prep, 'question', 'Bonjour']), /COMMUNITY_DISABLED/);
+  await db.query(`update app_config set value = 'true' where key = 'community_enabled'`);
+});
+await test('quitter une communauté, régler ses notifications', async () => {
+  await as(U.paul, `select set_community_notifications($1, 'none')`, [couple]);
+  const c = (await as(U.paul, `select * from list_communities() where slug = 'vie-de-couple'`)).rows[0];
+  assert(c.joined === true && c.notif_level === 'none' && c.member_count >= 2, JSON.stringify(c));
+  await as(U.paul, `select leave_community($1)`, [couple]);
+  assert((await as(U.paul, `select * from list_communities() where joined`)).rows.length === 0);
+  await fails(as(U.paul, `select set_community_notifications($1, 'all')`, [couple]), /NOT_A_MEMBER/);
+});
+await test('fonctions internes de la communauté non appelables ; export avec mes contenus', async () => {
+  await fails(as(U.aicha, `select * from post_query($1, null, null, false, false, null, 5)`, [U.aicha]),
+    /permission denied/i);
+  await fails(as(U.aicha, `select community_violation('x')`), /permission denied/i);
+  const data = await rpc(U.aicha, 'export_my_data');
+  assert(data.community_posts.length === 1 && data.communities_followed[0] === 'Préparation au mariage',
+    JSON.stringify(data.community_posts));
+});
+
+console.log('\nFichier d’installation Supabase');
+await test('le fichier d’installation est à jour (régénéré à partir des migrations et du seed)', async () => {
+  assert(normalizeEol(readFileSync(installPath, 'utf8')) === buildInstallSql(),
+    'fichier périmé : lancer « npm run build:install » dans supabase/tests');
+});
+await test('il s’installe d’un seul bloc sur une base vierge ; une seconde installation est refusée sans rien modifier',
+  async () => {
+    const fresh = new PGlite();
+    await emulateSupabase(fresh);
+    const sql = readFileSync(installPath, 'utf8');
+    await fresh.exec(sql);
+    const count = async () => (await fresh.query(`select count(*)::int as n from communities`)).rows[0].n;
+    assert((await count()) === 8);
+    assert((await fresh.query(`select count(*)::int as n from cities`)).rows[0].n > 0);
+    await fails(fresh.exec(sql), /déjà installé/);
+    await fresh.exec('rollback');
+    assert((await count()) === 8, 'la seconde exécution a modifié la base');
+    await fresh.close();
+  });
 
 console.log(`\n${passed} réussis, ${failed} échoués`);
 process.exit(failed ? 1 : 0);

@@ -1,0 +1,100 @@
+# Connecter ZAYA à votre projet Supabase
+
+Projet : `wocgmmwwopzrgleeevof`, à utiliser comme **préproduction** (tests). La production devra être un projet séparé (décision B5).
+
+État relevé le 17/11/2026, en lecture seule avec la clé publique :
+- base vide : aucune table ZAYA ;
+- connexion par **téléphone désactivée** : seule la connexion par e-mail est active.
+
+---
+
+## 1. Installer la base de données (2 minutes)
+
+1. Ouvrez l'éditeur SQL : <https://supabase.com/dashboard/project/wocgmmwwopzrgleeevof/sql/new>
+2. Dans VS Code, ouvrez [supabase/deploy/zaya_installation.sql](../supabase/deploy/zaya_installation.sql), puis `Ctrl+A` et `Ctrl+C`.
+3. Collez le contenu dans l'éditeur SQL de Supabase, puis cliquez sur **Run**.
+4. Résultat attendu : **Success. No rows returned**.
+   - « ZAYA semble déjà installé » : la base était déjà en place, rien n'a été modifié.
+   - Toute autre erreur : rien n'a été modifié (installation en un seul bloc). Envoyez-moi le message affiché.
+5. Vérification dans **Table Editor** : `communities` contient 8 lignes, `cities` 18 lignes, `profiles` est vide.
+
+Le fichier est généré à partir de `supabase/migrations` et `supabase/seed` ; les tests (`cd supabase/tests && npm test`) vérifient qu'il est à jour et qu'il s'installe d'un seul bloc.
+
+## 2. Activer la connexion par téléphone
+
+**Pour tester tout de suite, sans SMS :**
+
+1. **Authentication → Sign In / Providers → Phone** : activez le fournisseur.
+2. Dans **Test Phone Numbers and OTPs**, ajoutez un numéro de test (sans le `+`) et son code, par exemple :
+   `224620000001=123456`
+3. Enregistrez. Dans l'application, ce numéro (`620 00 00 01`) se connecte avec le code `123456`, sans envoi de SMS.
+
+Si Supabase demande les identifiants d'un fournisseur SMS pour enregistrer, les numéros de test n'envoient de toute façon aucun SMS ; les vrais numéros ne fonctionneront qu'après l'étape 4.
+
+## 3. Lancer l'application connectée
+
+Le fichier `mobile/flutter_app/env.staging.json` contient déjà l'adresse du projet et la clé publique. Il reste sur votre ordinateur : il n'est **pas** envoyé sur GitHub.
+
+```bash
+cd mobile/flutter_app
+flutter run -d chrome --dart-define-from-file=env.staging.json
+```
+
+Sans ce paramètre, l'application démarre en mode démo (profils fictifs, aucun serveur).
+
+> La clé « publishable » (`sb_publishable_…`) est publique par conception : elle est intégrée à l'application et les données restent protégées par les règles d'accès du serveur. La clé **secrète** (`sb_secret_…`) et le mot de passe de la base ne doivent jamais être partagés, ni écrits dans le code ou sur GitHub.
+
+## 4. Envoyer de vrais SMS avec Nimba (quand le contrat est prêt, décision B3)
+
+Dans un terminal, sur votre ordinateur :
+
+```bash
+cd "ZAYA APP"
+npx supabase login                                   # ouvre le navigateur
+npx supabase link --project-ref wocgmmwwopzrgleeevof
+npx supabase functions deploy send-sms-hook --no-verify-jwt
+npx supabase secrets set NIMBA_SERVICE_ID=... NIMBA_SECRET=... NIMBA_SENDER=ZAYA
+```
+
+Puis **Authentication → Hooks → Send SMS hook** : type HTTPS, adresse
+`https://wocgmmwwopzrgleeevof.supabase.co/functions/v1/send-sms-hook`. Générez le secret proposé, puis enregistrez-le :
+`npx supabase secrets set SEND_SMS_HOOK_SECRET="v1,whsec_..."`.
+
+Enfin, dans **SQL Editor**, fixez le budget SMS : tant qu'il vaut 0, aucun SMS n'est envoyé.
+
+```sql
+update app_config set value = '500000' where key = 'sms_monthly_budget_gnf';  -- plafond mensuel en GNF
+update app_config set value = '150' where key = 'sms_unit_cost_gnf';          -- coût d'un SMS selon le contrat Nimba
+```
+
+Le hook n'a jamais été exécuté contre l'API Nimba réelle : à tester d'abord avec un numéro de l'équipe.
+
+## 5. Valider un profil de test (préproduction uniquement)
+
+La console d'administration n'est pas encore construite. Pour qu'un profil de test apparaisse dans Découvrir et puisse publier dans la Communauté, validez sa vérification dans **SQL Editor** (remplacez le numéro, sans le `+`) :
+
+```sql
+with membre as (select id from auth.users where phone = '224620000001')
+update profile_photos set moderation = 'approved' where user_id in (select id from membre);
+
+with membre as (select id from auth.users where phone = '224620000001')
+update verification_requests
+   set status = 'approved', decided_at = now(), decision_reason = 'Validation manuelle (préproduction)'
+ where user_id in (select id from membre) and status = 'pending';
+
+with membre as (select id from auth.users where phone = '224620000001')
+update profiles set verification_status = 'approved' where id in (select id from membre);
+```
+
+Pour vous donner le rôle d'administrateur (utile pour la future console) :
+
+```sql
+insert into staff_roles (user_id, role)
+select id, 'super_admin' from auth.users where phone = '224620000001';
+```
+
+## 6. Avant la production
+
+- Créer un **projet séparé** pour la production (décision B5), avec sauvegardes et double authentification des administrateurs.
+- Remplacer les textes légaux `v0-draft` (décision B1) et compléter la liste des termes interdits avec l'équipe de modération.
+- Communauté : ne l'ouvrir au public qu'avec une modération opérationnelle (`community_enabled`, décision C13).

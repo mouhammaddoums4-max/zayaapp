@@ -4,7 +4,8 @@
   "type": "module",
   "description": "Tests des migrations, des règles RLS et des fonctions métier ZAYA dans un Postgres WASM (PGlite), sans Docker.",
   "scripts": {
-    "test": "node run.mjs"
+    "test": "node run.mjs",
+    "build:install": "node ../deploy/build.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.2.17"

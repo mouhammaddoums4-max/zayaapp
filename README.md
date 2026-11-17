@@ -53,15 +53,11 @@ flutter run --dart-define=SUPABASE_URL=https://xxxx.supabase.co --dart-define=SU
 
 Sans ces variables, l'application démarre en **mode démo** avec des profils fictifs.
 
-### 3. Supabase (staging)
+### 3. Supabase (préproduction)
 
-```bash
-supabase link --project-ref <ref-staging>
-supabase db push                 # applique supabase/migrations
-psql "$DB_URL" -f supabase/seed/seed.sql
-supabase functions deploy send-sms-hook
-supabase secrets set NIMBA_SERVICE_ID=... NIMBA_SECRET=... NIMBA_SENDER=ZAYA SEND_SMS_HOOK_SECRET=...
-```
+Guide pas à pas : [documentation/INSTALLATION_SUPABASE.md](documentation/INSTALLATION_SUPABASE.md).
+En résumé : coller [supabase/deploy/zaya_installation.sql](supabase/deploy/zaya_installation.sql) dans l'éditeur SQL du projet,
+activer la connexion par téléphone, puis lancer l'application avec `--dart-define-from-file=env.staging.json`.
 
 Aucun déploiement en production ni aucune dépense ne doit être engagé sans accord explicite du propriétaire du projet.
 

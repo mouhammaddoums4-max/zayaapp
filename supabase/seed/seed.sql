@@ -43,6 +43,10 @@ insert into app_config (key, value, description, is_public) values
   ('payments_enabled', 'false', 'Achats désactivés tant que la conformité n''est pas validée', true),
   ('support_whatsapp', '""', 'Numéro WhatsApp officiel du support (vide = bouton masqué)', true),
   ('account_deletion_delay_days', '30', 'Délai de rétractation avant suppression définitive du compte', true),
+  ('community_enabled', 'true', 'Communauté ouverte (à confirmer avant ouverture publique : modération opérationnelle)', true),
+  ('community_post_requires_verification', 'true', 'Profil vérifié exigé pour publier et commenter', true),
+  ('community_posts_per_day', '5', 'Nombre maximal de publications par membre et par 24 h', true),
+  ('community_comments_per_hour', '20', 'Nombre maximal de commentaires par membre et par heure', true),
   ('sms_monthly_budget_gnf', '0', 'Plafond mensuel de dépenses SMS (0 = envoi bloqué)', false),
   ('sms_unit_cost_gnf', '0', 'Coût unitaire d''un SMS, à confirmer avec Nimba', false)
 on conflict (key) do nothing;
@@ -63,3 +67,23 @@ insert into moderation_terms (term, category, severity) values
   ('photo nue', 'sexual_content', 3),
   ('je vais te tuer', 'threat', 3)
 on conflict do nothing;
+
+-- Communautés thématiques de départ (CDC V2.3 §2.3), ouvertes progressivement selon la capacité de modération
+insert into communities (slug, name, description, icon, position) values
+  ('preparation-mariage', 'Préparation au mariage',
+   'Les questions à se poser, les étapes, les sujets à aborder avant de s’engager.', 'favorite', 1),
+  ('vie-de-couple', 'Communication et vie de couple',
+   'Écoute, désaccords, respect : partager ce qui aide à construire une relation solide.', 'forum', 2),
+  ('conseils-experiences', 'Conseils et expériences',
+   'Rencontres, premiers rendez-vous, précautions : apprendre de l’expérience des autres.', 'lightbulb', 3),
+  ('famille-parentalite', 'Famille et parentalité',
+   'Présenter son projet à sa famille, fonder un foyer, accueillir des enfants.', 'family', 4),
+  ('developpement-personnel', 'Éducation et développement personnel',
+   'Études, travail, projets : grandir pour soi et pour le couple.', 'school', 5),
+  ('evenements-locaux', 'Événements et activités locales',
+   'Ateliers, conférences et rencontres encadrées près de chez vous.', 'event', 6),
+  ('questions-reponses', 'Questions et réponses',
+   'Une question sur ZAYA, la sécurité ou la vie à deux ? Posez-la ici.', 'help', 7),
+  ('langues-regions', 'Communautés linguistiques et régionales',
+   'Échanger dans sa langue et autour de sa région.', 'translate', 8)
+on conflict (slug) do nothing;
