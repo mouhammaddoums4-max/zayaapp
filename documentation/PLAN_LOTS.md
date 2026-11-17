@@ -15,8 +15,8 @@ Mis à jour le 17/11/2026.
 
 - **Lot en cours : A** (indispensable avant l'ouverture). Étape actuelle : mise en route sur la préproduction et
   premier essai de l'application connectée sur un téléphone Android.
-- **Dernière vérification complète** (17/11/2026, commit `1a90ab6`) : `flutter analyze` sans problème,
-  `flutter test` 51 réussis, tests SQL 66 réussis. Depuis : outil de préproduction ajouté, tests SQL 67 réussis.
+- **Dernière vérification complète** (17/11/2026, commit `9a4b604`) : `flutter analyze` sans problème,
+  `flutter test` 61 réussis, tests SQL 80 réussis.
 - Les tests SQL tournent sur PGlite (PostgreSQL en mémoire) avec une émulation de Supabase : ils prouvent les règles
   d'accès (RLS, fonctions `security definer`), **pas** le fonctionnement sur le vrai projet. Les tests Flutter
   utilisent le mode démo (aucun serveur).
@@ -32,10 +32,10 @@ Constaté le 17/11/2026 :
 | Point | État |
 |---|---|
 | Base installée ([INSTALLATION_SUPABASE.md](INSTALLATION_SUPABASE.md)) | Oui : 9 pays et 18 villes lisibles ; profils et communautés refusés à un visiteur non connecté, comme prévu |
-| Fonctions serveur appelées par l'application | Les 43 existent dans les migrations installées (contrôle du code) |
+| Migrations | `0001` à `0010` appliquées (0007 et 0009 par la session « photos » ; 0008 et 0010 le 17/11/2026, sur consigne du propriétaire « toujours pousser vers GitHub et Supabase »). 0008 et 0010 vérifiées par de vrais appels : demande à l'assistance, lecture de ses seules demandes, écriture directe et visiteur refusés, matchs terminés, langues actives |
 | Connexion par téléphone | **Activée** le 17/11/2026 avec l'accord du propriétaire, avec deux numéros de test, sans aucun envoi : 224620000001 et 224620000002, code 123456, valables jusqu'au 31/01/2027. Vérifié par appel réel : code demandé, session ouverte avec 123456, mauvais code refusé ; ensuite profil vide (l'application ouvrira l'inscription), villes lisibles, profils des autres invisibles |
 | Envoi réel du code aux autres numéros | Non configuré (décision B3) : ces numéros ne reçoivent rien |
-| Application connectée installée sur un téléphone | Non vérifié (première construction Android en cours) |
+| Application connectée installée sur un téléphone | APK release construit (arm64, préproduction) ; installation sur le téléphone non vérifiée. Version web servie au téléphone par le câble USB : inscription commencée par le propriétaire |
 
 ## 2. Lot A — indispensable avant l'ouverture
 
@@ -43,7 +43,7 @@ Critères d'acceptation : cahier des charges §18 (tests fonctionnels), §36 et 
 
 | # | Bloc | Statut | Preuve | Reste à faire |
 |---|---|---|---|---|
-| A1 | Socle : dépôt GitHub, application Flutter (Android d'abord, iOS compatible), migrations `0001` à `0006`, fichier d'installation unique, tests | Vérifié | 67 tests SQL, 51 tests Flutter | Intégration continue (§17, phase 1) ; build iOS jamais lancé (pas de Mac) ; branches `lot/<nom>` et relecture Codex (jusqu'ici, tout est poussé sur `main`) |
+| A1 | Socle : dépôt GitHub, application Flutter (Android d'abord, iOS compatible), migrations `0001` à `0010`, fichier d'installation unique, tests | Vérifié | 80 tests SQL, 61 tests Flutter ; APK release construit | Intégration continue (§17, phase 1) ; build iOS jamais lancé (pas de Mac) ; branches `lot/<nom>` et relecture Codex (jusqu'ici, tout est poussé sur `main`) |
 | A2 | Connexion par téléphone et code | Vérifié sur le serveur avec un numéro de test ; non vérifié dans l'application sur téléphone | Appel réel à la préproduction (§1) ; mode démo : code incorrect refusé | Envoi réel du code (B3) ; essai depuis l'application ; compte à rebours avant renvoi du code (§9) ; récupération du compte (CARTE_ECRANS, Q2) |
 | A3 | Inscription et consentements : 18 ans minimum, reprise du brouillon, conditions jamais restaurées | Vérifié | SQL : moins de 18 ans refusé, consentements non modifiables, date de naissance et genre figés. Flutter : parcours d'inscription, contrôle de majorité | Textes juridiques définitifs (B1) |
 | A4 | Profil, photos, données sensibles à part (`profile_sensitive`) | Vérifié côté serveur ; envoi réel de photos non vérifié | SQL : confession d'autrui illisible, photos privées masquées, auto-approbation des photos interdite | Essai d'envoi de photos sur le vrai stockage |
@@ -54,10 +54,11 @@ Critères d'acceptation : cahier des charges §18 (tests fonctionnels), §36 et 
 | A9 | Signalement et blocage | Vérifié | SQL : signalement prioritaire et invisible pour la personne signalée, blocage dans les deux sens, liste et déblocage | Traitement des signalements dans la console (A12) |
 | A10 | Confidentialité : pause, suppression avec délai annulable, export | Vérifié | SQL et Flutter : 3 tests chacun | Effacement définitif à la fin du délai (tâche planifiée) |
 | A11 | Communauté, phase 1 : fil texte, règles, signalement, blocage, modération (décisions C13 à C16) | Vérifié | SQL : 16 tests. Flutter : 8 tests du mode démo, 3 de détection des coordonnées, 1 parcours complet | Outils de modération dans la console (A12) ; ouverture au public seulement avec une modération en place (C13) |
+| A12b | Réglages, langue de l'application (FR/EN, langues nationales préparées), aide et assistance, documents légaux, matchs terminés | Vérifié (serveur, démo) ; non vérifié sur téléphone | SQL : 4 tests assistance, 3 tests matchs terminés. Flutter : parcours complet de ces écrans, tests de la langue | Traduire tous les écrans existants avant d'activer l'anglais ; textes en pular, maninka, soussou à écrire et faire relire (§22.15) ; réponses aux demandes dans la console (A12) |
 | A12 | Console de modération (web) | À faire | — | Signalements, vérifications, sanctions, Premium, Communauté, journal d'audit (§37 : avant l'ouverture) |
 | A13 | Premium : historique non modifiable et attribution manuelle (V6.4 §40) | Vérifié côté serveur | SQL : 8 tests (droits, motif obligatoire, prolongation, retrait, expiration, audit) | Écrans dans la console (A12) ; paiement : décisions ouvertes |
 | A14 | Protection anti-capture des écrans sensibles (Android) | À faire | — | Empêcher les captures sur profils, photos et messagerie ; masquer l'aperçu dans les applications récentes |
-| A15 | Site vitrine, FAQ, politiques, assistance | À faire | — | §17, phase 4 (P0/P1) ; dépend de B1 |
+| A15 | Site vitrine, FAQ, politiques, assistance | En partie : aide, questions fréquentes, demandes à l'assistance et documents légaux dans l'application (A12b) | — | Site vitrine ; textes juridiques définitifs (B1) |
 | A16 | Essais sur Android d'entrée de gamme et réseau lent ; accessibilité ; charge | À faire | — | Exigé avant l'activation de chaque lot (§22.18) |
 
 ## 3. Lots suivants (§22.18)
@@ -81,4 +82,7 @@ statistiques, rendez-vous sécurisés.
    [`supabase/preproduction/valider_verifications_essai.sql`](../supabase/preproduction/valider_verifications_essai.sql)
    (éditeur SQL de Supabase), tant que la console n'existe pas. Vérifié sur l'émulation (test SQL), non vérifié sur le
    vrai projet. Réservé à la préproduction.
-4. Console de modération minimale (A12), puis protection anti-capture (A14) et intégration continue (A1).
+4. Écrans encore à ajouter depuis les captures de référence : profession avec recherche, photos et nationalité dans
+   l'inscription, compte à rebours avant renvoi du code (A2).
+5. Traduire en anglais tous les écrans existants (environ 800 textes), puis activer l'anglais.
+6. Console de modération minimale (A12), puis protection anti-capture (A14) et intégration continue (A1).
