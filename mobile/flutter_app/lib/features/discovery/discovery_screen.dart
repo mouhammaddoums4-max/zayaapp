@@ -32,6 +32,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
   Offset _to = Offset.zero;
   bool _acting = false;
 
+  /// Un filtre s'écarte des réglages par défaut : point sur l'icône des filtres.
+  bool _filtersActive = false;
+
   @override
   void initState() {
     super.initState();
@@ -40,6 +43,20 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
     if (!feed.loaded && !feed.loading) {
       // Après la première image, pour ne pas notifier les écouteurs pendant la construction.
       WidgetsBinding.instance.addPostFrameCallback((_) => feed.load());
+    }
+    _refreshFiltersState();
+  }
+
+  Future<void> _refreshFiltersState() async {
+    try {
+      final p = await Session.read(context).repo.loadPreferences();
+      final defaults = DiscoveryPrefs();
+      final active = p.ageMin != defaults.ageMin ||
+          p.ageMax != defaults.ageMax ||
+          !const {'no_filter', 'all'}.contains(p.confessionMode);
+      if (mounted && active != _filtersActive) setState(() => _filtersActive = active);
+    } catch (_) {
+      // Préférences illisibles (hors connexion) : on n'affiche simplement pas le point.
     }
   }
 
@@ -138,6 +155,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
   Future<void> _openFilters() async {
     final changed = await Navigator.of(context).push<bool>(zRoute<bool>(const PreferencesScreen()));
     if (changed == true && mounted) Session.read(context).feed.load();
+    if (mounted) _refreshFiltersState();
   }
 
   void _showCardMenu(DiscoveryProfile profile) {
@@ -175,8 +193,16 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
     return Scaffold(
       // En-tête : filtres à gauche ; à droite, likes restants, Boost (flamme animée) puis notifications.
       appBar: AppBar(
-        leading:
-            IconButton(icon: const Icon(Icons.tune), tooltip: 'Préférences de découverte', onPressed: _openFilters),
+        leading: IconButton(
+          icon: Badge(
+            isLabelVisible: _filtersActive,
+            smallSize: 9,
+            backgroundColor: ZColors.primary,
+            child: const Icon(Icons.tune),
+          ),
+          tooltip: _filtersActive ? 'Préférences de découverte (filtres actifs)' : 'Préférences de découverte',
+          onPressed: _openFilters,
+        ),
         titleSpacing: 0,
         title: Text('Découvrir', overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleLarge),
         actions: [

@@ -115,16 +115,6 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                             ),
                       ]),
                     ],
-                    const SizedBox(height: 12),
-                    const InfoBanner(
-                      text: 'Ce filtre agit uniquement sur les profils qui vous sont proposés. Les personnes qui '
-                          'n’ont pas précisé leur confession restent proposées : ZAYA ne déduit jamais la confession de quelqu’un.',
-                    ),
-                    const SizedBox(height: 10),
-                    const InfoBanner(
-                      icon: Icons.public,
-                      text: 'Pays : Guinée. D’autres pays d’Afrique de l’Ouest seront ouverts progressivement.',
-                    ),
                   ]),
                 ),
                 Padding(
