@@ -58,6 +58,10 @@ export async function swipesTests({ db, test, assert, as, rpc, fails, U, seedMem
       await db.query(`update swipe_periods set started_at = now() - interval '9 hours' where user_id = $1`, [S.awa]);
       const q = await quota();
       assert(q.remaining === 2 && q.resets_at === null, JSON.stringify(q));
+      // Compatibilité (0026) : les anciennes versions de l'application exigent une date de reprise.
+      const ancien = await rpc(S.awa, 'my_like_quota');
+      const heures = (new Date(ancien.resets_at) - Date.now()) / 3600e3;
+      assert(ancien.remaining === 2 && heures > 7.9 && heures <= 8, JSON.stringify(ancien));
     } finally {
       await cfg('swipe_quota_free', '50');
     }
