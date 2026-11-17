@@ -269,6 +269,7 @@ class SupabaseRepository implements ZayaRepository {
       ageMax: (row['age_max'] as num).toInt(),
       confessionMode: row['confession_mode'] as String,
       confessions: _strings(row['confessions']),
+      cityIds: [for (final v in (row['city_ids'] as List? ?? const <dynamic>[])) (v as num).toInt()],
     );
   }
 
@@ -280,6 +281,7 @@ class SupabaseRepository implements ZayaRepository {
       'age_max': prefs.ageMax,
       'confession_mode': prefs.confessionMode,
       'confessions': prefs.confessions,
+      'city_ids': prefs.cityIds,
     });
   }
 

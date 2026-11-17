@@ -514,7 +514,8 @@ class DemoRepository implements ZayaRepository {
       ageMin: _prefs.ageMin,
       ageMax: _prefs.ageMax,
       confessionMode: _prefs.confessionMode,
-      confessions: [..._prefs.confessions]);
+      confessions: [..._prefs.confessions],
+      cityIds: [..._prefs.cityIds]);
 
   @override
   Future<void> savePreferences(DiscoveryPrefs prefs) async {
@@ -524,12 +525,18 @@ class DemoRepository implements ZayaRepository {
   @override
   Future<List<DiscoveryProfile>> discoveryFeed() async {
     if (_profile?.status != 'active') return const <DiscoveryProfile>[];
+    // Filtre par ville ou commune (même règle que le serveur, 0012) : liste vide = toutes les villes.
+    final villes = {
+      for (final c in await cities())
+        if (_prefs.cityIds.contains(c.id)) c.name,
+    };
     return [
       for (final p in _pool)
         if (!_seen.contains(p.profile.id) &&
             !_blocked.containsKey(p.profile.id) &&
             p.profile.age >= _prefs.ageMin &&
-            p.profile.age <= _prefs.ageMax)
+            p.profile.age <= _prefs.ageMax &&
+            (villes.isEmpty || villes.contains(p.profile.city)))
           p.profile,
     ];
   }

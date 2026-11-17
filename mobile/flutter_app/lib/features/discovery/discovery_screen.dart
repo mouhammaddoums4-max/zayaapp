@@ -49,11 +49,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
 
   Future<void> _refreshFiltersState() async {
     try {
-      final p = await Session.read(context).repo.loadPreferences();
-      final defaults = DiscoveryPrefs();
-      final active = p.ageMin != defaults.ageMin ||
-          p.ageMax != defaults.ageMax ||
-          !const {'no_filter', 'all'}.contains(p.confessionMode);
+      final active = (await Session.read(context).repo.loadPreferences()).isFiltered;
       if (mounted && active != _filtersActive) setState(() => _filtersActive = active);
     } catch (_) {
       // Préférences illisibles (hors connexion) : on n'affiche simplement pas le point.

@@ -17,8 +17,11 @@ class PreferencesScreen extends StatefulWidget {
 
 class _PreferencesScreenState extends State<PreferencesScreen> {
   DiscoveryPrefs? _prefs;
+  List<City> _cities = const <City>[];
   String? _error;
   bool _saving = false;
+
+  static const _conakry = 'Conakry — ';
 
   @override
   void initState() {
@@ -31,7 +34,13 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
     setState(() => _error = null);
     try {
       final prefs = await repo.loadPreferences();
-      if (mounted) setState(() => _prefs = prefs);
+      final cities = await repo.cities();
+      if (mounted) {
+        setState(() {
+          _prefs = prefs;
+          _cities = cities;
+        });
+      }
     } catch (e) {
       if (mounted) setState(() => _error = friendlyError(e));
     }
@@ -50,6 +59,53 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
         showZayaSnack(context, friendlyError(e), error: true);
       }
     }
+  }
+
+  /// Choix des villes : « Toutes », raccourci « Tout Conakry », communes de Conakry puis autres villes.
+  Widget _cityChips(DiscoveryPrefs prefs) {
+    final communes = [for (final c in _cities) if (c.name.startsWith(_conakry)) c];
+    final autres = [for (final c in _cities) if (!c.name.startsWith(_conakry)) c];
+    final toutConakry = communes.isNotEmpty && communes.every((c) => prefs.cityIds.contains(c.id));
+    Widget chip(String label, bool selected, VoidCallback onTap) => FilterChip(
+          label: Text(label),
+          selected: selected,
+          selectedColor: ZColors.primarySoft,
+          checkmarkColor: ZColors.primaryDark,
+          onSelected: (_) => setState(onTap),
+        );
+    void basculer(City c) => prefs.cityIds.contains(c.id) ? prefs.cityIds.remove(c.id) : prefs.cityIds.add(c.id);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Wrap(spacing: 8, runSpacing: 4, children: [
+        chip('Toutes', prefs.cityIds.isEmpty, prefs.cityIds.clear),
+        if (communes.isNotEmpty)
+          chip('Tout Conakry', toutConakry, () {
+            if (toutConakry) {
+              prefs.cityIds.removeWhere((id) => communes.any((c) => c.id == id));
+            } else {
+              for (final c in communes) {
+                if (!prefs.cityIds.contains(c.id)) prefs.cityIds.add(c.id);
+              }
+            }
+          }),
+      ]),
+      if (communes.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        Text('Communes de Conakry', style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: 4),
+        Wrap(spacing: 8, runSpacing: 4, children: [
+          for (final c in communes)
+            chip(c.name.substring(_conakry.length), prefs.cityIds.contains(c.id), () => basculer(c)),
+        ]),
+      ],
+      if (autres.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        Text('Autres villes', style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: 4),
+        Wrap(spacing: 8, runSpacing: 4, children: [
+          for (final c in autres) chip(c.name, prefs.cityIds.contains(c.id), () => basculer(c)),
+        ]),
+      ],
+    ]);
   }
 
   @override
@@ -92,6 +148,18 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                       }),
                     ),
                     const SizedBox(height: 8),
+                    if (_cities.isNotEmpty) ...[
+                      SectionTitle('Ville ou commune',
+                          trailing: Text(
+                              prefs.cityIds.isEmpty
+                                  ? 'Toutes'
+                                  : prefs.cityIds.length == 1
+                                      ? '1 choisie'
+                                      : '${prefs.cityIds.length} choisies',
+                              style: const TextStyle(fontWeight: FontWeight.w700, color: ZColors.primaryDark))),
+                      _cityChips(prefs),
+                      const SizedBox(height: 12),
+                    ],
                     const SectionTitle('Préférence confessionnelle'),
                     for (final e in confessionModeLabels.entries)
                       ChoiceTile(

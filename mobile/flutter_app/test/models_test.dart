@@ -169,6 +169,16 @@ void main() {
     });
   });
 
+  group('Préférences de découverte', () {
+    test('le point sur l’icône des filtres n’apparaît que si un réglage s’écarte des valeurs par défaut', () {
+      expect(DiscoveryPrefs().isFiltered, isFalse);
+      expect(DiscoveryPrefs(confessionMode: 'all').isFiltered, isFalse, reason: '« toutes » ne filtre rien');
+      expect(DiscoveryPrefs(ageMin: 25).isFiltered, isTrue);
+      expect(DiscoveryPrefs(confessionMode: 'mine_only').isFiltered, isTrue);
+      expect(DiscoveryPrefs(cityIds: [4]).isFiltered, isTrue, reason: 'ville ou commune choisie');
+    });
+  });
+
   group('Fiche profil reçue du serveur', () {
     test('une photo privée n’a pas de chemin et n’est pas choisie comme photo principale', () {
       final detail = ProfileDetail.fromJson(<String, dynamic>{

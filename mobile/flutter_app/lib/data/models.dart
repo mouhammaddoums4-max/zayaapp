@@ -405,12 +405,26 @@ class DiscoveryPrefs {
     this.ageMax = 60,
     this.confessionMode = 'no_filter',
     List<String>? confessions,
-  }) : confessions = confessions ?? <String>[];
+    List<int>? cityIds,
+  })  : confessions = confessions ?? <String>[],
+        cityIds = cityIds ?? <int>[];
 
   int ageMin;
   int ageMax;
   String confessionMode;
   List<String> confessions;
+
+  /// Villes ou communes choisies (vide = toutes) ; filtre à sens unique (migration 0012).
+  List<int> cityIds;
+
+  /// Un réglage s'écarte des valeurs par défaut (point sur l'icône des filtres).
+  bool get isFiltered {
+    final d = DiscoveryPrefs();
+    return ageMin != d.ageMin ||
+        ageMax != d.ageMax ||
+        !const {'no_filter', 'all'}.contains(confessionMode) ||
+        cityIds.isNotEmpty;
+  }
 }
 
 class BlockedUser {
