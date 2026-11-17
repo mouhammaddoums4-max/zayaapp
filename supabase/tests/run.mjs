@@ -7,6 +7,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildInstallSql, installPath, normalizeEol } from '../deploy/build.mjs';
 import { assistanceTests } from './assistance_tests.mjs';
+import { endedMatchesTests } from './ended_matches_tests.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const db = new PGlite();
@@ -757,6 +758,7 @@ await test('valider les comptes d’essai : seulement les numéros listés, au n
   });
 
 await assistanceTests({ db, test, assert, as, rpc, fails, U });
+await endedMatchesTests({ db, test, assert, as, rpc, fails });
 
 console.log('\nFichier d’installation Supabase');
 await test('le fichier d’installation est à jour (régénéré à partir des migrations et du seed)', async () => {
