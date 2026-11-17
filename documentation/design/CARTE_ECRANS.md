@@ -1,6 +1,6 @@
 # Carte des écrans — application mobile ZAYA (espace Rencontre)
 
-**Statut : proposition à valider par le propriétaire du projet — 16 novembre 2026.**
+**Statut : proposition à valider par le propriétaire du projet — 16 novembre 2026, mise à jour le 17 novembre 2026 (cinq onglets, en-tête de Découvrir, conventions du secteur en section 7).**
 
 Complète [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) (couleurs, typographie, espacements). Références : cahier des charges v6.4 (cité « CDC »), fonctions SQL de `supabase/migrations/0002_fonctions.sql`, interface `ZayaRepository`.
 
@@ -19,8 +19,9 @@ Lancement
    │                                       └─► Connexion téléphone + code (A03) ─► Récupération (A04)
    ├─ suspendu / banni ───► Compte restreint (A05)
    └─ compte actif ───────► Barre d'onglets
-        ├─ Découvrir (C01) ─► Fiche profil (C02) · Filtres (C03) · Likes épuisés (C04) · Match (C05)
-        ├─ Matchs (D01) ────► Intérêts reçus (D02) · Visites (D03) · Conversation (E02)
+        ├─ Découvrir (C01) ─► Filtres (C03) · Notifications (N01) · Boost (P04) · Fiche profil (C02) · Likes épuisés (C04) · Match (C05)
+        ├─ Explorer (X01) ──► Sélection (X02) ─► Fiche profil (C02)
+        ├─ Likes (D01) ─────► Intérêts reçus (D02) · Visites (D03)
         ├─ Messages (E01) ──► Conversation (E02) ─► Bouclier (E03) · Fiche profil (C02)
         └─ Profil (F01) ────► Modifier (F02) · Photos (F03) · Vérification (F04) · Confidentialité (F06)
                               · Abonnements (F10) · Paiements (F11) · Aide (F12) · Documents légaux (F13)
@@ -28,7 +29,7 @@ Lancement
 
 ### 1.2 Règles
 
-1. **Quatre onglets au lot A** : Découvrir, Matchs, Messages, Profil. Communauté devient le 5ᵉ onglet au lot C seulement, une fois la modération opérationnelle (CDC V2.3 §3–4). Jamais plus de cinq onglets.
+1. **Cinq onglets** (choix du propriétaire, en place dans le code au 17/11/2026) : Découvrir, Explorer, Likes, Messages, Profil. Les nouveaux matchs apparaissent en tête de Messages. Jamais plus de cinq onglets : la Communauté (lot C) devra trouver sa place sans en ajouter un sixième (Q6).
 2. La barre d'onglets n'apparaît que sur les quatre écrans racines. Un écran ouvert depuis un onglet la recouvre. Chaque onglet conserve sa position de défilement.
 3. **Bouton retour Android** : écran ouvert → écran précédent ; onglet autre que Découvrir → Découvrir ; Découvrir → sortie de l'application. Dans l'inscription : étape précédente, brouillon conservé (CDC §3, §23.2).
 4. **Aiguillage (A01)** selon `profiles.status` :
@@ -98,17 +99,20 @@ Les champs **obligatoires** sont ceux qu'exige `complete_onboarding` : nom d'aff
 
 | ID | Écran | Contenu essentiel | Serveur (RPC · `app_config`) | CDC | Lot |
 |---|---|---|---|---|---|
-| C01 | Découvrir | En-tête : titre, likes restants et heure de renouvellement, accès aux filtres. Carte : photo principale, prénom, âge, ville, badges, intention. Boutons Passer ✕ et Aimer ♥ (≥ 48 dp) en plus du geste. Bandeau si le profil du membre n'est pas encore publié | `discovery_feed`, `send_like`, `pass_profile`, `my_like_quota` · `free_daily_likes`, `premium_daily_likes`, `likes_reset_hour_utc` (C4) | §6, §22.1, §22.4 | A |
+| C01 | Découvrir | En-tête : filtres à gauche ; à droite, likes restants (l'heure de renouvellement s'affiche en C04), notifications (N01) et Boost (P04 : flamme qui s'anime de temps en temps, immobile si le système réduit les animations). Carte : photo principale, prénom, âge, ville, badges, intention. Boutons Passer ✕ et Aimer ♥ (≥ 48 dp) en plus du geste. Bandeau si le profil du membre n'est pas encore publié | `discovery_feed`, `send_like`, `pass_profile`, `my_like_quota` · `free_daily_likes`, `premium_daily_likes`, `likes_reset_hour_utc` (C4) | §6, §22.1, §22.4 | A |
 | C02 | Fiche profil | Galerie, présentation, intention et horizon, informations renseignées et visibles, badges dont le détail précise le contrôle effectué, menu Signaler / Bloquer. Lot B : points communs, partage | `get_profile`, `record_profile_view` | §5, §25.3, §41 | A |
 | C03 | Filtres | Base gratuite : genre recherché, âge, pays, ville, confession(s). Rayon (5 à 100 km, toute la ville, tout le pays) seulement si la localisation est autorisée, position arrondie. Filtres avancés (Premium) : langues, profession, études, situation, projet de vie, autres pays | `discovery_preferences`, appliquées dans `discovery_feed` | §6, §22.1–22.2 | A (base), B (avancés) |
 | C04 | Likes épuisés (feuille) | Quota et heure de renouvellement ; on peut continuer à parcourir et à discuter ; lien Premium seulement si `payments_enabled` | `my_like_quota` · `payments_enabled` (C7) | §22.4 | A |
 | C05 | Match (superposition) | Animation courte, deux photos, « Envoyer un message » → E02, « Continuer à découvrir » | Résultat `matched` de `send_like` | §22.10, §13 | A |
+| N01 | Notifications | Événements réels seulement (match, message, décision de vérification) ; état vide en attendant les notifications push ; jamais de fausse pastille | FCM au lot B | §9, §22.17 | A (vide), B |
 
-### 2.4 Matchs (onglet 2)
+### 2.4 Explorer (onglet 2) et Likes (onglet 3)
 
 | ID | Écran | Contenu essentiel | Serveur | CDC | Lot |
 |---|---|---|---|---|---|
-| D01 | Matchs | Encart « intérêts reçus » : compteur seul en Gratuit, jamais de faux like ; liste des matchs actifs → E02 | `received_interests_count`, `my_matches` | V3.0 §4.2 | A |
+| X01 | Explorer | Sélections thématiques construites à partir des réponses réelles et des préférences (horizon de mariage proche, près de chez vous, même langue, mêmes centres d'intérêt, prennent leur temps), avec le nombre de profils de chacune | Mêmes règles serveur que Découvrir : filtres réciproques, blocages, vérification | §22.1, §31 | A |
+| X02 | Sélection | Profils d'une sélection, puis « Vous avez tout vu » | Idem X01 | §22.1 | A |
+| D01 | Likes | Compteur des intérêts reçus (gratuit, jamais de faux like) ; identités masquées en Gratuit ; « Parcourir les profils » | `received_interests_count` | V3.0 §4.2 | A |
 | D02 | Intérêts reçus | Liste nominative ; aimer en retour (match immédiat) ou refuser | `received_interests` (refus serveur `PREMIUM_REQUIRED`) | V3.0 §4.3, §32 | B |
 | D03 | Visites du profil | Vues totales et visiteurs uniques sur 7 et 30 jours ; identités seulement en Premium et hors navigation discrète | `my_profile_view_stats` | §22.7 | B |
 
@@ -234,12 +238,14 @@ Valeurs ZAYA issues de DESIGN_SYSTEM.md et de `lib/core/theme.dart` :
 2. Deux hauteurs de bouton principal coexistent : 52 (`FilledButton`, `OutlinedButton`) et 54 (`GradientButton`).
 3. `dangerSoft` existe dans `theme.dart` mais pas dans le tableau des couleurs du design system.
 4. Les textes sont écrits directement dans les écrans, alors qu'AGENTS.md demande de les centraliser dans `lib/core/l10n/` (FR puis EN).
+5. Contraste (WCAG AA, texte de moins de 19 px en gras) : texte blanc sur `primary` #F5075E = 4,1:1 et sur le dégradé = 3,6 à 4,3:1, sous le seuil de 4,5:1 ; texte blanc 11 px du `PremiumBadge` sur `premium` #C8962E = 2,7:1. Passent : blanc sur `primaryDark` #C9004A (5,9:1), texte `ink` sur or (6,9:1). Réserver `primary` et le dégradé aux surfaces sans petit texte, ou aux titres d'au moins 24 px.
+6. Bordure des champs et des puces non sélectionnées en `line` #F0E9EE : 1,2:1 sur blanc, alors que WCAG 1.4.11 demande 3:1 pour repérer un champ. Une bordure #948A99 (3,3:1) suffit.
 
 ---
 
 ## 5. Correspondance avec le code
 
-État relevé le 16/11/2026 à 14 h 50 ; une session de développement ajoute des écrans en parallèle.
+État relevé le 16/11/2026 à 14 h 50, complété le 17/11 : `discovery/explore_screen.dart` (X01–X02), `likes/likes_screen.dart` (D01), `profile/` (F01, F02, F04, F06 et préférences C03), `premium/premium_screens.dart` (P01, F10, F11), `notifications/notifications_screen.dart` (N01), `boost/boost_button.dart` (bouton et feuille P04). Une session de développement ajoute des écrans en parallèle.
 
 | Fichier | Écrans couverts |
 |---|---|
@@ -264,8 +270,55 @@ Valeurs ZAYA issues de DESIGN_SYSTEM.md et de `lib/core/theme.dart` :
 |---|---|
 | Q1 | Un membre non vérifié peut-il envoyer des likes ? Aujourd'hui `send_like` exige seulement un profil actif, alors que son propre profil n'est publié qu'après vérification (`is_discoverable`). |
 | Q2 | Récupération du compte : e-mail facultatif, pièce justificative ou assistance seule ? Le CDC §23.2 A cite un mot de passe, alors que l'authentification prévue repose uniquement sur le code SMS. |
-| Q3 | Visites du profil (D03) : dans l'onglet Matchs ou dans le Profil ? |
+| Q3 | Visites du profil (D03) : dans l'onglet Likes, à côté des intérêts reçus, ou dans le Profil ? |
 | Q4 | Mode incognito : gratuit ou avantage Premium (CDC V3.0 §5.2) ? La navigation discrète (§22.7) est une option distincte. |
 | Q5 | Étapes facultatives B06 à B08 : dans l'inscription avec « Passer », ou seulement dans la complétude du profil ? |
-| Q6 | Communauté : 5ᵉ onglet ou entrée secondaire ? Le CDC prévoit de trancher par des tests d'ergonomie. |
+| Q6 | Communauté (lot C) : les cinq onglets sont pris. Entrée depuis Explorer ou le Profil, ou remplacement d'un onglet ? Le CDC prévoit de trancher par des tests d'ergonomie. |
 | Q7 | Présentation vidéo : dans l'inscription ou seulement dans le profil, selon le coût de modération ? |
+
+---
+
+## 7. Conventions du secteur : retenues et écartées
+
+Relevé fait le 17/11/2026 sur des captures d'écran d'une application de rencontre du même secteur, fournies par le propriétaire du projet. Seules des conventions génériques sont retenues ; le logo, les illustrations, le nom des offres, les couleurs, la typographie et les textes de cette application ne sont pas repris.
+
+### 7.1 Retenues, adaptées à l'identité ZAYA
+
+| Convention | Écrans ZAYA | CDC |
+|---|---|---|
+| Une question par écran : barre de progression fine, retour à gauche, aide à droite, bouton principal en bas inactif tant que la réponse manque, « Passer » sur les questions facultatives | B01–B12 | §3, §23.2 |
+| Date de naissance par roue jour / mois / année, avec l'âge calculé affiché avant de continuer | B01, B05 | §3 ét. 2 |
+| Cartes de choix pour l'intention ; puces pour l'horizon (temps pour se connaître, horizon du mariage) | B02 | §23.2 B |
+| Liste avec recherche pour la profession | B08 | §23.2 D |
+| Mention « n'apparaît pas sur votre profil » sous les questions concernées | B03, B07, B10 | §15 |
+| Grille de photos : photo principale signalée, emplacements vides, consignes photo, minimum annoncé | B09, F03 | §22.8 |
+| Indicatif pays avec drapeau ; code à 6 chiffres avec compte à rebours avant renvoi | A03, B10 | §9 |
+| Écran d'explication avant la demande système d'autorisation des notifications, refus possible | après B11 (lot B) | §9, §22.14 |
+| Vérification : photo à comparer, explication, selfie guidé dans un cadre, mention du prestataire | F04 | §22.8, B2 |
+| En-tête d'onglet avec les actions à droite (notifications) | C01 | — |
+| Conversation : en-tête photo + nom + badge, onglets « Discuter / Profil », messages système (match, fin de match) | E02 | §25.3, §32 |
+| Liste des matchs terminés, avec une explication | E01 | §32 |
+| Réglages par sections à grands titres ; lignes « valeur + chevron » ; interrupteurs accompagnés d'une phrase | F06–F16 | — |
+| Frise d'un éventuel essai gratuit : début, rappel, date du premier débit | P01 | §22.5 |
+
+### 7.2 Écartées, car contraires au cahier des charges
+
+| Pratique observée | Règle ZAYA | CDC |
+|---|---|---|
+| Compte à rebours « l'offre se termine dans X jours » | Pas de fausse urgence | §22.4, §22.17, §33.2 |
+| Chiffres de communauté et de mariages réussis mis en avant | Aucun chiffre non vérifié, aucune promesse | V2.2 §16 |
+| Nombre de conversations actives limité, débloqué en payant | La messagerie après un match reste gratuite | V3.0 §5.1, §5.3 |
+| Onglet Profil rempli d'offres payantes | Une entrée Premium stable ; offres seulement après une limite réelle | §22.4, §22.5 |
+| Payer pour être de nouveau montré à tout le monde | Pas de visibilité payante qui contourne les règles | §22.6, §22.17 |
+| Option réservée à un seul genre (bloquer les demandes venant d'un genre) | Toute option vaut pour tous les genres | §22.1 |
+| Proche qui reçoit automatiquement une copie des conversations | Accord des deux personnes obligatoire | §8, V6.0 §28 |
+| Aperçu du message activé par défaut dans les notifications | Contenu privé masqué par défaut | §9 |
+| Messages promotionnels dans la boîte de notifications | Notifications de service et marketing séparées | §9 |
+
+### 7.3 Pistes à confirmer
+
+- Icône d'application discrète, comme option de confidentialité gratuite.
+- Masquer son profil aux personnes de son carnet d'adresses (autorisation Contacts, consentement explicite).
+- Question facultative « Comment avez-vous connu ZAYA ? » pour mesurer le pilote, à justifier au regard de la minimisation (§15).
+- Courant religieux et niveau de pratique : données sensibles (consentement, `profile_sensitive`), à arbitrer avec la liste des confessions (C2).
+- Habitudes de vie, par exemple l'alcool, en question facultative.

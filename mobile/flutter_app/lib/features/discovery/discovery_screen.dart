@@ -7,6 +7,8 @@ import '../../core/motion.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/models.dart';
+import '../boost/boost_button.dart';
+import '../notifications/notifications_screen.dart';
 import '../profile/preferences_screen.dart';
 import '../profile/verification_screen.dart';
 import '../safety/safety_sheets.dart';
@@ -171,11 +173,16 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
     final session = Session.of(context);
     final me = session.me;
     return Scaffold(
+      // En-tête : filtres à gauche ; à droite, likes restants, notifications et Boost (flamme animée).
       appBar: AppBar(
-        title: Row(children: [
-          const ZayaLogo(size: 32),
-          const SizedBox(width: 10),
-          Text('Découvrir', style: Theme.of(context).textTheme.titleLarge),
+        leading: IconButton(icon: const Icon(Icons.tune), tooltip: 'Préférences de découverte', onPressed: _openFilters),
+        titleSpacing: 0,
+        title: Row(mainAxisSize: MainAxisSize.min, children: [
+          const ZayaLogo(size: 28),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text('Découvrir', overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleLarge),
+          ),
         ]),
         actions: [
           ListenableBuilder(
@@ -186,7 +193,12 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
               return Center(child: _QuotaChip(remaining: quota.remaining));
             },
           ),
-          IconButton(icon: const Icon(Icons.tune), tooltip: 'Préférences de découverte', onPressed: _openFilters),
+          IconButton(
+            icon: const Icon(Icons.notifications_none_rounded),
+            tooltip: 'Notifications',
+            onPressed: () => Navigator.of(context).push(zRoute<void>(const NotificationsScreen())),
+          ),
+          const BoostButton(),
           const SizedBox(width: 4),
         ],
       ),
