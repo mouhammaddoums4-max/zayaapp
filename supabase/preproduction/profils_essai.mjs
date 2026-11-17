@@ -285,9 +285,12 @@ async function creer() {
 async function supprimer() {
   const comptes = await comptesEssai();
   for (const u of comptes) {
-    const objets = await api('POST', '/storage/v1/object/list/profile-photos', { prefix: `${u.id}/`, limit: 100 });
-    const chemins = (objets ?? []).map((o) => `${u.id}/${o.name}`);
-    if (chemins.length) await api('DELETE', '/storage/v1/object/profile-photos', { prefixes: chemins });
+    for (const bucket of ['profile-photos', 'profile-photos-blur']) { // versions floutées : migration 0009
+      const objets = await api('POST', `/storage/v1/object/list/${bucket}`, { prefix: `${u.id}/`, limit: 100 })
+        .catch(() => []); // bucket absent si 0009 n'est pas appliquée
+      const chemins = (objets ?? []).map((o) => `${u.id}/${o.name}`);
+      if (chemins.length) await api('DELETE', `/storage/v1/object/${bucket}`, { prefixes: chemins });
+    }
     await api('DELETE', `/auth/v1/admin/users/${u.id}`); // profil, photos, likes, matchs : supprimés en cascade
     console.log(`- ${u.email}`);
   }

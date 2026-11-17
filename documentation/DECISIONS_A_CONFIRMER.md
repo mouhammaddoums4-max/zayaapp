@@ -28,7 +28,7 @@ Tant qu'une décision n'est pas confirmée, elle reste **configurable** (`app_co
 | C9 | Numéro WhatsApp officiel du support | Vide → bouton masqué |
 | C10 | Pays ouverts | Guinée uniquement |
 | C11 | Liste des termes interdits (filtre messagerie) | Liste minimale de démonstration, à compléter par les modérateurs |
-| C12 | Visibilité Gratuit des photos (floutage) | Profil principal net, photos suivantes floutées pour Gratuit (lot B) |
+| C12 | Visibilité Gratuit des photos (floutage) | Photo principale nette, photos suivantes floutées pour un visiteur Gratuit (`free_clear_photos = 1`) ; Premium : photos publiques nettes ; une photo « floutée » par sa propriétaire reste floutée pour tous. Flou fabriqué côté serveur (migration 0009, fonction `blur-photos`) |
 | C13 | Ouverture de la Communauté au public | Ouverte en préproduction (`community_enabled = true`) ; ne l'ouvrir au public qu'avec une modération opérationnelle (CDC V2.3 §4) |
 | C14 | Conditions pour publier dans la Communauté | Profil vérifié exigé (`community_post_requires_verification`), 5 publications / 24 h, 20 commentaires / heure ; coordonnées (numéro, e-mail, lien de messagerie) refusées |
 | C15 | Identité affichée dans la Communauté | Nom de profil, initiale et badge vérifié ; aucune photo, pour ne pas contourner les règles de visibilité des photos. Pseudonyme : à décider (CDC V2.3 §2.6) |

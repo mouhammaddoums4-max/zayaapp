@@ -75,6 +75,20 @@ update app_config set value = '150' where key = 'sms_unit_cost_gnf';          --
 
 Le hook n'a encore envoyé aucun SMS réel : à tester d'abord avec un numéro de l'équipe.
 
+## 4 bis. Floutage des photos (décision C12)
+
+Un visiteur Gratuit voit la photo principale nette et les suivantes floutées ; un visiteur Premium voit les photos publiques nettes ; une photo que sa propriétaire a choisie « floutée » reste floutée pour tous. Le flou est fabriqué par le serveur : l'original n'est jamais envoyé à qui n'y a pas droit.
+
+1. Base déjà installée : collez dans l'éditeur SQL [0007_photos_lecture.sql](../supabase/migrations/0007_photos_lecture.sql) puis [0009_photos_floutees.sql](../supabase/migrations/0009_photos_floutees.sql), dans cet ordre.
+2. Déployez la fonction qui fabrique les versions floutées, puis lancez le rattrapage des photos existantes (20 photos par appel : relancer jusqu'à obtenir `"traitees":0`) :
+
+```bash
+npx supabase functions deploy blur-photos --project-ref wocgmmwwopzrgleeevof
+curl -X POST https://wocgmmwwopzrgleeevof.supabase.co/functions/v1/blur-photos -H "Authorization: Bearer <clé service_role>" -d "{}"
+```
+
+Tant qu'une photo n'a pas encore de version floutée, l'application affiche un emplacement neutre à sa place, jamais l'original. Une version floutée reste dans le stockage après suppression de sa photo, mais n'est plus servie à personne (nettoyage à prévoir).
+
 ## 5. Valider un profil de test (préproduction uniquement)
 
 La console d'administration n'est pas encore construite. Pour qu'un profil de test apparaisse dans Découvrir et puisse publier dans la Communauté, sa vérification doit être validée.

@@ -333,6 +333,81 @@ await test("get_profile masque la confession non partagée et les photos privée
   assert(own.confession === 'christian');
 });
 
+console.log('\nPhotos floutées (addendum V6.4 §3, C12)');
+const photosVues = async (viewer, owner) => {
+  const p = await rpc(viewer, 'get_profile', [owner]);
+  const rows = (await db.query(`select id, visibility from profile_photos where user_id = $1 and moderation = 'approved'`, [owner])).rows;
+  return p.photos.map((x) => ({ ...x, vis: rows.find((r) => r.id === x.id)?.visibility }));
+};
+await test("visiteur Gratuit : seule la photo principale est nette, les suivantes floutées, sans chemin d'original", async () => {
+  const photos = await photosVues(U.fatou, U.paul); // Fatou (Gratuit) consulte Paul
+  const publiques = photos.filter((x) => x.visibility === 'public');
+  assert(publiques.length >= 2, 'jeu de test : il faut au moins 2 photos publiques');
+  assert(publiques[0].access === 'original' && publiques[0].path, 'la photo principale doit rester nette');
+  for (const x of publiques.slice(1)) {
+    assert(x.access === 'blurred' && x.path === null, `photo ${x.id} : ${x.access}, chemin ${x.path}`);
+  }
+  assert(photos.filter((x) => x.visibility === 'private').every((x) => x.access === 'none' && !x.path && !x.blur_path));
+});
+await test("visiteur Premium : photos publiques nettes ; une photo floutée par sa propriétaire reste floutée", async () => {
+  const cible = (await db.query(`select id from profile_photos where user_id = $1 order by position limit 1 offset 1`, [U.fatou])).rows[0].id;
+  await db.query(`update profile_photos set visibility = 'blurred' where id = $1`, [cible]);
+  const g = await rpc(U.admin, 'admin_grant_premium', [U.paul, '2026-01-01T00:00:00Z', '2099-01-01T00:00:00Z', 'Test', 'compte de test']);
+  try {
+    const photos = await photosVues(U.paul, U.fatou); // Paul (Premium) consulte Fatou
+    for (const x of photos) {
+      const attendu = x.id === cible ? 'blurred' : 'original';
+      assert(x.access === attendu, `photo ${x.id} : ${x.access} au lieu de ${attendu}`);
+      assert(attendu === 'original' ? !!x.path : x.path === null);
+    }
+  } finally {
+    await db.query(`update profile_photos set visibility = 'public' where id = $1`, [cible]);
+    await rpc(U.admin, 'admin_revoke_premium', [g, 'fin du test']);
+  }
+});
+await test("le nombre de photos nettes pour un visiteur Gratuit se règle dans app_config", async () => {
+  await db.query(`update app_config set value = '2' where key = 'free_clear_photos'`);
+  try {
+    const nettes = (await photosVues(U.fatou, U.paul)).filter((x) => x.access === 'original').length;
+    assert(nettes === 2, `${nettes} photos nettes au lieu de 2`);
+  } finally {
+    await db.query(`update app_config set value = '1' where key = 'free_clear_photos'`);
+  }
+});
+await test("stockage : un visiteur Gratuit n'obtient jamais le fichier original d'une photo floutée, seulement sa version floutée", async () => {
+  const ph = (await db.query(`select id, storage_path from profile_photos
+    where user_id = $1 and moderation = 'approved' and visibility = 'public' order by position, created_at, id`, [U.paul])).rows;
+  const [nette, floue] = ph;
+  const fichierFlou = `${U.paul}/${floue.id}.jpg`;
+  await db.query(`update profile_photos set blur_path = $1 where id = $2`, [fichierFlou, floue.id]);
+  await db.query(`insert into storage.objects (bucket_id, name) values ('profile-photos', $1), ('profile-photos', $2),
+                  ('profile-photos-blur', $3)`, [nette.storage_path, floue.storage_path, fichierFlou]);
+  const lit = async (viewer, bucket, name) => (await as(viewer,
+    `select count(*)::int as n from storage.objects where bucket_id = $1 and name = $2`, [bucket, name])).rows[0].n === 1;
+  try {
+    assert(await lit(U.fatou, 'profile-photos', nette.storage_path), 'Gratuit : photo principale refusée');
+    assert(!(await lit(U.fatou, 'profile-photos', floue.storage_path)), 'Gratuit : original d’une photo floutée servi');
+    assert(await lit(U.fatou, 'profile-photos-blur', fichierFlou), 'Gratuit : version floutée refusée');
+    const p = await rpc(U.fatou, 'get_profile', [U.paul]);
+    assert(p.photos.find((x) => x.id === floue.id).blur_path === fichierFlou, 'chemin flouté absent de get_profile');
+    assert(await lit(U.paul, 'profile-photos', floue.storage_path), 'le propriétaire doit lire ses originaux');
+    assert(await lit(U.paul, 'profile-photos-blur', fichierFlou), 'le propriétaire doit lire sa version floutée');
+  } finally {
+    await db.query(`delete from storage.objects where name in ($1, $2, $3)`, [nette.storage_path, floue.storage_path, fichierFlou]);
+  }
+});
+await test("un membre ne peut pas écrire lui-même le chemin flouté de ses photos", async () => {
+  const ph = (await db.query(`select id, blur_path from profile_photos where user_id = $1 limit 1`, [U.fatou])).rows[0];
+  await as(U.fatou, `update profile_photos set blur_path = 'triche.jpg' where id = $1`, [ph.id]);
+  const apres = (await db.query(`select blur_path from profile_photos where id = $1`, [ph.id])).rows[0].blur_path;
+  assert(apres === ph.blur_path, `chemin flouté modifié par le membre : ${apres}`);
+  await as(U.fatou, `insert into profile_photos (user_id, storage_path, position, blur_path) values ($1, $2, 8, 'triche.jpg')`,
+    [U.fatou, `${U.fatou}/p8.jpg`]);
+  const neuve = (await db.query(`select blur_path from profile_photos where storage_path = $1`, [`${U.fatou}/p8.jpg`])).rows[0];
+  assert(neuve.blur_path === null, 'chemin flouté accepté à l’ajout d’une photo');
+  await db.query(`delete from profile_photos where storage_path = $1`, [`${U.fatou}/p8.jpg`]);
+});
+
 console.log('\nPremium administratif (V6.4)');
 let grantId;
 await test("un membre ou un modérateur ne peut pas accorder Premium", async () => {

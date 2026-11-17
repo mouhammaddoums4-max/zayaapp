@@ -26,7 +26,7 @@
 | Backend | Supabase (Postgres 15+) | Auth, RLS, Realtime, Storage dans une seule offre gratuite au départ. |
 | Logique métier | Fonctions SQL `security definer` appelées en RPC | Les règles (quota, match réciproque, blocage, filtre de messages, Premium) sont appliquées **côté serveur** et testables en SQL. |
 | OTP | Supabase Auth Phone + **Send SMS Hook** → Edge Function → Nimba | Nimba n'est pas un fournisseur natif Supabase ; le hook garde la clé Nimba côté serveur, applique plafond et journal des coûts. |
-| Médias | Buckets privés `profile-photos`, `verification` ; URLs signées courtes | Floutage généré côté serveur (lot B) : le client Gratuit ne reçoit jamais l'original. |
+| Médias | Buckets privés `profile-photos`, `profile-photos-blur`, `verification` ; URLs signées courtes | Floutage fabriqué côté serveur (migration 0009, fonction Edge `blur-photos`) : `photo_access()` décide original / flouté / rien pour chaque visiteur, et les règles de stockage refusent l'original à qui n'y a pas droit, même par adresse directe. |
 | Fuseau | Calculs en UTC (= heure de Conakry, GMT sans heure d'été) | Référence documentée (V6.4 §40.2) ; affichage local côté client. |
 
 ## Modèle de données (lot A + socle V6.4)
