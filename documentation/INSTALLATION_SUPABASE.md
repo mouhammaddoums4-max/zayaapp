@@ -20,7 +20,16 @@ Projet : `wocgmmwwopzrgleeevof`, à utiliser comme **préproduction** (tests). L
 
 Le fichier est généré à partir de `supabase/migrations` et `supabase/seed` ; les tests (`cd supabase/tests && npm test`) vérifient qu'il est à jour et qu'il s'installe d'un seul bloc.
 
-**Base déjà installée :** le fichier d'installation refuse de s'exécuter une seconde fois. Pour une correction publiée après votre installation, collez seulement la nouvelle migration dans l'éditeur SQL, par exemple [0007_photos_lecture.sql](../supabase/migrations/0007_photos_lecture.sql) : sans elle, un membre ne peut pas afficher les photos des autres membres.
+**Base déjà installée :** le fichier d'installation refuse de s'exécuter une seconde fois. Collez seulement, dans l'ordre, les migrations publiées après votre installation :
+
+| Migration | Contenu | Sur `wocgmmwwopzrgleeevof` |
+|---|---|---|
+| [0007_photos_lecture.sql](../supabase/migrations/0007_photos_lecture.sql) | Un membre peut afficher les photos des autres membres (correction de la règle de stockage) | Appliquée le 17/11/2026 |
+| [0008_assistance.sql](../supabase/migrations/0008_assistance.sql) | Demandes à l'assistance, langues de l'interface activables | Appliquée le 17/11/2026 |
+| [0009_photos_floutees.sql](../supabase/migrations/0009_photos_floutees.sql) | Floutage des photos côté serveur (§4 bis) | Appliquée le 17/11/2026 |
+| [0010_matchs_termines.sql](../supabase/migrations/0010_matchs_termines.sql) | Liste des matchs terminés | Appliquée le 17/11/2026 |
+
+Les migrations précédentes (0001 à 0006) sont comprises dans l'installation du 17/11/2026.
 
 ## 2. Activer la connexion par téléphone
 
@@ -83,7 +92,7 @@ Un visiteur Gratuit voit la photo principale nette et les suivantes floutées ; 
 
 Pour un autre projet :
 
-1. Base déjà installée : collez dans l'éditeur SQL [0007_photos_lecture.sql](../supabase/migrations/0007_photos_lecture.sql) puis [0009_photos_floutees.sql](../supabase/migrations/0009_photos_floutees.sql), dans cet ordre.
+1. Base déjà installée : appliquez les migrations manquantes dans l'ordre (tableau du §1), au minimum 0007 puis 0009.
 2. Déployez la fonction qui fabrique les versions floutées, puis lancez le rattrapage des photos existantes (3 photos par appel, à cause de la limite de calcul de Supabase : relancer jusqu'à obtenir `"traitees":0`). En cas de « Too many connections », relancer simplement.
 
 ```bash
