@@ -189,5 +189,25 @@ void main() {
       expect(detail.base.photoPath, 'u1/p2.jpg');
       expect(detail.confession, isNull);
     });
+
+    test('floutage (0009) : seul l’accès « original » donne un chemin d’original ; les floutées ne sont pas privées', () {
+      final detail = ProfileDetail.fromJson(<String, dynamic>{
+        'id': 'u2',
+        'display_name': 'Mariama',
+        'photos': [
+          {'id': 'a', 'visibility': 'public', 'access': 'original', 'path': 'u2/a.png', 'blur_path': null},
+          {'id': 'b', 'visibility': 'public', 'access': 'blurred', 'path': null, 'blur_path': 'u2/b.jpg'},
+          {'id': 'c', 'visibility': 'blurred', 'access': 'blurred', 'path': null, 'blur_path': null},
+          {'id': 'd', 'visibility': 'private', 'access': 'none', 'path': null, 'blur_path': null},
+        ],
+      });
+      final [a, b, c, d] = detail.photos;
+      expect(detail.base.photoPath, 'u2/a.png');
+      expect(detail.hiddenPhotoCount, 1, reason: 'seule la photo privée est cachée');
+      expect(a.isBlurred || a.isHidden, isFalse);
+      expect(b.isBlurred && !b.blurredByOwner && b.blurPath == 'u2/b.jpg', isTrue, reason: 'floutée par le forfait');
+      expect(c.isBlurred && c.blurredByOwner, isTrue, reason: 'floutée par la propriétaire : Premium ne la rend pas nette');
+      expect(d.isHidden && d.path == null && d.blurPath == null, isTrue);
+    });
   });
 }

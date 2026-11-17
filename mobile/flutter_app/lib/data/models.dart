@@ -248,11 +248,21 @@ class DiscoveryProfile {
       );
 }
 
+/// Photo d'un profil consulté. Ce que le visiteur peut voir est décidé par le serveur (migration 0009, photo_access) :
+/// l'original n'est envoyé que si `access == original` ; sinon, au mieux, une version floutée fabriquée par le serveur.
 class ProfilePhoto {
-  const ProfilePhoto({required this.id, required this.visibility, this.path});
+  const ProfilePhoto({required this.id, required this.visibility, required this.access, this.path, this.blurPath});
   final String id;
-  final String visibility; // public | blurred | private
-  final String? path; // nul si la photo n'est pas accessible au membre qui consulte
+  final String visibility; // choix du propriétaire : public | blurred | private
+  final String access; // pour le visiteur : original | blurred | none
+  final String? path; // original, seulement si access == original
+  final String? blurPath; // version floutée, seulement si access == blurred (nulle tant qu'elle n'est pas fabriquée)
+
+  bool get isBlurred => access == 'blurred';
+  bool get isHidden => access == 'none';
+
+  /// Floutée par choix de sa propriétaire : Premium ne la rend pas nette (addendum V6.4 §2.2).
+  bool get blurredByOwner => visibility == 'blurred';
 }
 
 /// Fiche complète d'un profil, limitée à ce que son propriétaire a choisi de montrer.
@@ -281,7 +291,8 @@ class ProfileDetail {
   final bool matched;
   final List<ProfilePhoto> photos;
 
-  int get hiddenPhotoCount => photos.where((p) => p.path == null).length;
+  /// Photos privées, ni nettes ni floutées pour ce visiteur.
+  int get hiddenPhotoCount => photos.where((p) => p.isHidden).length;
 
   static ProfileDetail fromJson(Map<String, dynamic> j) {
     final photos = <ProfilePhoto>[
@@ -289,7 +300,10 @@ class ProfileDetail {
         ProfilePhoto(
           id: (raw as Map)['id'] as String,
           visibility: raw['visibility'] as String,
+          // Serveur antérieur à 0009 : pas de champ access, déduit du chemin.
+          access: raw['access'] as String? ?? (raw['path'] != null ? 'original' : 'none'),
           path: raw['path'] as String?,
+          blurPath: raw['blur_path'] as String?,
         ),
     ];
     String? mainPath;

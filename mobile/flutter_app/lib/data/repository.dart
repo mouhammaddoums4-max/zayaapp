@@ -38,7 +38,8 @@ abstract class ZayaRepository {
 
   /// Retourne `pending` si la demande est enregistrée, `not_enough_photos` sinon.
   Future<String> requestVerification(Uint8List selfie);
-  Future<String?> photoUrl(String? path);
+  /// URL temporaire d'une photo ; `blurred` : version floutée fabriquée par le serveur (bucket profile-photos-blur).
+  Future<String?> photoUrl(String? path, {bool blurred = false});
 
   // ── Préférences de découverte
   Future<DiscoveryPrefs> loadPreferences();

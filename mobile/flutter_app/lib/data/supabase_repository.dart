@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -194,7 +195,16 @@ class SupabaseRepository implements ZayaRepository {
         .from('profile-photos')
         .uploadBinary(path, bytes, fileOptions: const FileOptions(contentType: 'image/jpeg'));
     final existing = await _db.from('profile_photos').select('id').eq('user_id', uid);
-    await _db.from('profile_photos').insert({'user_id': uid, 'storage_path': path, 'position': existing.length});
+    final row = await _db
+        .from('profile_photos')
+        .insert({'user_id': uid, 'storage_path': path, 'position': existing.length})
+        .select('id')
+        .single();
+    // Version floutée fabriquée par le serveur (fonction blur-photos), sans faire attendre le membre. Si l'appel
+    // échoue, le rattrapage s'en charge ; d'ici là, les visiteurs concernés voient un emplacement neutre.
+    unawaited(_db.functions
+        .invoke('blur-photos', body: {'photo_id': row['id']})
+        .then((_) {}, onError: (Object _) {}));
   }
 
   @override
@@ -216,13 +226,15 @@ class SupabaseRepository implements ZayaRepository {
   final Map<String, ({String url, DateTime expires})> _signedUrls = <String, ({String url, DateTime expires})>{};
 
   @override
-  Future<String?> photoUrl(String? path) async {
+  Future<String?> photoUrl(String? path, {bool blurred = false}) async {
     if (path == null) return null;
-    final cached = _signedUrls[path];
+    final bucket = blurred ? 'profile-photos-blur' : 'profile-photos';
+    final key = '$bucket/$path';
+    final cached = _signedUrls[key];
     if (cached != null && cached.expires.isAfter(DateTime.now())) return cached.url;
     try {
-      final url = await _db.storage.from('profile-photos').createSignedUrl(path, 3600);
-      _signedUrls[path] = (url: url, expires: DateTime.now().add(const Duration(minutes: 50)));
+      final url = await _db.storage.from(bucket).createSignedUrl(path, 3600);
+      _signedUrls[key] = (url: url, expires: DateTime.now().add(const Duration(minutes: 50)));
       return url;
     } catch (_) {
       return null;

@@ -472,7 +472,7 @@ class DemoRepository implements ZayaRepository {
   }
 
   @override
-  Future<String?> photoUrl(String? path) async => null;
+  Future<String?> photoUrl(String? path, {bool blurred = false}) async => null;
 
   @override
   Future<DiscoveryPrefs> loadPreferences() async => DiscoveryPrefs(
@@ -511,6 +511,15 @@ class DemoRepository implements ZayaRepository {
       heightCm: p.heightCm,
       isPhoneVerified: true,
       matched: _matches.any((m) => m.userId == userId),
+      // Même règle que le serveur (0009) : photo principale nette, suivantes floutées pour un membre Gratuit.
+      photos: [
+        for (var i = 0; i < 3; i++)
+          ProfilePhoto(
+            id: '$userId-photo-$i',
+            visibility: 'public',
+            access: i == 0 || (_profile?.isPremium ?? false) ? 'original' : 'blurred',
+          ),
+      ],
     );
   }
 

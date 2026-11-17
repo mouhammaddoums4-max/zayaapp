@@ -15,10 +15,14 @@ class ProfilePhotoView extends StatefulWidget {
     this.photoPath,
     this.initialSize = 120,
     this.avatar = false,
+    this.blurred = false,
   });
   final String name;
   final String? photoPath;
   final double initialSize;
+
+  /// `photoPath` désigne la version floutée fabriquée par le serveur (bucket profile-photos-blur).
+  final bool blurred;
 
   /// Présentation « avatar » : initiale centrée et opaque (au lieu du grand filigrane des cartes).
   final bool avatar;
@@ -39,12 +43,12 @@ class _ProfilePhotoViewState extends State<ProfilePhotoView> {
   @override
   void didUpdateWidget(ProfilePhotoView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.photoPath != widget.photoPath) _resolve();
+    if (oldWidget.photoPath != widget.photoPath || oldWidget.blurred != widget.blurred) _resolve();
   }
 
   void _resolve() {
     final path = widget.photoPath;
-    _url = path == null ? null : Session.read(context).repo.photoUrl(path);
+    _url = path == null ? null : Session.read(context).repo.photoUrl(path, blurred: widget.blurred);
   }
 
   @override
@@ -85,6 +89,86 @@ class _ProfilePhotoViewState extends State<ProfilePhotoView> {
           ),
         ]);
       },
+    );
+  }
+}
+
+/// Galerie des photos d'un profil consulté, telles que le serveur les autorise (migration 0009) : nettes,
+/// floutées (version fabriquée par le serveur, jamais l'original flouté sur le téléphone) ou privées.
+class ProfilePhotoGallery extends StatelessWidget {
+  const ProfilePhotoGallery({super.key, required this.name, required this.photos, this.onUnlock});
+  final String name;
+  final List<ProfilePhoto> photos;
+
+  /// Ouvre l'offre Premium depuis une photo floutée par la règle du forfait.
+  final VoidCallback? onUnlock;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: 160,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: photos.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 10),
+          itemBuilder: (context, i) => _GalleryTile(name: name, photo: photos[i], onUnlock: onUnlock),
+        ),
+      );
+}
+
+class _GalleryTile extends StatelessWidget {
+  const _GalleryTile({required this.name, required this.photo, this.onUnlock});
+  final String name;
+  final ProfilePhoto photo;
+  final VoidCallback? onUnlock;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = photo;
+    // Libellé honnête : une photo floutée par sa propriétaire ne devient pas nette avec Premium.
+    final String? label = p.isHidden ? 'Privée' : (p.isBlurred ? (p.blurredByOwner ? 'Floutée' : 'Premium') : null);
+    final premium = p.isBlurred && !p.blurredByOwner;
+    final unlockable = premium && onUnlock != null;
+
+    final tile = ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: SizedBox(
+        width: 120,
+        child: Stack(fit: StackFit.expand, children: [
+          if (p.isHidden)
+            const ColoredBox(color: ZColors.line)
+          else
+            ProfilePhotoView(
+              name: name,
+              photoPath: p.isBlurred ? p.blurPath : p.path,
+              blurred: p.isBlurred,
+              initialSize: 44,
+            ),
+          if (label != null) ...[
+            if (!p.isHidden) const ColoredBox(color: Color(0x33000000)),
+            Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.lock_outline, size: 26, color: p.isHidden ? ZColors.muted : Colors.white),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: premium ? ZColors.premium : Colors.white,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(label,
+                      style: GoogleFonts.inter(
+                          fontSize: 12, fontWeight: FontWeight.w700, color: premium ? Colors.white : ZColors.ink)),
+                ),
+              ]),
+            ),
+          ],
+        ]),
+      ),
+    );
+    return Semantics(
+      label: label == null ? 'Photo de $name' : 'Photo de $name, $label',
+      button: unlockable,
+      child: unlockable ? GestureDetector(onTap: onUnlock, child: tile) : tile,
     );
   }
 }

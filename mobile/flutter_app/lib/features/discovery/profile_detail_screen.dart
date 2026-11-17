@@ -6,6 +6,7 @@ import '../../core/motion.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/models.dart';
+import '../premium/premium_screens.dart';
 import '../safety/safety_sheets.dart';
 import 'profile_widgets.dart';
 
@@ -192,6 +193,30 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
 
     final sections = <Widget>[];
     void add(Widget section) => sections.add(FadeSlideIn(index: sections.length, child: section));
+
+    // Photos telles que le serveur les autorise : nettes, floutées (Premium ou choix de la propriétaire) ou privées.
+    if (detail != null && detail.photos.length > 1) {
+      final floueesPremium = detail.photos.where((p) => p.isBlurred && !p.blurredByOwner).length;
+      add(_Card(
+        title: 'Photos',
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          ProfilePhotoGallery(
+            name: base.displayName,
+            photos: detail.photos,
+            onUnlock: () => Navigator.of(context).push(zRoute<void>(const PremiumScreen())),
+          ),
+          if (floueesPremium > 0) ...[
+            const SizedBox(height: 10),
+            Text(
+              floueesPremium == 1
+                  ? '1 photo est floutée. Elle est visible nette avec ZAYA Premium.'
+                  : '$floueesPremium photos sont floutées. Elles sont visibles nettes avec ZAYA Premium.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ],
+        ]),
+      ));
+    }
 
     final points = me == null ? const <String>[] : commonPoints(me, base);
     if (points.isNotEmpty) {
