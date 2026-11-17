@@ -102,6 +102,35 @@ class ZStringsEn extends ZStrings {
   @override
   String settingsVersion(String version) => 'Version $version';
 
+  // ── Updates and rating
+  @override
+  String get updateUnavailable => 'The update is not available on Google Play yet.';
+  @override
+  String get updateRequiredTitle => 'Update required';
+  @override
+  String updateRequiredBody(String current, String latest) =>
+      'Your version ($current) is no longer supported. Install version $latest to keep using ZAYA safely.';
+  @override
+  String get updateNow => 'Update';
+  @override
+  String get updateLater => 'Later';
+  @override
+  String get updateAvailableTitle => 'New version available';
+  @override
+  String updateAvailableBody(String latest) => 'ZAYA version $latest is available, with improvements and fixes.';
+  @override
+  String get storeUnavailable => 'ZAYA is not published on Google Play yet.';
+  @override
+  String get settingsRate => 'Rate ZAYA';
+  @override
+  String get settingsRateSubtitle => 'Your review on Google Play helps us improve the app';
+  @override
+  String get settingsUpdates => 'Updates';
+  @override
+  String get settingsUpToDate => 'You have the latest version';
+  @override
+  String settingsUpdateAvailable(String latest) => 'Version $latest available: update';
+
   // ── Language
   @override
   String get languageTitle => 'App language';

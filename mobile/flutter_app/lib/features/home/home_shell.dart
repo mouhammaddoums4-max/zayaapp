@@ -1,9 +1,12 @@
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app.dart';
 import '../../core/motion.dart';
 import '../../core/tab_bar.dart';
+import '../app/app_update.dart';
+import '../app/rating_prompt.dart';
 import '../chat/conversations_screen.dart';
 import '../community/community_screen.dart';
 import '../discovery/discovery_screen.dart';
@@ -31,13 +34,34 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
   // Un onglet n'est construit (et ne charge ses données) qu'à sa première visite.
   final Set<int> _visited = <int>{0};
   int _messagesReload = 0;
+  final RatingPrompter _rating = RatingPrompter();
+  static const _updateDismissedKey = 'zaya_update_dismissed';
 
   @override
   void initState() {
     super.initState();
+    RatingPrompter.recordSession();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) Session.read(context).refreshBadges();
+      if (!mounted) return;
+      Session.read(context).refreshBadges();
+      _offerUpdate();
     });
+  }
+
+  /// Mise à jour disponible (non obligatoire) : proposée une seule fois par version.
+  Future<void> _offerUpdate() async {
+    final status = Session.read(context).update;
+    if (status.level != UpdateLevel.available) return;
+    // Pas par-dessus un autre écran (fin d'inscription…) : ce sera proposé au prochain lancement.
+    if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getString(_updateDismissedKey) == status.latest || !mounted) return;
+      await prefs.setString(_updateDismissedKey, status.latest);
+    } catch (_) {
+      return;
+    }
+    if (mounted) await showUpdateAvailableDialog(context, status);
   }
 
   @override
@@ -61,7 +85,10 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
     } else {
       _switch.forward(from: 0);
     }
-    Session.read(context).refreshBadges();
+    final session = Session.read(context);
+    session.refreshBadges();
+    // Changement d'onglet = moment calme : la demande d'avis éventuelle n'interrompt aucune action.
+    _rating.maybeAsk(session.ratingRules);
   }
 
   Widget _lazy(int index, Widget child) => _visited.contains(index) ? child : const SizedBox.shrink();

@@ -103,6 +103,36 @@ class ZStringsFr extends ZStrings {
   @override
   String settingsVersion(String version) => 'Version $version';
 
+  // ── Mises à jour et avis
+  @override
+  String get updateUnavailable => 'La mise à jour n’est pas encore disponible sur Google Play.';
+  @override
+  String get updateRequiredTitle => 'Mise à jour nécessaire';
+  @override
+  String updateRequiredBody(String current, String latest) => 'Votre version ($current) n’est plus prise en '
+      'charge. Installez la version $latest pour continuer à utiliser ZAYA en toute sécurité.';
+  @override
+  String get updateNow => 'Mettre à jour';
+  @override
+  String get updateLater => 'Plus tard';
+  @override
+  String get updateAvailableTitle => 'Nouvelle version disponible';
+  @override
+  String updateAvailableBody(String latest) =>
+      'La version $latest de ZAYA est disponible, avec des améliorations et des corrections.';
+  @override
+  String get storeUnavailable => 'ZAYA n’est pas encore publiée sur Google Play.';
+  @override
+  String get settingsRate => 'Noter ZAYA';
+  @override
+  String get settingsRateSubtitle => 'Votre avis sur Google Play nous aide à améliorer l’application';
+  @override
+  String get settingsUpdates => 'Mises à jour';
+  @override
+  String get settingsUpToDate => 'Vous avez la dernière version';
+  @override
+  String settingsUpdateAvailable(String latest) => 'Version $latest disponible : mettre à jour';
+
   // ── Langue
   @override
   String get languageTitle => 'Langue de l’application';

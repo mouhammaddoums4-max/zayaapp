@@ -1,3 +1,4 @@
+import 'package:in_app_review/in_app_review.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../app.dart';
@@ -6,6 +7,7 @@ import '../../core/l10n/l10n.dart';
 import '../../core/motion.dart';
 import '../../core/theme.dart';
 import '../../data/models.dart';
+import '../app/app_update.dart';
 import '../premium/premium_screens.dart';
 import '../profile/edit_profile_screen.dart';
 import '../profile/privacy_center_screen.dart';
@@ -50,6 +52,17 @@ class SettingsScreen extends StatelessWidget {
     if (ok != true) return;
     navigator.popUntil((route) => route.isFirst);
     await session.signOut();
+  }
+
+  /// Fiche Google Play pour laisser un avis (choix volontaire du membre, sans condition).
+  Future<void> _rate(BuildContext context) async {
+    final s = context.s;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await InAppReview.instance.openStoreListing();
+    } catch (_) {
+      messenger.showSnackBar(SnackBar(content: Text(s.storeUnavailable), behavior: SnackBarBehavior.floating));
+    }
   }
 
   void _explain(BuildContext context, {required String title, required String body}) {
@@ -132,6 +145,20 @@ class SettingsScreen extends StatelessWidget {
             title: s.settingsLanguage,
             subtitle: language.nativeName,
             onTap: () => _push(context, const LanguageScreen()),
+          ),
+          SettingsTile(
+            icon: Icons.system_update_outlined,
+            title: s.settingsUpdates,
+            subtitle: session.update.level == UpdateLevel.none
+                ? s.settingsUpToDate
+                : s.settingsUpdateAvailable(session.update.latest),
+            onTap: session.update.level == UpdateLevel.none ? null : () => openAppUpdate(context, session.update.url),
+          ),
+          SettingsTile(
+            icon: Icons.star_outline,
+            title: s.settingsRate,
+            subtitle: s.settingsRateSubtitle,
+            onTap: () => _rate(context),
           ),
         ]),
         SettingsSectionTitle(s.settingsPrivacySection),

@@ -5,6 +5,8 @@ import 'core/theme.dart';
 import 'core/widgets.dart';
 import 'data/models.dart';
 import 'data/repository.dart';
+import 'features/app/app_update.dart';
+import 'features/app/rating_prompt.dart';
 import 'features/home/home_shell.dart';
 import 'features/onboarding/welcome_screen.dart';
 
@@ -68,6 +70,21 @@ class Session extends ChangeNotifier {
   int likesBadge = 0;
   int unreadBadge = 0;
 
+  /// Réglages publics lus au lancement (app_config) : mise à jour proposée ou obligatoire, demande d'avis.
+  UpdateStatus update = const UpdateStatus.none();
+  RatingRules ratingRules = const RatingRules();
+
+  Future<void> loadAppConfig() async {
+    try {
+      final config = await repo.publicConfig();
+      update = evaluateUpdate(config);
+      ratingRules = RatingRules.fromConfig(config);
+      notifyListeners();
+    } catch (_) {
+      // Hors connexion : rien n'est imposé, nouvel essai au prochain lancement.
+    }
+  }
+
   Future<void> refresh() async {
     try {
       me = repo.isSignedIn ? await repo.loadMyProfile() : null;
@@ -129,6 +146,7 @@ class _ZayaAppState extends State<ZayaApp> {
     super.initState();
     _language.restore();
     _session.refresh();
+    _session.loadAppConfig();
   }
 
   @override
@@ -170,6 +188,7 @@ class _RootGate extends StatelessWidget {
   Widget build(BuildContext context) {
     final session = Session.of(context);
     if (session.loading) return const _Splash();
+    if (session.update.level == UpdateLevel.required) return RequiredUpdateScreen(status: session.update);
     final me = session.me;
     if (me == null || me.status == 'draft') return const WelcomeScreen();
     if (me.status == 'suspended' || me.status == 'banned' || me.status == 'deleted') {

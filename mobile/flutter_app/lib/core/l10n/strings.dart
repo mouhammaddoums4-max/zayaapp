@@ -72,6 +72,21 @@ abstract class ZStrings {
   String get settingsManageAccountSubtitle;
   String settingsVersion(String version);
 
+  // ── Mises à jour et avis
+  String get updateUnavailable;
+  String get updateRequiredTitle;
+  String updateRequiredBody(String current, String latest);
+  String get updateNow;
+  String get updateLater;
+  String get updateAvailableTitle;
+  String updateAvailableBody(String latest);
+  String get storeUnavailable;
+  String get settingsRate;
+  String get settingsRateSubtitle;
+  String get settingsUpdates;
+  String get settingsUpToDate;
+  String settingsUpdateAvailable(String latest);
+
   // ── Langue
   String get languageTitle;
   String get languageIntro;
