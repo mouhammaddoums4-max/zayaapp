@@ -79,12 +79,16 @@ Le hook n'a encore envoyé aucun SMS réel : à tester d'abord avec un numéro d
 
 Un visiteur Gratuit voit la photo principale nette et les suivantes floutées ; un visiteur Premium voit les photos publiques nettes ; une photo que sa propriétaire a choisie « floutée » reste floutée pour tous. Le flou est fabriqué par le serveur : l'original n'est jamais envoyé à qui n'y a pas droit.
 
+**Fait le 17/11/2026 sur `wocgmmwwopzrgleeevof`, avec l'accord du propriétaire** : 0007 et 0009 appliquées, fonction déployée, 120 photos sur 120 floutées. Vérifié avec un membre Gratuit : photo principale nette, photos suivantes servies floutées, original refusé même par demande directe.
+
+Pour un autre projet :
+
 1. Base déjà installée : collez dans l'éditeur SQL [0007_photos_lecture.sql](../supabase/migrations/0007_photos_lecture.sql) puis [0009_photos_floutees.sql](../supabase/migrations/0009_photos_floutees.sql), dans cet ordre.
-2. Déployez la fonction qui fabrique les versions floutées, puis lancez le rattrapage des photos existantes (20 photos par appel : relancer jusqu'à obtenir `"traitees":0`) :
+2. Déployez la fonction qui fabrique les versions floutées, puis lancez le rattrapage des photos existantes (3 photos par appel, à cause de la limite de calcul de Supabase : relancer jusqu'à obtenir `"traitees":0`). En cas de « Too many connections », relancer simplement.
 
 ```bash
-npx supabase functions deploy blur-photos --project-ref wocgmmwwopzrgleeevof
-curl -X POST https://wocgmmwwopzrgleeevof.supabase.co/functions/v1/blur-photos -H "Authorization: Bearer <clé service_role>" -d "{}"
+npx supabase functions deploy blur-photos --remote=<ref> --use-api
+curl -X POST https://<ref>.supabase.co/functions/v1/blur-photos -H "Authorization: Bearer <clé service_role>" -d "{}"
 ```
 
 Tant qu'une photo n'a pas encore de version floutée, l'application affiche un emplacement neutre à sa place, jamais l'original. Une version floutée reste dans le stockage après suppression de sa photo, mais n'est plus servie à personne (nettoyage à prévoir).
