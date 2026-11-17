@@ -132,15 +132,18 @@ select id, 'super_admin' from auth.users where phone = '224620000001';
 
 ### Profils d'essai : 20 femmes et 20 hommes fictifs
 
-Pour remplir Découvrir pendant les essais, [supabase/preproduction/profils_essai.mjs](../supabase/preproduction/profils_essai.mjs) crée 40 profils fictifs, actifs et vérifiés, avec 3 photos chacun (silhouettes illustrées générées par le script, aucune photo de personne réelle). Les comptes utilisent une adresse en `.invalid` : aucun vrai numéro de téléphone ne peut tomber sur l'un d'eux. Relancer la création ne fait pas de doublon.
+Pour remplir Découvrir pendant les essais, [supabase/preproduction/profils_essai.mjs](../supabase/preproduction/profils_essai.mjs) crée 40 profils fictifs, actifs et vérifiés, avec 3 photos chacun (silhouettes illustrées générées par le script, aucune photo de personne réelle). Les comptes utilisent une adresse en `.invalid` : aucun vrai numéro de téléphone ne peut tomber sur l'un d'eux. Relancer la création ne fait pas de doublon. Le script ajoute aussi des publications fictives dans la Communauté (questions, conseils, expériences), avec commentaires et réactions ; elles ne contiennent aucune coordonnée.
 
 ```bash
 # Clé service_role : Project Settings → API Keys. Ne jamais l'écrire dans un fichier du projet.
 SUPABASE_URL=https://wocgmmwwopzrgleeevof.supabase.co SUPABASE_SERVICE_ROLE_KEY=... node supabase/preproduction/profils_essai.mjs creer
+SUPABASE_URL=https://wocgmmwwopzrgleeevof.supabase.co SUPABASE_SERVICE_ROLE_KEY=... node supabase/preproduction/profils_essai.mjs communaute
 SUPABASE_URL=https://wocgmmwwopzrgleeevof.supabase.co SUPABASE_SERVICE_ROLE_KEY=... node supabase/preproduction/profils_essai.mjs supprimer
 ```
 
-Créés le 17/11/2026 sur `wocgmmwwopzrgleeevof` (40 sur 40 visibles dans Découvrir). **À supprimer avant toute ouverture au public** : de faux profils présentés à de vrais membres seraient trompeurs.
+« supprimer » ne retire que les comptes d'essai marqués par le script (jamais les comptes de test par téléphone) ; leurs publications, commentaires et réactions disparaissent avec eux.
+
+Créés le 17/11/2026 sur `wocgmmwwopzrgleeevof` : 40 profils sur 40 visibles dans Découvrir ; 16 publications, 18 commentaires et 75 réactions dans la Communauté. **À supprimer avant toute ouverture au public** : de faux profils présentés à de vrais membres seraient trompeurs.
 
 ## 6. Avant la production
 

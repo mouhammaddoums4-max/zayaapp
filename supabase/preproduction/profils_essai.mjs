@@ -10,7 +10,11 @@
 //
 // Usage (la clé service_role ne doit JAMAIS être écrite dans un fichier du projet) :
 //   SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SERVICE_ROLE_KEY=<clé> node supabase/preproduction/profils_essai.mjs creer
+//   SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SERVICE_ROLE_KEY=<clé> node supabase/preproduction/profils_essai.mjs communaute
 //   SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SERVICE_ROLE_KEY=<clé> node supabase/preproduction/profils_essai.mjs supprimer
+// « creer » ajoute aussi les publications fictives de la Communauté ; « communaute » les ajoute seules.
+// « supprimer » ne touche qu'aux comptes marqués zaya_essai (jamais aux comptes de test par téléphone) ; leurs
+// publications, commentaires et réactions disparaissent avec eux.
 // La clé se lit dans Supabase → Project Settings → API Keys, ou avec `npx supabase projects api-keys --project-ref <ref>`.
 // Relancer « creer » ne crée pas de doublon : les comptes existants sont complétés.
 import { deflateSync } from 'node:zlib';
@@ -106,6 +110,63 @@ const HOMMES = [
     'Technicien au port de Kamsar. Jeune et motivé, je cherche une relation sérieuse.'],
   ['Elhadj', 40, 'Conakry — Dixinn', 'Commerce', 'muslim', 'divorced', 2, 'few_months', 'Baccalauréat', 179, ['Français', 'Poular', 'Arabe'], ['Famille', 'Traditions', 'Entrepreneuriat'],
     'Commerçant établi, père de deux enfants. Je cherche une femme posée pour un mariage dans le respect.'],
+];
+
+// ───────────────────────────── Publications fictives de la Communauté (aucune coordonnée, aucune affirmation sur ZAYA)
+// [auteur, communauté (slug), type, texte, commentaires [[auteur, texte]…]]
+const PUBLICATIONS = [
+  ['Fatoumata', 'preparation-mariage', 'question',
+    'Pour celles et ceux qui ont déjà franchi le pas : quelles questions vous ont le plus aidés à savoir si vous étiez sur la même longueur d’onde avant les fiançailles ?',
+    [['Mamadou', 'Parler très tôt de la gestion de l’argent et du lieu de vie. Ça évite beaucoup de malentendus.'],
+      ['Hawa', 'La place des familles dans les décisions. C’est un sujet à aborder franchement, dès le début.']]],
+  ['Thierno', 'preparation-mariage', 'advice',
+    'Mon conseil : impliquez vos familles au bon moment. Ni trop tôt, pour garder un espace pour vous connaître, ni trop tard, pour que personne ne se sente mis devant le fait accompli.',
+    [['Kadiatou', 'Très juste. Chez nous, ce sont les tantes qui ont fait le lien entre les deux familles.']]],
+  ['Christine', 'preparation-mariage', 'experience',
+    'Notre préparation au mariage à la paroisse nous a beaucoup apporté : parler des valeurs, des enfants, du budget. Je la conseille à tous les couples chrétiens.',
+    []],
+  ['Kadiatou', 'vie-de-couple', 'question',
+    'Comment gérez-vous les désaccords sans que la discussion ne monte ? J’aimerais des conseils concrets.',
+    [['Abdoulaye', 'Attendre que la colère retombe avant d’en parler, puis écouter jusqu’au bout sans interrompre.'],
+      ['Mariam', 'Se rappeler qu’on est dans la même équipe, pas l’un contre l’autre.']]],
+  ['Ibrahima', 'vie-de-couple', 'advice',
+    'Prendre dix minutes chaque soir pour se raconter sa journée, même quand on est fatigué. C’est simple, mais ça change tout.',
+    [['Fanta', 'Et sans téléphone pendant ces dix minutes !']]],
+  ['Aïssatou', 'conseils-experiences', 'experience',
+    'Premier rendez-vous dans un salon de thé à Ratoma, avec ma cousine à une table voisine. J’étais plus détendue et la discussion a été naturelle. Je conseille un lieu public et de prévenir un proche.',
+    [['Sira', 'Bonne idée, je retiens pour mon premier rendez-vous.']]],
+  ['Sékou', 'conseils-experiences', 'advice',
+    'Avant de rencontrer quelqu’un, je garde les échanges dans l’application le temps de faire connaissance. Et jamais d’argent envoyé à une personne qu’on n’a pas rencontrée.',
+    [['Bintou', 'Merci de le rappeler, c’est essentiel.']]],
+  ['Hawa', 'famille-parentalite', 'question',
+    'Maman d’une petite fille, je me demande comment présenter un futur conjoint à mon enfant. Des expériences à partager ?',
+    [['Amadou', 'Veuf avec deux enfants : nous avons pris le temps, d’abord des sorties en groupe. Les enfants ont besoin de repères.']]],
+  ['Amadou', 'famille-parentalite', 'experience',
+    'Recomposer une famille demande de la patience. Ce qui nous aide : des règles claires à la maison et beaucoup de dialogue.',
+    []],
+  ['Mabinty', 'developpement-personnel', 'advice',
+    'L’an dernier, j’ai suivi une formation en ligne en informatique. Investir en soi rend plus confiant, y compris dans la vie à deux.',
+    [['Boubacar', 'Tu peux partager le nom de la formation ? Ça m’intéresse.']]],
+  ['Boubacar', 'developpement-personnel', 'question',
+    'Étudiants : comment concilier la fin des études et un projet de mariage ? On attend d’avoir un emploi stable ou on avance ensemble ?',
+    [['Oumou', 'Avancer ensemble, avec un plan clair et l’accord des familles.'],
+      ['Alpha', 'Un emploi stable rassure les familles, mais ce n’est pas une raison pour tout repousser.']]],
+  ['Djénabou', 'evenements-locaux', 'question',
+    'Y a-t-il des conférences sur la préparation au mariage à Mamou ou à Labé dans les prochains mois ?',
+    [['Kadiatou', 'Je me renseigne à Labé et je te dis.']]],
+  ['Cellou', 'questions-reponses', 'question',
+    'Quelles questions posez-vous lors d’une première conversation, pour aller au-delà du « ça va ? » ?',
+    [['Rouguiatou', 'Ce qui la ou le rend fier dans son travail. On apprend beaucoup sur la personne.'],
+      ['Ousmane', 'Comment elle imagine une journée idéale en famille.']]],
+  ['Saran', 'langues-regions', 'experience',
+    'Une pensée pour les personnes de Basse-Guinée : on se retrouve ici pour échanger en soussou !',
+    [['Souleymane', 'Présent ! Coyah répond à l’appel.']]],
+  ['Karamoko', 'langues-regions', 'question',
+    'Qui parle malinké par ici ? J’aimerais échanger sur les traditions de mariage en Haute-Guinée.',
+    [['Moussa', 'Siguiri est là. Les traditions de la dot sont un vrai sujet à partager.']]],
+  ['Odile', 'questions-reponses', 'question',
+    'Comment parlez-vous de foi et de pratique religieuse quand vous ne partagez pas exactement la même ?',
+    [['Michel', 'Avec respect et sans chercher à convaincre. Il faut savoir ce qui est essentiel pour chacun.']]],
 ];
 
 // ───────────────────────────── Appels à l'API Supabase (clé service_role : contourne RLS, usage serveur uniquement)
@@ -282,6 +343,55 @@ async function creer() {
   console.log(`\nCréés : ${crees} · complétés : ${completes} · profils d'essai visibles dans Découvrir : ${visibles.length} / ${ids.length}`);
 }
 
+// ───────────────────────────── Communauté : publications, commentaires et réactions des profils d'essai
+async function communaute() {
+  const comptes = await comptesEssai();
+  if (!comptes.length) throw new Error('Aucun profil d’essai : lancez d’abord « creer ».');
+  const ids = comptes.map((u) => u.id);
+  const deja = await api('GET', `/rest/v1/posts?select=id&author_id=in.(${ids.join(',')})&limit=1`);
+  if (deja.length) {
+    console.log('Communauté : les publications d’essai existent déjà, rien à ajouter.');
+    return;
+  }
+  const profils = await api('GET', `/rest/v1/profiles?select=id,display_name&id=in.(${ids.join(',')})`);
+  const parPrenom = new Map(profils.map((p) => [p.display_name, p.id]));
+  const auteur = (prenom) => {
+    const id = parPrenom.get(prenom);
+    if (!id) throw new Error(`Profil d’essai introuvable : ${prenom}`);
+    return id;
+  };
+  const communautes = new Map((await api('GET', '/rest/v1/communities?select=id,slug')).map((c) => [c.slug, c.id]));
+
+  let nPosts = 0, nComs = 0, nReactions = 0;
+  for (const [i, [prenom, slug, kind, body, commentaires]] of PUBLICATIONS.entries()) {
+    const communityId = communautes.get(slug);
+    if (!communityId) throw new Error(`Communauté inconnue : ${slug}`);
+    const auteurId = auteur(prenom);
+    const quand = Date.now() - (PUBLICATIONS.length - i) * 7 * 3600 * 1000; // étalées sur environ 5 jours
+    await api('POST', '/rest/v1/community_members?on_conflict=community_id,user_id',
+      { community_id: communityId, user_id: auteurId }, { Prefer: 'resolution=ignore-duplicates,return=minimal' });
+    const [post] = await api('POST', '/rest/v1/posts', {
+      community_id: communityId, author_id: auteurId, kind, body, created_at: new Date(quand).toISOString(),
+    }, { Prefer: 'return=representation' });
+    nPosts++;
+    for (const [k, [qui, texte]] of commentaires.entries()) {
+      await api('POST', '/rest/v1/comments', {
+        post_id: post.id, author_id: auteur(qui), body: texte,
+        created_at: new Date(quand + (k + 1) * 45 * 60 * 1000).toISOString(),
+      }, { Prefer: 'return=minimal' });
+      nComs++;
+    }
+    // Quelques réactions de profils d'essai (nombre et personnes variés, déterministes)
+    const reactions = profils.filter((_, k) => (k * 7 + i * 3) % 9 === 0 && profils[k].id !== auteurId)
+      .map((p) => ({ post_id: post.id, user_id: p.id }));
+    if (reactions.length) {
+      await api('POST', '/rest/v1/post_reactions', reactions, { Prefer: 'resolution=ignore-duplicates,return=minimal' });
+      nReactions += reactions.length;
+    }
+  }
+  console.log(`Communauté : ${nPosts} publications, ${nComs} commentaires, ${nReactions} réactions ajoutés.`);
+}
+
 async function supprimer() {
   const comptes = await comptesEssai();
   for (const u of comptes) {
@@ -297,11 +407,12 @@ async function supprimer() {
   console.log(`\nComptes d'essai supprimés : ${comptes.length}`);
 }
 
-if (!BASE || !KEY || !['creer', 'supprimer'].includes(MODE)) {
-  console.error('Usage : SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node supabase/preproduction/profils_essai.mjs creer|supprimer');
+if (!BASE || !KEY || !['creer', 'communaute', 'supprimer'].includes(MODE)) {
+  console.error('Usage : SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node supabase/preproduction/profils_essai.mjs creer|communaute|supprimer');
   process.exit(1);
 }
-await (MODE === 'creer' ? creer() : supprimer()).catch((e) => {
+const actions = { creer: async () => { await creer(); await communaute(); }, communaute, supprimer };
+await actions[MODE]().catch((e) => {
   console.error(`Erreur : ${e.message}`);
   process.exit(1);
 });
