@@ -411,6 +411,10 @@ const _knownErrors = <String, String>{
   'Token has expired or is invalid': 'Code incorrect ou expiré. Demandez un nouveau code.',
   'over_sms_send_rate_limit': 'Trop de demandes de code. Réessayez dans quelques minutes.',
   'sms_send_failed': 'Le SMS n’a pas pu être envoyé. Réessayez dans quelques minutes.',
+  // Messages renvoyés par le hook d'envoi Nimba (supabase/functions/send-sms-hook)
+  'Envoi de SMS temporairement indisponible': 'L’envoi du SMS est momentanément indisponible. Réessayez plus tard.',
+  'SMS n\'a pas pu être envoyé': 'Le SMS n’a pas pu être envoyé. Vérifiez le numéro, puis réessayez.',
+  'Trop de tentatives': 'Trop de demandes de code. Réessayez dans quelques minutes.',
   'phone_provider_disabled': 'La connexion par téléphone n’est pas encore activée sur le serveur.',
   'Unsupported phone provider': 'La connexion par téléphone n’est pas encore activée sur le serveur.',
   // Communauté

@@ -8,7 +8,7 @@ Tant qu'une décision n'est pas confirmée, elle reste **configurable** (`app_co
 |---|---|---|---|
 | B1 | Nom légal de l'éditeur, statut juridique, textes CGU / confidentialité / règles communautaires | Documents `v0-draft` | `legal_documents` |
 | B2 | Prestataire de vérification selfie / identité + politique de conservation biométrique | Revue **manuelle** par un modérateur | `verification_requests` |
-| B3 | Contrat et tarifs Nimba SMS, identifiant expéditeur, plafond mensuel | `sms_monthly_budget_gnf = 0` (envoi bloqué tant que non défini) | `app_config` + secrets |
+| B3 | Code OTP par **Nimba SMS** (confirmé le 17/11/2026, WhatsApp écarté). Compte fourni, expéditeur « Pinal Group » accepté. Reste : crédit SMS (solde 0 le 17/11), coût unitaire réel et plafond mensuel | `sms_monthly_budget_gnf = 0` (envoi bloqué tant que non défini) | `app_config` + secrets `NIMBA_*` ([INSTALLATION_SUPABASE.md](INSTALLATION_SUPABASE.md) §4) |
 | B4 | Budget et capacité de modération (délais critique < 2 h…) | SLA du cahier des charges | `app_config.report_sla_hours` |
 | B5 | Projet Supabase staging / production (création = engagement) | Projet `wocgmmwwopzrgleeevof` fourni le 17/11/2026, utilisé comme **préproduction** ; production non créée | [INSTALLATION_SUPABASE.md](INSTALLATION_SUPABASE.md) |
 | B6 | Chiffrement de la messagerie (E2E incompatible avec le filtrage serveur) | Chiffrement transit + repos, pas d'E2E | Architecture |

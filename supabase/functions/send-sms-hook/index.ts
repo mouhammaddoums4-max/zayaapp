@@ -3,11 +3,13 @@
 //
 // Secrets requis (supabase secrets set …) :
 //   SEND_SMS_HOOK_SECRET  secret du hook (format « v1,whsec_… » fourni par Supabase)
-//   NIMBA_SERVICE_ID, NIMBA_SECRET, NIMBA_SENDER
+//   NIMBA_SERVICE_ID, NIMBA_SECRET
+//   NIMBA_SENDER          nom d'expéditeur validé chez Nimba (statut « accepted »), sans valeur par défaut
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (fournis par la plateforme)
 //
-// NON VÉRIFIÉ : jamais exécuté contre l'API Nimba réelle. À tester en staging avec des clés de test
-// avant toute activation (tarifs, expéditeur et accusés de livraison à confirmer — décision B3).
+// Vérifié le 17/11/2026 (lecture seule) : identifiants Nimba valides, expéditeur « Pinal Group » accepté.
+// NON VÉRIFIÉ : aucun SMS réellement envoyé (solde SMS à 0 à cette date). À tester en préproduction avec un
+// numéro de l'équipe dès que du crédit est disponible (coût unitaire et plafond mensuel : décision B3).
 import { Webhook } from 'https://esm.sh/standardwebhooks@1.0.0';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -58,13 +60,21 @@ Deno.serve(async (req) => {
     .eq('phone_hash', phoneHash).gte('created_at', since);
   if ((count ?? 0) >= 3) return hookError(429, 'Trop de tentatives. Réessayez dans quelques minutes.');
 
-  const auth = btoa(`${Deno.env.get('NIMBA_SERVICE_ID')}:${Deno.env.get('NIMBA_SECRET')}`);
+  const serviceId = Deno.env.get('NIMBA_SERVICE_ID');
+  const nimbaSecret = Deno.env.get('NIMBA_SECRET');
+  const sender = Deno.env.get('NIMBA_SENDER');
+  if (!serviceId || !nimbaSecret || !sender) {
+    await admin.from('sms_log').insert({ phone_hash: phoneHash, status: 'error_config' });
+    return hookError(500, 'Envoi de SMS temporairement indisponible');
+  }
+
+  const auth = btoa(`${serviceId}:${nimbaSecret}`);
   const res = await fetch(NIMBA_URL, {
     method: 'POST',
     headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       to: [phone.replace('+', '')],
-      sender_name: Deno.env.get('NIMBA_SENDER') ?? 'ZAYA',
+      sender_name: sender,
       message: `ZAYA : votre code de vérification est ${event.sms.otp}. Ne le communiquez à personne.`,
     }),
   });
