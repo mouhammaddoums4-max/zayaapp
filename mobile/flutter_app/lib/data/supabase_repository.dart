@@ -66,6 +66,22 @@ class SupabaseRepository implements ZayaRepository {
   }
 
   @override
+  Future<List<Country>> countries() async {
+    final rows = await _db.from('countries').select('code, name_fr, name_en').order('name_fr');
+    return [for (final r in rows) Country(r['code'] as String, r['name_fr'] as String, r['name_en'] as String)];
+  }
+
+  /// Seules les professions actives sont lisibles (RLS `professions_read`).
+  @override
+  Future<List<Profession>> professions() async {
+    final rows = await _db.from('professions').select('id, label_fr, label_en').order('label_fr');
+    return [
+      for (final r in rows)
+        Profession((r['id'] as num).toInt(), r['label_fr'] as String, labelEn: r['label_en'] as String?),
+    ];
+  }
+
+  @override
   Future<MyProfile?> loadMyProfile() async {
     final uid = userId;
     if (uid == null) return null;
@@ -122,6 +138,10 @@ class SupabaseRepository implements ZayaRepository {
       'country_code': 'GN',
       'city_id': d.cityId,
       'marital_status': d.maritalStatus,
+      'nationality_code': d.nationalityCode,
+      'profession_id': d.professionId,
+      'profession_other':
+          d.professionId == null && d.professionOther.trim().isNotEmpty ? d.professionOther.trim() : null,
       'marriage_horizon': d.horizon,
       'bio': bio.isEmpty ? null : bio,
     });
@@ -202,9 +222,7 @@ class SupabaseRepository implements ZayaRepository {
         .single();
     // Version floutée fabriquée par le serveur (fonction blur-photos), sans faire attendre le membre. Si l'appel
     // échoue, le rattrapage s'en charge ; d'ici là, les visiteurs concernés voient un emplacement neutre.
-    unawaited(_db.functions
-        .invoke('blur-photos', body: {'photo_id': row['id']})
-        .then((_) {}, onError: (Object _) {}));
+    unawaited(_db.functions.invoke('blur-photos', body: {'photo_id': row['id']}).then((_) {}, onError: (Object _) {}));
   }
 
   @override

@@ -334,6 +334,41 @@ class DemoRepository implements ZayaRepository {
         City(10, 'N’Zérékoré'),
       ];
 
+  /// Même référentiel que le seed serveur (supabase/seed/seed.sql).
+  @override
+  Future<List<Country>> countries() async => const <Country>[
+        Country('GN', 'Guinée', 'Guinea'),
+        Country('SN', 'Sénégal', 'Senegal'),
+        Country('CI', 'Côte d’Ivoire', 'Côte d’Ivoire'),
+        Country('ML', 'Mali', 'Mali'),
+        Country('SL', 'Sierra Leone', 'Sierra Leone'),
+        Country('LR', 'Libéria', 'Liberia'),
+        Country('GW', 'Guinée-Bissau', 'Guinea-Bissau'),
+        Country('GM', 'Gambie', 'Gambia'),
+        Country('FR', 'France', 'France'),
+      ];
+
+  @override
+  Future<List<Profession>> professions() async => const <Profession>[
+        Profession(1, 'Administration publique'),
+        Profession(2, 'Agriculture / élevage'),
+        Profession(3, 'Commerce'),
+        Profession(4, 'Artisanat'),
+        Profession(5, 'Bâtiment / BTP'),
+        Profession(6, 'Transport / logistique'),
+        Profession(7, 'Santé'),
+        Profession(8, 'Éducation / enseignement'),
+        Profession(9, 'Informatique / télécoms'),
+        Profession(10, 'Banque / finance'),
+        Profession(11, 'Sécurité'),
+        Profession(12, 'Industrie / mines'),
+        Profession(13, 'Services'),
+        Profession(14, 'Étudiant(e)'),
+        Profession(15, 'Sans emploi'),
+        Profession(16, 'Retraité(e)'),
+        Profession(17, 'Travail domestique / ménager'),
+      ];
+
   @override
   Future<MyProfile?> loadMyProfile() async => _profile;
 

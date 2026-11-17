@@ -266,6 +266,25 @@ class ZStringsFr extends ZStrings {
   @override
   String get supportReplyLabel => 'Réponse de l’assistance';
 
+  // ── Inscription : nationalité et profession
+  @override
+  String get onbNationalityTitle => 'Votre nationalité';
+  @override
+  String get onbNationalitySubtitle => 'Facultatif. Vous choisissez ce que vous souhaitez indiquer.';
+  @override
+  String get onbProfessionTitle => 'Quelle est votre profession ?';
+  @override
+  String get onbProfessionSubtitle => 'Facultatif. Choisissez dans la liste ou précisez la vôtre.';
+  @override
+  String get onbProfessionSearch => 'Rechercher un métier';
+  @override
+  String get onbProfessionNoResult => 'Aucun métier ne correspond : précisez le vôtre ci-dessous.';
+  @override
+  String get onbProfessionOther => 'Autre profession (facultatif)';
+  @override
+  String get onbListUnavailable => 'La liste n’a pas pu être chargée. Vous pouvez passer cette étape et compléter '
+      'votre profil plus tard.';
+
   // ── Fin d'inscription et code de connexion
   @override
   String get signupDoneTitle => 'Votre profil est créé';

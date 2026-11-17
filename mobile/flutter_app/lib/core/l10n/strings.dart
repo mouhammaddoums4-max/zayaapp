@@ -115,6 +115,16 @@ abstract class ZStrings {
   String supportStatus(String status);
   String get supportReplyLabel;
 
+  // ── Inscription : nationalité et profession (B07, B08)
+  String get onbNationalityTitle;
+  String get onbNationalitySubtitle;
+  String get onbProfessionTitle;
+  String get onbProfessionSubtitle;
+  String get onbProfessionSearch;
+  String get onbProfessionNoResult;
+  String get onbProfessionOther;
+  String get onbListUnavailable;
+
   // ── Fin d'inscription et code de connexion
   String get signupDoneTitle;
   String get signupDoneBody;

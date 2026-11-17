@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app.dart';
+import '../../core/l10n/l10n.dart';
 import '../../core/motion.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
@@ -13,7 +14,22 @@ import 'signup_done_screen.dart';
 
 const _draftKey = 'zaya_onboarding_draft';
 
-enum _Step { adult, name, birth, gender, city, horizon, marital, confession, discovery, bio, phone, rules }
+enum _Step {
+  adult,
+  name,
+  birth,
+  gender,
+  city,
+  horizon,
+  marital,
+  nationality,
+  profession,
+  confession,
+  discovery,
+  bio,
+  phone,
+  rules
+}
 
 /// Inscription progressive : une question par écran, barre de progression animée,
 /// brouillon sauvegardé sur l'appareil pour reprendre après une interruption.
@@ -27,6 +43,9 @@ class OnboardingFlow extends StatefulWidget {
 class _OnboardingFlowState extends State<OnboardingFlow> {
   OnboardingDraft _d = OnboardingDraft();
   List<City> _cities = const <City>[];
+  List<Country> _countries = const <Country>[];
+  List<Profession> _professions = const <Profession>[];
+  String _professionQuery = '';
   bool _loaded = false;
   bool _forward = true;
   bool _phoneVerified = false;
@@ -34,6 +53,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   String _cityQuery = '';
   final _name = TextEditingController();
   final _bio = TextEditingController();
+  final _professionOther = TextEditingController();
 
   _Step get _step => _Step.values[_d.step.clamp(0, _Step.values.length - 1).toInt()];
   bool get _isLast => _step == _Step.values.last;
@@ -48,6 +68,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   void dispose() {
     _name.dispose();
     _bio.dispose();
+    _professionOther.dispose();
     super.dispose();
   }
 
@@ -66,9 +87,21 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     } catch (_) {
       _cities = const <City>[];
     }
+    // Référentiels facultatifs : sans eux, les étapes nationalité et profession peuvent être passées.
+    try {
+      _countries = await repo.countries();
+    } catch (_) {
+      _countries = const <Country>[];
+    }
+    try {
+      _professions = await repo.professions();
+    } catch (_) {
+      _professions = const <Profession>[];
+    }
     _phoneVerified = repo.isSignedIn;
     _name.text = _d.displayName;
     _bio.text = _d.bio;
+    _professionOther.text = _d.professionOther;
     if (mounted) setState(() => _loaded = true);
   }
 
@@ -91,6 +124,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         _Step.city => _d.cityId != null,
         _Step.horizon => _d.horizon != null,
         _Step.marital => true,
+        _Step.nationality => true,
+        _Step.profession => true,
         _Step.confession => !_hasConfession || _d.confessionConsent,
         _Step.discovery => _d.confessionMode != 'selected' || _d.selectedConfessions.isNotEmpty,
         _Step.bio => true,
@@ -103,6 +138,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     if (_isLast) return 'Entrer sur ZAYA';
     final empty = switch (_step) {
       _Step.marital => _d.maritalStatus == null,
+      _Step.nationality => _d.nationalityCode == null,
+      _Step.profession => _d.professionId == null && _d.professionOther.trim().isEmpty,
       _Step.confession => _d.confession == null,
       _Step.bio => _d.bio.trim().isEmpty,
       _ => false,
@@ -377,6 +414,69 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               selected: _d.maritalStatus == e.key,
               onTap: () => setState(() => _d.maritalStatus = _d.maritalStatus == e.key ? null : e.key),
             ),
+        ];
+
+      case _Step.nationality:
+        final s = context.s;
+        final lang = LanguageScope.maybeOf(context)?.language.code ?? 'fr';
+        return [
+          ..._title(context, s.onbNationalityTitle, s.onbNationalitySubtitle),
+          if (_countries.isEmpty)
+            InfoBanner(tone: BannerTone.warning, icon: Icons.wifi_off, text: s.onbListUnavailable),
+          for (final c in _countries)
+            ChoiceTile(
+              label: c.name(lang),
+              selected: _d.nationalityCode == c.code,
+              onTap: () => setState(() => _d.nationalityCode = _d.nationalityCode == c.code ? null : c.code),
+            ),
+        ];
+
+      case _Step.profession:
+        final s = context.s;
+        final lang = LanguageScope.maybeOf(context)?.language.code ?? 'fr';
+        final query = _professionQuery.trim().toLowerCase();
+        final matches = [
+          for (final p in _professions)
+            if (query.isEmpty || p.label(lang).toLowerCase().contains(query)) p,
+        ];
+        return [
+          ..._title(context, s.onbProfessionTitle, s.onbProfessionSubtitle),
+          if (_professions.isEmpty)
+            InfoBanner(tone: BannerTone.warning, icon: Icons.wifi_off, text: s.onbListUnavailable)
+          else ...[
+            TextField(
+              decoration: InputDecoration(hintText: s.onbProfessionSearch, prefixIcon: const Icon(Icons.search)),
+              onChanged: (v) => setState(() => _professionQuery = v),
+            ),
+            const SizedBox(height: 14),
+            if (matches.isEmpty) ...[
+              Text(s.onbProfessionNoResult, style: Theme.of(context).textTheme.bodyMedium),
+              const SizedBox(height: 12),
+            ],
+            for (final p in matches)
+              ChoiceTile(
+                label: p.label(lang),
+                selected: _d.professionId == p.id,
+                onTap: () => setState(() {
+                  _d.professionId = _d.professionId == p.id ? null : p.id;
+                  if (_d.professionId != null) {
+                    _d.professionOther = '';
+                    _professionOther.clear();
+                  }
+                }),
+              ),
+          ],
+          const SizedBox(height: 6),
+          TextField(
+            controller: _professionOther,
+            maxLength: 60,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(labelText: s.onbProfessionOther),
+            onChanged: (v) => setState(() {
+              _d.professionOther = v;
+              if (v.trim().isNotEmpty) _d.professionId = null;
+            }),
+          ),
         ];
 
       case _Step.confession:

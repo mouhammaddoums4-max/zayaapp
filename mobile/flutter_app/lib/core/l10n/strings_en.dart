@@ -262,6 +262,25 @@ class ZStringsEn extends ZStrings {
   @override
   String get supportReplyLabel => 'Answer from support';
 
+  // ── Sign-up: nationality and profession
+  @override
+  String get onbNationalityTitle => 'Your nationality';
+  @override
+  String get onbNationalitySubtitle => 'Optional. You choose what you want to share.';
+  @override
+  String get onbProfessionTitle => 'What is your profession?';
+  @override
+  String get onbProfessionSubtitle => 'Optional. Choose from the list or describe your own.';
+  @override
+  String get onbProfessionSearch => 'Search for a job';
+  @override
+  String get onbProfessionNoResult => 'No job matches: describe yours below.';
+  @override
+  String get onbProfessionOther => 'Other profession (optional)';
+  @override
+  String get onbListUnavailable => 'The list could not be loaded. You can skip this step and complete your profile '
+      'later.';
+
   // ── End of sign-up and sign-in code
   @override
   String get signupDoneTitle => 'Your profile is created';

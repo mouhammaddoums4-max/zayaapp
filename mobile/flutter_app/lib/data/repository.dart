@@ -23,6 +23,10 @@ abstract class ZayaRepository {
 
   // ── Mon profil
   Future<List<City>> cities();
+
+  /// Référentiels publics (lisibles avant la connexion) : pays et catalogue des professions.
+  Future<List<Country>> countries();
+  Future<List<Profession>> professions();
   Future<MyProfile?> loadMyProfile();
   Future<void> saveOnboarding(OnboardingDraft draft);
   Future<void> updateProfile({
@@ -38,6 +42,7 @@ abstract class ZayaRepository {
 
   /// Retourne `pending` si la demande est enregistrée, `not_enough_photos` sinon.
   Future<String> requestVerification(Uint8List selfie);
+
   /// URL temporaire d'une photo ; `blurred` : version floutée fabriquée par le serveur (bucket profile-photos-blur).
   Future<String?> photoUrl(String? path, {bool blurred = false});
 

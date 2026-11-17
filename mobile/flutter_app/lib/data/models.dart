@@ -66,6 +66,27 @@ class City {
   final String name;
 }
 
+/// Pays du référentiel (`countries`) : nationalité, pays de résidence.
+class Country {
+  const Country(this.code, this.nameFr, this.nameEn);
+  final String code; // ISO 3166-1 alpha-2
+  final String nameFr;
+  final String nameEn;
+
+  String name(String lang) => lang == 'en' ? nameEn : nameFr;
+}
+
+/// Profession du catalogue administrable (`professions`, jamais codé en dur dans l'application).
+class Profession {
+  const Profession(this.id, this.labelFr, {this.labelEn});
+  final int id;
+  final String labelFr;
+  final String? labelEn;
+
+  /// Libellé dans la langue de l'interface ; français si la traduction manque encore.
+  String label(String lang) => lang == 'en' && (labelEn ?? '').isNotEmpty ? labelEn! : labelFr;
+}
+
 /// Brouillon d'inscription, sauvegardé localement pour reprendre après interruption.
 class OnboardingDraft {
   bool adultConfirmed = false;
@@ -75,6 +96,9 @@ class OnboardingDraft {
   int? cityId;
   String? horizon;
   String? maritalStatus; // facultatif
+  String? nationalityCode; // facultatif (B07)
+  int? professionId; // facultatif (B08)
+  String professionOther = ''; // « Autre », 60 caractères au plus
   String? confession; // facultatif
   bool confessionConsent = false;
   String confessionMode = 'no_filter';
@@ -95,6 +119,9 @@ class OnboardingDraft {
         'cityId': cityId,
         'horizon': horizon,
         'maritalStatus': maritalStatus,
+        'nationalityCode': nationalityCode,
+        'professionId': professionId,
+        'professionOther': professionOther,
         'confession': confession,
         'confessionConsent': confessionConsent,
         'confessionMode': confessionMode,
@@ -114,6 +141,9 @@ class OnboardingDraft {
     ..cityId = (j['cityId'] as num?)?.toInt()
     ..horizon = j['horizon'] as String?
     ..maritalStatus = j['maritalStatus'] as String?
+    ..nationalityCode = j['nationalityCode'] as String?
+    ..professionId = (j['professionId'] as num?)?.toInt()
+    ..professionOther = (j['professionOther'] as String?) ?? ''
     ..confession = j['confession'] as String?
     ..confessionConsent = j['confessionConsent'] == true
     ..confessionMode = (j['confessionMode'] as String?) ?? 'no_filter'
