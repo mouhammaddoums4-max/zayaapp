@@ -23,7 +23,9 @@ const _supabaseKey = String.fromEnvironment(
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setSystemUIOverlayStyle(zSystemNavigationBarStyle); // barre du téléphone = barre d'onglets
+  // Plein écran : les barres du téléphone, transparentes, prennent la couleur de l'écran affiché (voir zSystemUi).
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(zSystemUi);
   _registerFontLicenses();
   late final ZayaRepository repository;
   if (_supabaseUrl.isEmpty || _supabaseKey.isEmpty) {

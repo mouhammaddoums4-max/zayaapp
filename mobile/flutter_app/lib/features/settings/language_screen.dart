@@ -49,7 +49,7 @@ class _LanguageScreenState extends State<LanguageScreen> {
 
     return Scaffold(
       appBar: AppBar(title: Text(s.languageTitle)),
-      body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 28), children: [
+      body: ListView(padding: EdgeInsets.fromLTRB(16, 8, 16, 28 + MediaQuery.paddingOf(context).bottom), children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(4, 0, 4, 14),
           child: Text(s.languageIntro, style: Theme.of(context).textTheme.bodyLarge),

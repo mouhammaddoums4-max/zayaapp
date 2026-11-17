@@ -50,7 +50,7 @@ class _HelpScreenState extends State<HelpScreen> {
     final whatsapp = _whatsapp;
     return Scaffold(
       appBar: AppBar(title: Text(s.helpTitle)),
-      body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 28), children: [
+      body: ListView(padding: EdgeInsets.fromLTRB(16, 8, 16, 28 + MediaQuery.paddingOf(context).bottom), children: [
         _SafetyCard(onReport: () => _push(const SupportRequestScreen(initialCategory: 'safety'))),
         SettingsSectionTitle(s.helpFaqTitle),
         for (final section in s.faq) ...[

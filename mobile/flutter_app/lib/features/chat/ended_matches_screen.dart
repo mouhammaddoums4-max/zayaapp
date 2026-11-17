@@ -56,7 +56,7 @@ class _EndedMatchesScreenState extends State<EndedMatchesScreen> {
             );
           }
           final ended = snapshot.data ?? const <EndedMatch>[];
-          return ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 28), children: [
+          return ListView(padding: EdgeInsets.fromLTRB(16, 8, 16, 28 + MediaQuery.paddingOf(context).bottom), children: [
             InfoBanner(icon: Icons.info_outline, text: s.endedMatchesExplain),
             const SizedBox(height: 14),
             if (ended.isEmpty)

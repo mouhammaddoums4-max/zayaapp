@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -15,6 +16,14 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDemo = Session.of(context).repo.isDemo;
+    // Plein écran : le dégradé passe sous les barres du téléphone, avec des icônes claires.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: zSystemUiOnBrand,
+      child: _page(context, isDemo),
+    );
+  }
+
+  Widget _page(BuildContext context, bool isDemo) {
     return Scaffold(
       body: DecoratedBox(
         decoration: const BoxDecoration(gradient: ZColors.brandGradient),

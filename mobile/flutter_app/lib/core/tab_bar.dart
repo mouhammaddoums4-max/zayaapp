@@ -31,9 +31,9 @@ class ZayaTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // La barre système du téléphone prend la couleur de la barre d'onglets (voir zSystemNavigationBarStyle).
+    // Barre du téléphone transparente sur le blanc de la barre d'onglets, icônes sombres (voir zSystemUi).
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: zSystemNavigationBarStyle,
+      value: zSystemUi,
       child: _bar(context),
     );
   }

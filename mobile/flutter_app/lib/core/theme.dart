@@ -2,13 +2,30 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Barre de navigation du téléphone (Android) : même blanc que la barre d'onglets de l'application, icônes
-/// sombres, sans le voile de contraste qu'Android ajoute sinon. Appliquée au démarrage (main.dart) et par la
-/// barre d'onglets elle-même, qui se dessine aussi sous la barre système quand l'écran est en bord à bord.
-const zSystemNavigationBarStyle = SystemUiOverlayStyle(
-  systemNavigationBarColor: Colors.white,
-  systemNavigationBarDividerColor: Colors.white,
+/// Barres du téléphone (Android) transparentes : l'application s'affiche en plein écran (main.dart), sous la barre
+/// d'état et sous la barre de navigation, qui prennent donc la couleur de l'écran affiché : dégradé de l'accueil,
+/// blanc de la barre d'onglets, fond des autres écrans. Pas de voile de contraste ajouté par Android.
+/// Icônes sombres sur les écrans clairs ; [zSystemUiOnBrand] sur les écrans au dégradé de marque.
+const zSystemUi = SystemUiOverlayStyle(
+  statusBarColor: Colors.transparent,
+  statusBarIconBrightness: Brightness.dark,
+  statusBarBrightness: Brightness.light,
+  systemStatusBarContrastEnforced: false,
+  systemNavigationBarColor: Colors.transparent,
+  systemNavigationBarDividerColor: Colors.transparent,
   systemNavigationBarIconBrightness: Brightness.dark,
+  systemNavigationBarContrastEnforced: false,
+);
+
+/// Variante pour les écrans au dégradé de marque (accueil) : icônes claires.
+const zSystemUiOnBrand = SystemUiOverlayStyle(
+  statusBarColor: Colors.transparent,
+  statusBarIconBrightness: Brightness.light,
+  statusBarBrightness: Brightness.dark,
+  systemStatusBarContrastEnforced: false,
+  systemNavigationBarColor: Colors.transparent,
+  systemNavigationBarDividerColor: Colors.transparent,
+  systemNavigationBarIconBrightness: Brightness.light,
   systemNavigationBarContrastEnforced: false,
 );
 
