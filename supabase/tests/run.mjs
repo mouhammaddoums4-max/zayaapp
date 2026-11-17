@@ -230,6 +230,25 @@ await test("supprimer une photo sous le minimum retire le badge et sort le profi
   await db.query(`insert into profile_photos (user_id, storage_path, position, moderation) values ($1, $2, 0, 'approved')`, [U.paul, `${U.paul}/p0b.jpg`]);
   await db.query(`update profiles set verification_status = 'approved' where id = $1`, [U.paul]);
 });
+await test("filtre par ville ou commune : restreint ce que je vois, sans me cacher aux autres villes", async () => {
+  const nomsVus = async (u) => (await feed(U.moussa === u ? U.moussa : u)).map((r) => r.display_name).sort().join();
+  const villeDesFemmes = (await db.query(`select city_id from profiles where id = $1`, [U.aicha])).rows[0].city_id;
+  const autreVille = (await db.query(`select id from cities where id <> $1 limit 1`, [villeDesFemmes])).rows[0].id;
+  const avant = await nomsVus(U.moussa);
+  assert(avant.length > 0, 'jeu de test : Moussa doit voir au moins un profil');
+  try {
+    await as(U.moussa, `update discovery_preferences set city_ids = $2 where user_id = $1`, [U.moussa, [autreVille]]);
+    assert((await nomsVus(U.moussa)) === '', `ville sans profil : Moussa voit ${await nomsVus(U.moussa)}`);
+    await as(U.moussa, `update discovery_preferences set city_ids = $2 where user_id = $1`, [U.moussa, [autreVille, villeDesFemmes]]);
+    assert((await nomsVus(U.moussa)) === avant, 'plusieurs villes : les profils de l’une d’elles doivent être proposés');
+    // Sens unique : le filtre d'Aïcha ne la cache pas à Moussa.
+    await as(U.aicha, `update discovery_preferences set city_ids = $2 where user_id = $1`, [U.aicha, [autreVille]]);
+    await as(U.moussa, `update discovery_preferences set city_ids = '{}' where user_id = $1`, [U.moussa]);
+    assert((await nomsVus(U.moussa)) === avant, 'le filtre de ville d’Aïcha l’a cachée à Moussa');
+  } finally {
+    await db.query(`update discovery_preferences set city_ids = '{}' where user_id in ($1, $2)`, [U.moussa, U.aicha]);
+  }
+});
 
 console.log('\nLikes et matchs');
 let matchId;
