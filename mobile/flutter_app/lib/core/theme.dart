@@ -1,5 +1,16 @@
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+/// Barre de navigation du téléphone (Android) : même blanc que la barre d'onglets de l'application, icônes
+/// sombres, sans le voile de contraste qu'Android ajoute sinon. Appliquée au démarrage (main.dart) et par la
+/// barre d'onglets elle-même, qui se dessine aussi sous la barre système quand l'écran est en bord à bord.
+const zSystemNavigationBarStyle = SystemUiOverlayStyle(
+  systemNavigationBarColor: Colors.white,
+  systemNavigationBarDividerColor: Colors.white,
+  systemNavigationBarIconBrightness: Brightness.dark,
+  systemNavigationBarContrastEnforced: false,
+);
 
 /// Tokens de couleur ZAYA — voir documentation/design/DESIGN_SYSTEM.md
 class ZColors {

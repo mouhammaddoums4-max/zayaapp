@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -30,6 +31,14 @@ class ZayaTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // La barre système du téléphone prend la couleur de la barre d'onglets (voir zSystemNavigationBarStyle).
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: zSystemNavigationBarStyle,
+      child: _bar(context),
+    );
+  }
+
+  Widget _bar(BuildContext context) {
     return Material(
       color: Colors.white,
       shape: const Border(top: BorderSide(color: ZColors.line)),

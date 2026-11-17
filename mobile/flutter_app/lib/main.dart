@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
+import 'core/theme.dart';
 import 'data/demo_repository.dart';
 import 'data/repository.dart';
 import 'data/supabase_repository.dart';
@@ -22,6 +23,7 @@ const _supabaseKey = String.fromEnvironment(
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setSystemUIOverlayStyle(zSystemNavigationBarStyle); // barre du téléphone = barre d'onglets
   _registerFontLicenses();
   late final ZayaRepository repository;
   if (_supabaseUrl.isEmpty || _supabaseKey.isEmpty) {
