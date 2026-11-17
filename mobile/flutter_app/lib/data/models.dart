@@ -1,0 +1,519 @@
+/// Modèles de données ZAYA (côté application).
+library;
+
+const confessionLabels = <String, String>{
+  'muslim': 'Musulman(e)',
+  'christian': 'Chrétien(ne)',
+  'other': 'Autre confession',
+  'none': 'Sans religion',
+  'undisclosed': 'Je préfère ne pas préciser',
+};
+
+const horizonLabels = <String, String>{
+  'soon': 'Bientôt',
+  'few_months': 'Dans les prochains mois',
+  'medium_term': 'À moyen terme',
+  'no_date': 'Sans date précise',
+};
+
+const maritalLabels = <String, String>{
+  'single': 'Célibataire',
+  'divorced': 'Divorcé(e)',
+  'widowed': 'Veuf / veuve',
+  'separated': 'Séparé(e)',
+  'married': 'Marié(e)',
+  'other': 'Autre',
+};
+
+const confessionModeLabels = <String, String>{
+  'no_filter': 'Sans filtre confessionnel',
+  'mine_only': 'Ma confession uniquement',
+  'selected': 'Une ou plusieurs confessions choisies',
+  'all': 'Toutes les confessions',
+};
+
+/// Listes proposées dans l'application (à rendre administrables au lot « référentiels »).
+const languageOptions = <String>[
+  'Français', 'Anglais', 'Poular', 'Malinké', 'Soussou', 'Kissi', 'Guerzé', 'Arabe', 'Wolof',
+];
+
+const interestOptions = <String>[
+  'Famille', 'Lecture', 'Cuisine', 'Sport', 'Voyages', 'Entrepreneuriat', 'Éducation', 'Bénévolat',
+  'Musique', 'Traditions', 'Technologie', 'Nature',
+];
+
+class City {
+  const City(this.id, this.name);
+  final int id;
+  final String name;
+}
+
+/// Brouillon d'inscription, sauvegardé localement pour reprendre après interruption.
+class OnboardingDraft {
+  bool adultConfirmed = false;
+  String displayName = '';
+  DateTime? birthDate;
+  String? gender; // femme | homme
+  int? cityId;
+  String? horizon;
+  String? maritalStatus; // facultatif
+  String? confession; // facultatif
+  bool confessionConsent = false;
+  String confessionMode = 'no_filter';
+  List<String> selectedConfessions = [];
+  int ageMin = 18;
+  int ageMax = 45;
+  String bio = '';
+  String phone = '';
+  bool acceptedTerms = false;
+  bool marketingConsent = false;
+  int step = 0;
+
+  Map<String, dynamic> toJson() => {
+        'adultConfirmed': adultConfirmed,
+        'displayName': displayName,
+        'birthDate': birthDate?.toIso8601String(),
+        'gender': gender,
+        'cityId': cityId,
+        'horizon': horizon,
+        'maritalStatus': maritalStatus,
+        'confession': confession,
+        'confessionConsent': confessionConsent,
+        'confessionMode': confessionMode,
+        'selectedConfessions': selectedConfessions,
+        'ageMin': ageMin,
+        'ageMax': ageMax,
+        'bio': bio,
+        'phone': phone,
+        'step': step,
+      };
+
+  static OnboardingDraft fromJson(Map<String, dynamic> j) => OnboardingDraft()
+    ..adultConfirmed = j['adultConfirmed'] == true
+    ..displayName = (j['displayName'] as String?) ?? ''
+    ..birthDate = j['birthDate'] == null ? null : DateTime.tryParse(j['birthDate'] as String)
+    ..gender = j['gender'] as String?
+    ..cityId = (j['cityId'] as num?)?.toInt()
+    ..horizon = j['horizon'] as String?
+    ..maritalStatus = j['maritalStatus'] as String?
+    ..confession = j['confession'] as String?
+    ..confessionConsent = j['confessionConsent'] == true
+    ..confessionMode = (j['confessionMode'] as String?) ?? 'no_filter'
+    ..selectedConfessions = List<String>.from(j['selectedConfessions'] as List? ?? const <String>[])
+    ..ageMin = (j['ageMin'] as num?)?.toInt() ?? 18
+    ..ageMax = (j['ageMax'] as num?)?.toInt() ?? 45
+    ..bio = (j['bio'] as String?) ?? ''
+    ..phone = (j['phone'] as String?) ?? ''
+    ..step = (j['step'] as num?)?.toInt() ?? 0;
+}
+
+/// Âge révolu à la date [now].
+int ageFrom(DateTime birthDate, {DateTime? now}) {
+  final today = now ?? DateTime.now();
+  var age = today.year - birthDate.year;
+  if (today.month < birthDate.month || (today.month == birthDate.month && today.day < birthDate.day)) age--;
+  return age;
+}
+
+bool isAdult(DateTime birthDate, {DateTime? now}) => ageFrom(birthDate, now: now) >= 18;
+
+class MyProfile {
+  MyProfile({
+    required this.id,
+    required this.displayName,
+    required this.status,
+    required this.verificationStatus,
+    this.isPhoneVerified = false,
+    this.isPremium = false,
+    this.age,
+    this.city,
+    this.bio,
+    this.horizon,
+    this.maritalStatus,
+    this.languages = const <String>[],
+    this.interests = const <String>[],
+    this.incognito = false,
+    this.discreetBrowsing = false,
+    this.showOnline = true,
+    this.photoCount = 0,
+    this.mainPhotoPath,
+    this.deletionScheduledFor,
+  });
+
+  final String id;
+  String displayName;
+  String? mainPhotoPath;
+  String status; // draft | active | paused | hidden | suspended | banned | deleted
+  String verificationStatus; // not_requested | pending | more_info_required | approved | rejected | redo
+  bool isPhoneVerified;
+  bool isPremium;
+  int? age;
+  String? city;
+  String? bio;
+  String? horizon;
+  String? maritalStatus;
+  List<String> languages;
+  List<String> interests;
+  bool incognito;
+  bool discreetBrowsing;
+  bool showOnline;
+  int photoCount;
+  DateTime? deletionScheduledFor;
+
+  bool get isVerified => verificationStatus == 'approved';
+
+  /// Complétude du profil (0 à 1), calculée sur les champs réellement renseignés.
+  double get completeness {
+    final checks = <bool>[
+      displayName.isNotEmpty,
+      city != null,
+      bio != null && bio!.trim().isNotEmpty,
+      horizon != null,
+      maritalStatus != null,
+      languages.isNotEmpty,
+      interests.isNotEmpty,
+      photoCount >= 3,
+      isVerified,
+    ];
+    return checks.where((ok) => ok).length / checks.length;
+  }
+}
+
+class DiscoveryProfile {
+  const DiscoveryProfile({
+    required this.id,
+    required this.displayName,
+    required this.age,
+    this.city,
+    this.bio,
+    this.horizon,
+    this.profession,
+    this.languages = const <String>[],
+    this.interests = const <String>[],
+    this.isVerified = false,
+    this.isPremium = false,
+    this.photoPath,
+  });
+
+  final String id;
+  final String displayName;
+  final int age;
+  final String? city;
+  final String? bio;
+  final String? horizon;
+  final String? profession;
+  final List<String> languages;
+  final List<String> interests;
+  final bool isVerified;
+  final bool isPremium;
+  final String? photoPath;
+
+  static DiscoveryProfile fromRow(Map<String, dynamic> r) => DiscoveryProfile(
+        id: (r['id'] ?? r['user_id']) as String,
+        displayName: (r['display_name'] as String?) ?? '',
+        age: (r['age'] as num?)?.toInt() ?? 18,
+        city: r['city'] as String?,
+        bio: r['bio'] as String?,
+        horizon: r['marriage_horizon'] as String?,
+        profession: r['profession'] as String?,
+        languages: List<String>.from(r['languages'] as List? ?? const <String>[]),
+        interests: List<String>.from(r['interests'] as List? ?? const <String>[]),
+        isVerified: r['is_verified'] != false,
+        isPremium: r['is_premium'] == true,
+        photoPath: r['photo_path'] as String?,
+      );
+}
+
+class ProfilePhoto {
+  const ProfilePhoto({required this.id, required this.visibility, this.path});
+  final String id;
+  final String visibility; // public | blurred | private
+  final String? path; // nul si la photo n'est pas accessible au membre qui consulte
+}
+
+/// Fiche complète d'un profil, limitée à ce que son propriétaire a choisi de montrer.
+class ProfileDetail {
+  const ProfileDetail({
+    required this.base,
+    this.maritalStatus,
+    this.childrenCount,
+    this.education,
+    this.heightCm,
+    this.confession,
+    this.ethnicGroup,
+    this.isPhoneVerified = false,
+    this.matched = false,
+    this.photos = const <ProfilePhoto>[],
+  });
+
+  final DiscoveryProfile base;
+  final String? maritalStatus;
+  final int? childrenCount;
+  final String? education;
+  final int? heightCm;
+  final String? confession;
+  final String? ethnicGroup;
+  final bool isPhoneVerified;
+  final bool matched;
+  final List<ProfilePhoto> photos;
+
+  int get hiddenPhotoCount => photos.where((p) => p.path == null).length;
+
+  static ProfileDetail fromJson(Map<String, dynamic> j) {
+    final photos = <ProfilePhoto>[
+      for (final raw in (j['photos'] as List? ?? const <dynamic>[]))
+        ProfilePhoto(
+          id: (raw as Map)['id'] as String,
+          visibility: raw['visibility'] as String,
+          path: raw['path'] as String?,
+        ),
+    ];
+    String? mainPath;
+    for (final p in photos) {
+      if (p.path != null) {
+        mainPath = p.path;
+        break;
+      }
+    }
+    return ProfileDetail(
+      base: DiscoveryProfile(
+        id: j['id'] as String,
+        displayName: (j['display_name'] as String?) ?? '',
+        age: (j['age'] as num?)?.toInt() ?? 18,
+        city: j['city'] as String?,
+        bio: j['bio'] as String?,
+        horizon: j['marriage_horizon'] as String?,
+        profession: j['profession'] as String?,
+        languages: List<String>.from(j['languages'] as List? ?? const <String>[]),
+        interests: List<String>.from(j['interests'] as List? ?? const <String>[]),
+        isVerified: j['is_verified'] == true,
+        isPremium: j['is_premium'] == true,
+        photoPath: mainPath,
+      ),
+      maritalStatus: j['marital_status'] as String?,
+      childrenCount: (j['children_count'] as num?)?.toInt(),
+      education: j['education_level'] as String?,
+      heightCm: (j['height_cm'] as num?)?.toInt(),
+      confession: j['confession'] as String?,
+      ethnicGroup: j['ethnic_group'] as String?,
+      isPhoneVerified: j['is_phone_verified'] == true,
+      matched: j['matched'] == true,
+      photos: photos,
+    );
+  }
+}
+
+/// Points communs factuels entre mon profil et un autre (§31.4).
+/// Chaque phrase provient de réponses réellement renseignées des deux côtés ; rien n'est inventé.
+List<String> commonPoints(MyProfile me, DiscoveryProfile other) {
+  final points = <String>[];
+  if (me.horizon != null && me.horizon == other.horizon) {
+    points.add(switch (me.horizon) {
+      'soon' => 'Vous souhaitez tous deux vous marier bientôt',
+      'few_months' => 'Vous envisagez tous deux le mariage dans les prochains mois',
+      'medium_term' => 'Vous envisagez tous deux le mariage à moyen terme',
+      _ => 'Vous n’avez tous deux pas fixé de date pour le mariage',
+    });
+  }
+  final myCity = me.city;
+  final theirCity = other.city;
+  if (myCity != null && theirCity != null) {
+    if (myCity == theirCity) {
+      points.add('Vous habitez la même ville');
+    } else if (myCity.startsWith('Conakry') && theirCity.startsWith('Conakry')) {
+      points.add('Vous habitez tous deux à Conakry');
+    }
+  }
+  final languages = me.languages.where(other.languages.contains).toList();
+  if (languages.isNotEmpty) points.add('Vous parlez ${languages.join(', ')}');
+  final interests = me.interests.where(other.interests.contains).toList();
+  if (interests.isNotEmpty) points.add('Centres d’intérêt communs : ${interests.join(', ')}');
+  return points;
+}
+
+class DiscoveryPrefs {
+  DiscoveryPrefs({
+    this.ageMin = 18,
+    this.ageMax = 60,
+    this.confessionMode = 'no_filter',
+    List<String>? confessions,
+  }) : confessions = confessions ?? <String>[];
+
+  int ageMin;
+  int ageMax;
+  String confessionMode;
+  List<String> confessions;
+}
+
+class BlockedUser {
+  const BlockedUser({required this.userId, required this.displayName});
+  final String userId;
+  final String displayName;
+}
+
+enum LikeStatus { liked, matched, quotaReached, alreadyLiked }
+
+class LikeResult {
+  const LikeResult(this.status, {this.matchId, this.remaining, this.resetsAt});
+  final LikeStatus status;
+  final String? matchId;
+  final int? remaining;
+  final DateTime? resetsAt;
+}
+
+class LikeQuota {
+  const LikeQuota({required this.limit, required this.remaining, required this.resetsAt});
+  final int limit;
+  final int remaining;
+  final DateTime resetsAt;
+}
+
+class MatchSummary {
+  const MatchSummary({
+    required this.matchId,
+    required this.userId,
+    required this.displayName,
+    this.photoPath,
+    this.isVerified = false,
+    this.lastMessage,
+    this.lastAt,
+    this.unread = 0,
+  });
+  final String matchId;
+  final String userId;
+  final String displayName;
+  final String? photoPath;
+  final bool isVerified;
+  final String? lastMessage;
+  final DateTime? lastAt;
+  final int unread;
+}
+
+class ChatMessage {
+  const ChatMessage({
+    required this.id,
+    required this.senderId,
+    required this.body,
+    required this.createdAt,
+    this.edited = false,
+    this.unsent = false,
+  });
+  final String id;
+  final String senderId;
+  final String body;
+  final DateTime createdAt;
+  final bool edited;
+  final bool unsent;
+}
+
+/// Résultat d'un envoi : `blockedCategory` non nul = message refusé par le filtre avant transmission.
+class SendResult {
+  const SendResult.sent() : blockedCategory = null;
+  const SendResult.blocked(String category) : blockedCategory = category;
+  final String? blockedCategory;
+  bool get isBlocked => blockedCategory != null;
+}
+
+class PremiumGrant {
+  const PremiumGrant({
+    required this.source,
+    required this.status,
+    required this.startsAt,
+    required this.endsAt,
+  });
+  final String source; // purchase | admin_grant | partner
+  final String status; // active | revoked | cancelled | pending
+  final DateTime startsAt;
+  final DateTime endsAt;
+
+  bool get isActive {
+    final now = DateTime.now();
+    return status == 'active' && endsAt.isAfter(now) && !startsAt.isAfter(now);
+  }
+
+  String get statusLabel {
+    if (status == 'revoked') return 'Retiré';
+    if (status == 'cancelled') return 'Annulé';
+    if (status == 'pending') return 'En attente';
+    return endsAt.isAfter(DateTime.now()) ? 'Actif' : 'Expiré';
+  }
+
+  /// Un abonnement offert n'est jamais présenté comme un paiement (V6.4 §40.1).
+  String get sourceLabel => switch (source) {
+        'purchase' => 'Achat',
+        'partner' => 'Avantage partenaire',
+        _ => 'Offert par ZAYA',
+      };
+}
+
+class PaymentTx {
+  const PaymentTx({
+    required this.reference,
+    required this.service,
+    required this.amount,
+    required this.currency,
+    required this.method,
+    required this.status,
+    required this.createdAt,
+  });
+  final String reference;
+  final String service;
+  final num amount;
+  final String currency;
+  final String method;
+  final String status;
+  final DateTime createdAt;
+
+  bool get isConfirmed => status == 'confirmed';
+
+  String get statusLabel =>
+      const <String, String>{
+        'pending': 'En attente',
+        'processing': 'En cours',
+        'confirmed': 'Confirmé',
+        'failed': 'Échoué',
+        'cancelled': 'Annulé',
+        'refunded': 'Remboursé',
+        'partially_refunded': 'Partiellement remboursé',
+        'disputed': 'Contesté',
+      }[status] ??
+      status;
+
+  String get serviceLabel =>
+      const <String, String>{
+        'premium': 'Abonnement Premium',
+        'boost': 'Boost de profil',
+        'shop': 'ZAYA Shop',
+        'event': 'ZAYA Event',
+        'counsel': 'Conseil matrimonial',
+      }[service] ??
+      service;
+}
+
+const reportReasons = <String, String>{
+  'money_request': 'Demande d’argent',
+  'scam': 'Arnaque ou fraude',
+  'harassment': 'Harcèlement ou insultes',
+  'threat': 'Menaces ou chantage',
+  'impersonation': 'Faux profil / usurpation',
+  'sexual_content': 'Contenu sexuel ou nudité',
+  'minor': 'Personne mineure',
+  'other': 'Autre',
+};
+
+const blockedCategoryLabels = <String, String>{
+  'money_request': 'les demandes d’argent',
+  'credential_request': 'les demandes de code ou de mot de passe',
+  'sexual_content': 'les contenus sexuels',
+  'threat': 'les menaces',
+};
+
+String formatDate(DateTime d) {
+  final l = d.toLocal();
+  return '${l.day.toString().padLeft(2, '0')}/${l.month.toString().padLeft(2, '0')}/${l.year}';
+}
+
+String formatTime(DateTime d) {
+  final l = d.toLocal();
+  return '${l.hour.toString().padLeft(2, '0')}:${l.minute.toString().padLeft(2, '0')}';
+}

@@ -1,0 +1,12 @@
+{
+  "name": "zaya-db-tests",
+  "private": true,
+  "type": "module",
+  "description": "Tests des migrations, des règles RLS et des fonctions métier ZAYA dans un Postgres WASM (PGlite), sans Docker.",
+  "scripts": {
+    "test": "node run.mjs"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.2.17"
+  }
+}
