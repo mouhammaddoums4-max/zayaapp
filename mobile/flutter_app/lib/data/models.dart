@@ -156,9 +156,15 @@ class MyProfile {
     this.photoCount = 0,
     this.mainPhotoPath,
     this.deletionScheduledFor,
+    this.birthDate,
+    this.gender,
   });
 
   final String id;
+
+  /// Figés après l'inscription (`profiles_guard`) : affichés dans les Réglages, jamais modifiables.
+  final DateTime? birthDate;
+  final String? gender; // femme | homme
   String displayName;
   String? mainPhotoPath;
   String status; // draft | active | paused | hidden | suspended | banned | deleted
@@ -405,6 +411,100 @@ class MatchSummary {
   final String? lastMessage;
   final DateTime? lastAt;
   final int unread;
+}
+
+/// Match terminé (CDC §32) : plus de nouveaux messages, historique relisible, signalement possible.
+/// Ni photo ni profil ; nom absent si le compte est fermé.
+class EndedMatch {
+  const EndedMatch({
+    required this.matchId,
+    required this.userId,
+    required this.displayName,
+    required this.endedAt,
+    required this.endedByMe,
+    this.matchedAt,
+    this.accountClosed = false,
+  });
+
+  final String matchId;
+  final String userId;
+  final String? displayName;
+  final DateTime? matchedAt;
+  final DateTime endedAt;
+  final bool endedByMe;
+  final bool accountClosed;
+
+  static EndedMatch fromRow(Map<String, dynamic> r) => EndedMatch(
+        matchId: r['match_id'] as String,
+        userId: r['user_id'] as String,
+        displayName: r['display_name'] as String?,
+        matchedAt: r['matched_at'] == null ? null : DateTime.parse(r['matched_at'] as String),
+        endedAt: DateTime.parse(r['ended_at'] as String),
+        endedByMe: r['ended_by_me'] == true,
+        accountClosed: r['account_closed'] == true,
+      );
+}
+
+/// Document légal versionné (`legal_documents`) : conditions, confidentialité, règles communautaires.
+class LegalDocument {
+  const LegalDocument({
+    required this.kind,
+    required this.version,
+    required this.lang,
+    required this.content,
+    required this.publishedAt,
+  });
+
+  final String kind; // tos | privacy | community
+  final String version;
+  final String lang;
+  final String content;
+  final DateTime publishedAt;
+
+  /// Version provisoire (« v0… ») tant que les textes ne sont pas validés juridiquement (décision B1).
+  bool get isDraft => version.toLowerCase().startsWith('v0');
+
+  static LegalDocument fromRow(Map<String, dynamic> r) => LegalDocument(
+        kind: r['kind'] as String,
+        version: r['version'] as String,
+        lang: r['lang'] as String? ?? 'fr',
+        content: r['content'] as String,
+        publishedAt: DateTime.parse(r['published_at'] as String),
+      );
+}
+
+/// Sujets d'une demande à l'assistance (mêmes valeurs que la contrainte serveur de `support_tickets`).
+const supportCategories = <String>['account', 'verification', 'payment', 'safety', 'translation', 'bug', 'other'];
+
+/// Demande à l'assistance et, le cas échéant, la réponse de l'équipe.
+class SupportTicket {
+  const SupportTicket({
+    required this.id,
+    required this.category,
+    required this.message,
+    required this.status,
+    required this.createdAt,
+    this.reply,
+    this.repliedAt,
+  });
+
+  final String id;
+  final String category;
+  final String message;
+  final String status; // open | in_progress | answered | closed
+  final String? reply;
+  final DateTime createdAt;
+  final DateTime? repliedAt;
+
+  static SupportTicket fromRow(Map<String, dynamic> r) => SupportTicket(
+        id: r['id'] as String,
+        category: r['category'] as String,
+        message: r['message'] as String,
+        status: r['status'] as String,
+        reply: r['reply'] as String?,
+        createdAt: DateTime.parse(r['created_at'] as String),
+        repliedAt: r['replied_at'] == null ? null : DateTime.parse(r['replied_at'] as String),
+      );
 }
 
 class ChatMessage {

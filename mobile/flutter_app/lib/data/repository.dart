@@ -10,6 +10,12 @@ abstract class ZayaRepository {
   bool get isSignedIn;
   String? get userId;
 
+  /// Numéro du membre connecté, montré à lui seul dans les Réglages.
+  String? get phoneNumber;
+
+  /// Réglages publics de l'application (`app_config` lisible par tous) : langues actives, WhatsApp du support…
+  Future<Map<String, Object?>> publicConfig();
+
   // ── Authentification par téléphone + OTP
   Future<void> requestOtp(String phone);
   Future<void> verifyOtp(String phone, String code);
@@ -51,6 +57,9 @@ abstract class ZayaRepository {
   Future<List<MatchSummary>> matches();
   Future<void> unmatch(String matchId);
 
+  /// Matchs terminés, des deux côtés (rien après un blocage).
+  Future<List<EndedMatch>> endedMatches();
+
   // ── Messagerie
   Stream<List<ChatMessage>> watchMessages(String matchId);
   Future<SendResult> sendMessage(String matchId, String body);
@@ -74,6 +83,14 @@ abstract class ZayaRepository {
 
   /// Export des données personnelles au format JSON.
   Future<String> exportMyData();
+
+  // ── Assistance et documents légaux
+  /// Toutes les versions publiées ; l'écran choisit la plus récente dans la langue du membre.
+  Future<List<LegalDocument>> legalDocuments();
+
+  /// Erreurs : MESSAGE_TOO_SHORT, INVALID_CATEGORY, SUPPORT_RATE_LIMITED.
+  Future<void> createSupportTicket({required String category, required String message, String? language});
+  Future<List<SupportTicket>> mySupportTickets();
 
   // ── Premium & paiements (lecture seule dans ce lot)
   Future<List<PremiumGrant>> premiumHistory();

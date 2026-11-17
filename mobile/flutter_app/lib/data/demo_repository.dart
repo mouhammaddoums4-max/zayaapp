@@ -34,7 +34,10 @@ class DemoRepository implements ZayaRepository {
   };
 
   bool _signedIn = false;
+  String? _phone;
   MyProfile? _profile;
+  final List<EndedMatch> _ended = <EndedMatch>[];
+  final List<SupportTicket> _tickets = <SupportTicket>[];
   String _gender = 'homme';
   DiscoveryPrefs _prefs = DiscoveryPrefs(ageMax: 45);
   int _likesUsed = 0;
@@ -282,18 +285,32 @@ class DemoRepository implements ZayaRepository {
   String? get userId => _signedIn ? _me : null;
 
   @override
+  String? get phoneNumber => _signedIn ? _phone : null;
+
+  /// Mêmes clés que `app_config` (lisible par tous) ; aucun numéro WhatsApp de support en démo.
+  @override
+  Future<Map<String, Object?>> publicConfig() async => const <String, Object?>{
+        'active_languages': ['fr', 'en'],
+        'support_whatsapp': '',
+      };
+
+  @override
   Future<void> requestOtp(String phone) async {}
 
   @override
   Future<void> verifyOtp(String phone, String code) async {
     if (code != demoOtp) throw Exception('Code incorrect. En mode démo, le code est $demoOtp.');
     _signedIn = true;
+    _phone = phone;
   }
 
   @override
   Future<void> signOut() async {
     _signedIn = false;
+    _phone = null;
     _profile = null;
+    _ended.clear();
+    _tickets.clear();
     _seen.clear();
     _blocked.clear();
     _likedMe.clear();
@@ -343,6 +360,8 @@ class DemoRepository implements ZayaRepository {
       horizon: d.horizon,
       maritalStatus: d.maritalStatus,
       languages: const <String>['Français'],
+      birthDate: birth,
+      gender: d.gender,
     );
 
     // Jeu de données de démonstration : deux personnes ont déjà aimé le profil, un match existe avec une conversation.
@@ -376,6 +395,34 @@ class DemoRepository implements ZayaRepository {
           body: 'Très bien, merci. Si tu veux, voici mon numéro : +224 622 11 22 33',
           createdAt: now.subtract(const Duration(hours: 2))),
     ];
+
+    // Un match terminé par l'autre personne il y a deux jours : historique relisible, plus d'envoi possible.
+    // Personne fictive hors du fil de découverte, pour ne rien retirer de Découvrir.
+    final formerId = _gender == 'femme' ? 'former-m' : 'former-w';
+    final formerName = _gender == 'femme' ? 'Lamine' : 'Mariama';
+    final endedId = 'match-$formerId';
+    _messages[endedId] = <ChatMessage>[
+      ChatMessage(
+          id: 'ended-1',
+          senderId: formerId,
+          body: 'Bonjour, enchanté(e) de faire ta connaissance.',
+          createdAt: now.subtract(const Duration(days: 4))),
+      ChatMessage(
+          id: 'ended-2',
+          senderId: _me,
+          body: 'Bonjour ! De même, merci pour ton message.',
+          createdAt: now.subtract(const Duration(days: 4, hours: -1))),
+    ];
+    _ended
+      ..clear()
+      ..add(EndedMatch(
+        matchId: endedId,
+        userId: formerId,
+        displayName: formerName,
+        matchedAt: now.subtract(const Duration(days: 5)),
+        endedAt: now.subtract(const Duration(days: 2)),
+        endedByMe: false,
+      ));
   }
 
   @override
@@ -527,8 +574,24 @@ class DemoRepository implements ZayaRepository {
 
   @override
   Future<void> unmatch(String matchId) async {
+    for (final m in _matches.where((m) => m.matchId == matchId)) {
+      _ended.insert(
+          0,
+          EndedMatch(
+              matchId: m.matchId,
+              userId: m.userId,
+              displayName: m.displayName,
+              endedAt: DateTime.now(),
+              endedByMe: true));
+    }
     _matches.removeWhere((m) => m.matchId == matchId);
   }
+
+  @override
+  Future<List<EndedMatch>> endedMatches() async => [
+        for (final e in _ended)
+          if (!_blocked.containsKey(e.userId)) e,
+      ];
 
   void _emit(String matchId) =>
       _streams[matchId]?.add(List<ChatMessage>.unmodifiable(_messages[matchId] ?? const <ChatMessage>[]));
@@ -597,6 +660,7 @@ class DemoRepository implements ZayaRepository {
   Future<void> block(String userId) async {
     _blocked[userId] = _person(userId)?.profile.displayName ?? _community.authorName(userId) ?? 'Membre';
     _matches.removeWhere((m) => m.userId == userId);
+    _ended.removeWhere((m) => m.userId == userId);
   }
 
   @override
@@ -652,8 +716,56 @@ class DemoRepository implements ZayaRepository {
           for (final m in list)
             if (m.senderId == _me && !m.unsent) {'body': m.body, 'created_at': m.createdAt.toIso8601String()},
       ],
+      'support_requests': [
+        for (final t in _tickets)
+          {
+            'category': t.category,
+            'message': t.message,
+            'status': t.status,
+            'created_at': t.createdAt.toIso8601String()
+          },
+      ],
     });
   }
+
+  // ── Assistance et documents légaux (mêmes règles que 0008_assistance.sql)
+  static const supportTicketsPerDay = 5;
+
+  /// Textes de démonstration seulement : les versions officielles viennent de `legal_documents` (décision B1).
+  @override
+  Future<List<LegalDocument>> legalDocuments() async {
+    final published = DateTime(2026, 11, 16);
+    const body = 'Texte provisoire affiché en mode démo. La version officielle sera publiée par ZAYA après '
+        'validation juridique.';
+    return [
+      for (final kind in ['tos', 'privacy', 'community'])
+        LegalDocument(kind: kind, version: 'v0-draft', lang: 'fr', content: body, publishedAt: published),
+    ];
+  }
+
+  @override
+  Future<void> createSupportTicket({required String category, required String message, String? language}) async {
+    if (!_signedIn) throw Exception('NOT_AUTHENTICATED');
+    if (!supportCategories.contains(category)) throw Exception('INVALID_CATEGORY');
+    final text = message.trim();
+    if (text.length < 10) throw Exception('MESSAGE_TOO_SHORT');
+    final since = DateTime.now().subtract(const Duration(hours: 24));
+    if (_tickets.where((t) => t.createdAt.isAfter(since)).length >= supportTicketsPerDay) {
+      throw Exception('SUPPORT_RATE_LIMITED');
+    }
+    _tickets.insert(
+        0,
+        SupportTicket(
+          id: 'ticket-${_seq++}',
+          category: category,
+          message: text.length > 2000 ? text.substring(0, 2000) : text,
+          status: 'open',
+          createdAt: DateTime.now(),
+        ));
+  }
+
+  @override
+  Future<List<SupportTicket>> mySupportTickets() async => List<SupportTicket>.unmodifiable(_tickets);
 
   @override
   Future<List<PremiumGrant>> premiumHistory() async => const <PremiumGrant>[];
@@ -714,8 +826,7 @@ class DemoRepository implements ZayaRepository {
   Future<PublishResult> addComment(String postId, String body) async => _community.addComment(postId, body);
 
   @override
-  Future<PublishResult> editComment(String commentId, String body) async =>
-      _community.editComment(commentId, body);
+  Future<PublishResult> editComment(String commentId, String body) async => _community.editComment(commentId, body);
 
   @override
   Future<void> deleteComment(String commentId) async => _community.deleteComment(commentId);

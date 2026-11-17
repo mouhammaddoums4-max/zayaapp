@@ -32,6 +32,12 @@ Future<void> tapText(WidgetTester tester, String text) async {
   await settle(tester);
 }
 
+/// Fait défiler la liste principale jusqu'à un texte qui n'est pas encore construit (listes paresseuses).
+Future<void> scrollToText(WidgetTester tester, String text) async {
+  await tester.scrollUntilVisible(find.text(text), 200, scrollable: find.byType(Scrollable).first);
+  await settle(tester);
+}
+
 /// Brouillon d'inscription déjà rempli jusqu'à l'étape « Projet de mariage » (index 5) :
 /// vérifie au passage la reprise après interruption.
 Map<String, Object> draftAtHorizonStep({String gender = 'femme'}) => {
@@ -334,5 +340,86 @@ void main() {
     expect(find.text('Publication en ligne.'), findsOneWidget);
     expect(find.textContaining('Parlez de vos projets tôt'), findsOneWidget);
     expect(find.textContaining('Un conseil qui m’a servi'), findsNothing);
+  });
+
+  testWidgets('Matchs terminés, Réglages, langue, aide, assistance et documents légaux', (tester) async {
+    usePhoneScreen(tester);
+    SharedPreferences.setMockInitialValues(draftAtHorizonStep());
+    await tester.pumpWidget(ZayaApp(repository: DemoRepository()));
+    await settle(tester);
+    await finishOnboarding(tester);
+
+    // ── Messages → matchs terminés : explication, historique en lecture seule, signalement possible
+    await tapText(tester, 'Messages');
+    await tester.tap(find.byTooltip('Matchs terminés'));
+    await settle(tester);
+    expect(find.textContaining('Quand un match prend fin'), findsOneWidget);
+    expect(find.textContaining('par l’autre personne'), findsOneWidget);
+    await tapText(tester, 'Lamine');
+    expect(find.text('Ce match est terminé : vous ne pouvez plus envoyer de message.'), findsOneWidget);
+    expect(find.textContaining('enchanté(e)'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing, reason: 'aucune saisie après la fin du match');
+    await tester.tap(find.byTooltip('Bouclier de sécurité'));
+    await settle(tester);
+    expect(find.text('Signaler Lamine'), findsOneWidget);
+    expect(find.text('Mettre fin au match'), findsNothing);
+    await tester.tapAt(const Offset(20, 20));
+    await settle(tester);
+    await goBack(tester);
+    await goBack(tester);
+
+    // ── Profil → Réglages : informations personnelles (date de naissance et genre figés)
+    await tapText(tester, 'Profil');
+    await tester.tap(find.byTooltip('Réglages'));
+    await settle(tester);
+    expect(find.text('Informations personnelles'), findsOneWidget);
+    expect(find.text('Awa'), findsOneWidget);
+    expect(find.text('10/05/1998'), findsOneWidget);
+    expect(find.text('Femme'), findsOneWidget);
+    expect(find.text('+224 622 11 22 33'), findsOneWidget);
+    await tapText(tester, 'Date de naissance');
+    expect(find.text('Information non modifiable'), findsOneWidget);
+    await tester.tapAt(const Offset(20, 20));
+    await settle(tester);
+
+    // ── Langue : français actif ; l'anglais et les langues nationales ne sont pas encore proposés
+    await tapText(tester, 'Langue');
+    expect(find.text('Langue de l’application'), findsOneWidget);
+    for (final name in ['English', 'Pular', 'Maninkakan', 'Sosoxui']) {
+      expect(find.text(name), findsOneWidget, reason: name);
+    }
+    expect(find.textContaining('Bientôt disponible'), findsNWidgets(4));
+    await tapText(tester, 'English');
+    expect(find.text('Langue de l’application'), findsOneWidget, reason: 'une langue indisponible ne change rien');
+    await goBack(tester);
+
+    // ── Aide : questions fréquentes, puis une demande à l'assistance, retrouvée dans « Mes demandes »
+    await scrollToText(tester, 'Aide et assistance');
+    await tapText(tester, 'Aide et assistance');
+    expect(find.text('Questions fréquentes'), findsOneWidget);
+    await tapText(tester, 'Mon numéro de téléphone est-il visible ?');
+    expect(find.textContaining('ni dans vos conversations'), findsOneWidget);
+    await scrollToText(tester, 'Écrire à l’assistance');
+    await tapText(tester, 'Écrire à l’assistance');
+    await tester.enterText(find.byType(TextField), 'Je voudrais changer mon numéro de téléphone.');
+    await tester.pump();
+    await tapText(tester, 'Envoyer');
+    expect(find.textContaining('Demande envoyée'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
+    await settle(tester);
+    await scrollToText(tester, 'Mes demandes');
+    await tapText(tester, 'Mes demandes');
+    expect(find.text('Mon compte'), findsOneWidget);
+    expect(find.text('Envoyée'), findsOneWidget);
+    expect(find.text('Je voudrais changer mon numéro de téléphone.'), findsOneWidget);
+    await goBack(tester);
+    await goBack(tester);
+
+    // ── Documents légaux : version provisoire signalée
+    await scrollToText(tester, 'Documents légaux');
+    await tapText(tester, 'Documents légaux');
+    expect(find.text('Règles communautaires'), findsOneWidget);
+    await tapText(tester, 'Conditions d’utilisation');
+    expect(find.text('Version provisoire, en attente de validation juridique.'), findsOneWidget);
   });
 }

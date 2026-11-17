@@ -19,6 +19,19 @@ class SupabaseRepository implements ZayaRepository {
   @override
   String? get userId => _db.auth.currentUser?.id;
 
+  @override
+  String? get phoneNumber {
+    final phone = _db.auth.currentUser?.phone;
+    return phone == null || phone.isEmpty ? null : phone;
+  }
+
+  /// La RLS ne renvoie que les clés publiques de `app_config`.
+  @override
+  Future<Map<String, Object?>> publicConfig() async {
+    final rows = await _db.from('app_config').select('key, value');
+    return {for (final r in rows) r['key'] as String: r['value']};
+  }
+
   String get _uid {
     final id = userId;
     if (id == null) throw Exception('Vous devez être connecté.');
@@ -85,6 +98,8 @@ class SupabaseRepository implements ZayaRepository {
       photoCount: photos.length,
       mainPhotoPath: photos.isEmpty ? null : photos.first['storage_path'] as String?,
       deletionScheduledFor: deletion == null ? null : DateTime.parse(deletion['scheduled_for'] as String),
+      birthDate: birth,
+      gender: row['gender'] as String?,
     );
   }
 
@@ -314,6 +329,37 @@ class SupabaseRepository implements ZayaRepository {
   @override
   Future<void> unmatch(String matchId) async {
     await _db.rpc('unmatch', params: {'p_match': matchId});
+  }
+
+  @override
+  Future<List<EndedMatch>> endedMatches() async {
+    final rows = await _db.rpc('my_ended_matches') as List;
+    return [for (final r in rows) EndedMatch.fromRow(Map<String, dynamic>.from(r as Map))];
+  }
+
+  // ── Assistance et documents légaux
+  @override
+  Future<List<LegalDocument>> legalDocuments() async {
+    final rows = await _db
+        .from('legal_documents')
+        .select('kind, version, lang, content, published_at')
+        .order('published_at', ascending: false);
+    return [for (final r in rows) LegalDocument.fromRow(r)];
+  }
+
+  @override
+  Future<void> createSupportTicket({required String category, required String message, String? language}) async {
+    await _db
+        .rpc('create_support_ticket', params: {'p_category': category, 'p_message': message, 'p_language': language});
+  }
+
+  @override
+  Future<List<SupportTicket>> mySupportTickets() async {
+    final rows = await _db
+        .from('support_tickets')
+        .select('id, category, message, status, reply, created_at, replied_at')
+        .order('created_at', ascending: false);
+    return [for (final r in rows) SupportTicket.fromRow(r)];
   }
 
   // ── Messagerie

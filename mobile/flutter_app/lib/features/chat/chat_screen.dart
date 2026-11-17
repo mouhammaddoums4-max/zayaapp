@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app.dart';
+import '../../core/l10n/l10n.dart';
 import '../../core/motion.dart';
 import '../../core/phone_mask.dart';
 import '../../core/theme.dart';
@@ -16,9 +17,12 @@ const _infoSeenKey = 'zaya_chat_info_seen';
 
 /// Conversation avec un match : filtre avant envoi, numéros masqués, bouclier de sécurité,
 /// modification / annulation d'envoi / suppression pour soi.
+/// Avec [ended], match terminé (CDC §32) : lecture seule, ni saisie ni accès au profil ; signaler et bloquer restent
+/// possibles.
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key, required this.match});
+  const ChatScreen({super.key, required this.match, this.ended = false});
   final MatchSummary match;
+  final bool ended;
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -147,7 +151,7 @@ class _ChatScreenState extends State<ChatScreen> {
       showDragHandle: true,
       builder: (sheetContext) => SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          if (mine && !message.unsent) ...[
+          if (mine && !message.unsent && !widget.ended) ...[
             ListTile(
               leading: const Icon(Icons.edit_outlined),
               title: const Text('Modifier'),
@@ -235,16 +239,17 @@ class _ChatScreenState extends State<ChatScreen> {
                 if (await confirmBlock(context, userId: match.userId, name: match.displayName)) navigator.pop();
               },
             ),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.heart_broken_outlined),
-              title: const Text('Mettre fin au match'),
-              subtitle: const Text('La conversation sera fermée pour vous deux. Ce n’est pas un blocage.'),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                _confirmUnmatch();
-              },
-            ),
+            if (!widget.ended)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.heart_broken_outlined),
+                title: const Text('Mettre fin au match'),
+                subtitle: const Text('La conversation sera fermée pour vous deux. Ce n’est pas un blocage.'),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  _confirmUnmatch();
+                },
+              ),
           ]),
         ),
       ),
@@ -292,7 +297,7 @@ class _ChatScreenState extends State<ChatScreen> {
         titleSpacing: 0,
         title: InkWell(
           borderRadius: BorderRadius.circular(12),
-          onTap: _openProfile,
+          onTap: widget.ended ? null : _openProfile,
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -317,7 +322,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: SafeArea(
         child: Column(children: [
-          if (_showInfo)
+          if (_showInfo && !widget.ended)
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
               child: InfoBanner(
@@ -343,6 +348,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 }
                 final items = snapshot.data;
                 if (items == null) return const Center(child: CircularProgressIndicator());
+                if (items.isEmpty && widget.ended) {
+                  return EmptyState(icon: Icons.forum_outlined, title: context.s.endedChatEmpty, message: '');
+                }
                 if (items.isEmpty) {
                   return EmptyState(
                     icon: Icons.waving_hand_outlined,
@@ -374,85 +382,92 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
           ),
-          if (blocked != null)
+          if (widget.ended)
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
-              child: InfoBanner(
-                tone: BannerTone.danger,
-                icon: Icons.error_outline,
-                text: 'Votre message n’a pas été envoyé : la charte ZAYA interdit '
-                    '${blockedCategoryLabels[blocked] ?? 'ce type de contenu'}. '
-                    'Modifiez votre message avant de l’envoyer.',
-              ),
-            ),
-          if (_editing != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 4, 0),
-              child: Row(children: [
-                const Icon(Icons.edit_outlined, size: 18, color: ZColors.primaryDark),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text('Modification du message',
-                      style: TextStyle(fontWeight: FontWeight.w600, color: ZColors.primaryDark)),
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+              child: InfoBanner(icon: Icons.lock_outline, text: context.s.endedChatBanner),
+            )
+          else ...[
+            if (blocked != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+                child: InfoBanner(
+                  tone: BannerTone.danger,
+                  icon: Icons.error_outline,
+                  text: 'Votre message n’a pas été envoyé : la charte ZAYA interdit '
+                      '${blockedCategoryLabels[blocked] ?? 'ce type de contenu'}. '
+                      'Modifiez votre message avant de l’envoyer.',
                 ),
+              ),
+            if (_editing != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 4, 0),
+                child: Row(children: [
+                  const Icon(Icons.edit_outlined, size: 18, color: ZColors.primaryDark),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text('Modification du message',
+                        style: TextStyle(fontWeight: FontWeight.w600, color: ZColors.primaryDark)),
+                  ),
+                  IconButton(
+                      icon: const Icon(Icons.close, size: 20),
+                      tooltip: 'Annuler la modification',
+                      onPressed: _cancelEditing),
+                ]),
+              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                Expanded(
+                  child: TextField(
+                    controller: _input,
+                    focusNode: _focus,
+                    minLines: 1,
+                    maxLines: 4,
+                    maxLength: 2000,
+                    textCapitalization: TextCapitalization.sentences,
+                    style: TextStyle(color: blocked != null ? ZColors.danger : ZColors.ink),
+                    decoration: InputDecoration(
+                      hintText: 'Votre message…',
+                      counterText: '',
+                      enabledBorder: blocked == null
+                          ? null
+                          : OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: const BorderSide(color: ZColors.danger, width: 1.5),
+                            ),
+                      focusedBorder: blocked == null
+                          ? null
+                          : OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: const BorderSide(color: ZColors.danger, width: 1.5),
+                            ),
+                    ),
+                    onChanged: (_) {
+                      if (_blockedCategory != null) setState(() => _blockedCategory = null);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
                 IconButton(
-                    icon: const Icon(Icons.close, size: 20),
-                    tooltip: 'Annuler la modification',
-                    onPressed: _cancelEditing),
+                  style: IconButton.styleFrom(
+                    backgroundColor: ZColors.primary,
+                    disabledBackgroundColor: ZColors.primary,
+                    minimumSize: const Size(52, 52),
+                  ),
+                  icon: _sending
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : Icon(_editing == null ? Icons.send : Icons.check, color: Colors.white),
+                  tooltip: _editing == null ? 'Envoyer' : 'Enregistrer la modification',
+                  onPressed: _sending ? null : _send,
+                ),
               ]),
             ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Expanded(
-                child: TextField(
-                  controller: _input,
-                  focusNode: _focus,
-                  minLines: 1,
-                  maxLines: 4,
-                  maxLength: 2000,
-                  textCapitalization: TextCapitalization.sentences,
-                  style: TextStyle(color: blocked != null ? ZColors.danger : ZColors.ink),
-                  decoration: InputDecoration(
-                    hintText: 'Votre message…',
-                    counterText: '',
-                    enabledBorder: blocked == null
-                        ? null
-                        : OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(color: ZColors.danger, width: 1.5),
-                          ),
-                    focusedBorder: blocked == null
-                        ? null
-                        : OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(color: ZColors.danger, width: 1.5),
-                          ),
-                  ),
-                  onChanged: (_) {
-                    if (_blockedCategory != null) setState(() => _blockedCategory = null);
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                style: IconButton.styleFrom(
-                  backgroundColor: ZColors.primary,
-                  disabledBackgroundColor: ZColors.primary,
-                  minimumSize: const Size(52, 52),
-                ),
-                icon: _sending
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : Icon(_editing == null ? Icons.send : Icons.check, color: Colors.white),
-                tooltip: _editing == null ? 'Envoyer' : 'Enregistrer la modification',
-                onPressed: _sending ? null : _send,
-              ),
-            ]),
-          ),
+          ],
         ]),
       ),
     );

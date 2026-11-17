@@ -2,13 +2,15 @@ import 'package:material_ui/material_ui.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../app.dart';
+import '../../core/l10n/l10n.dart';
 import '../../core/motion.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/models.dart';
 import '../discovery/profile_widgets.dart';
 import '../premium/premium_screens.dart';
-import '../safety/safety_sheets.dart';
+import '../settings/help_screen.dart';
+import '../settings/settings_screen.dart';
 import 'edit_profile_screen.dart';
 import 'preferences_screen.dart';
 import 'privacy_center_screen.dart';
@@ -26,24 +28,9 @@ class ProfileScreen extends StatelessWidget {
     if (changed == true) feed.load();
   }
 
-  Future<void> _confirmSignOut(BuildContext context) async {
-    final session = Session.read(context);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Se déconnecter ?'),
-        content: const Text('Vous pourrez vous reconnecter à tout moment avec votre numéro de téléphone.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Annuler')),
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: const Text('Se déconnecter')),
-        ],
-      ),
-    );
-    if (ok == true) await session.signOut();
-  }
-
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
     final session = Session.of(context);
     final me = session.me;
     if (me == null) return const SizedBox.shrink();
@@ -57,6 +44,11 @@ class ProfileScreen extends StatelessWidget {
             icon: const Icon(Icons.shield_outlined),
             tooltip: 'Confidentialité et sécurité',
             onPressed: () => _push(context, const PrivacyCenterScreen()),
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: s.settingsTitle,
+            onPressed: () => _push(context, const SettingsScreen()),
           ),
           const SizedBox(width: 4),
         ],
@@ -128,39 +120,27 @@ class ProfileScreen extends StatelessWidget {
               onTap: () => _push(context, const VerificationScreen())),
         ]),
         const SizedBox(height: 18),
-        const SectionTitle('Compte'),
+        SectionTitle(s.settingsAccount),
         _MenuGroup(children: [
           _MenuTile(
+              icon: Icons.settings_outlined,
+              title: s.settingsTitle,
+              subtitle: s.settingsEntrySubtitle,
+              onTap: () => _push(context, const SettingsScreen())),
+          _MenuTile(
               icon: Icons.lock_outline,
-              title: 'Confidentialité et sécurité',
-              subtitle: 'Visibilité, personnes bloquées, mes données',
+              title: s.settingsPrivacy,
+              subtitle: s.settingsPrivacySubtitle,
               onTap: () => _push(context, const PrivacyCenterScreen())),
           _MenuTile(
-              icon: Icons.card_membership_outlined,
-              title: 'Mes abonnements',
-              subtitle: me.isPremium ? 'Premium' : 'Offre Gratuit',
-              onTap: () => _push(context, const SubscriptionsScreen())),
-          _MenuTile(
-              icon: Icons.receipt_long_outlined,
-              title: 'Mes paiements',
-              subtitle: 'Historique et reçus',
-              onTap: () => _push(context, const PaymentsScreen())),
-          _MenuTile(
-              icon: Icons.health_and_safety_outlined,
-              title: 'Conseils de sécurité',
-              subtitle: 'Rencontres, arnaques, signalement',
-              onTap: () => _push(context, const SafetyTipsScreen())),
+              icon: Icons.help_outline,
+              title: s.settingsHelp,
+              subtitle: s.settingsHelpSubtitle,
+              onTap: () => _push(context, const HelpScreen())),
         ]),
-        const SizedBox(height: 18),
-        OutlinedButton.icon(
-          onPressed: () => _confirmSignOut(context),
-          icon: const Icon(Icons.logout, size: 20),
-          label: const Text('Se déconnecter'),
-        ),
         if (session.repo.isDemo) ...[
           const SizedBox(height: 14),
-          Text('Mode démo — données fictives, rien n’est enregistré.',
-              textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium),
+          Text(s.demoModeNotice, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium),
         ],
       ]),
     );

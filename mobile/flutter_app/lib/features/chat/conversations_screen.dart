@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../app.dart';
+import '../../core/l10n/l10n.dart';
 import '../../core/motion.dart';
 import '../../core/phone_mask.dart';
 import '../../core/theme.dart';
@@ -9,6 +10,7 @@ import '../../core/widgets.dart';
 import '../../data/models.dart';
 import '../discovery/profile_widgets.dart';
 import 'chat_screen.dart';
+import 'ended_matches_screen.dart';
 
 /// Onglet Messages : nouveaux matchs en haut, conversations en dessous.
 /// La messagerie est réservée aux matchs réciproques.
@@ -50,7 +52,17 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Messages')),
+      appBar: AppBar(title: const Text('Messages'), actions: [
+        IconButton(
+          icon: const Icon(Icons.heart_broken_outlined),
+          tooltip: context.s.endedMatchesTitle,
+          onPressed: () async {
+            await Navigator.of(context).push(zRoute<void>(const EndedMatchesScreen()));
+            if (mounted) _reload();
+          },
+        ),
+        const SizedBox(width: 4),
+      ]),
       body: FutureBuilder<List<MatchSummary>>(
         future: _future,
         builder: (context, snapshot) {

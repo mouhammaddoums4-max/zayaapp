@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import 'core/l10n/l10n.dart';
 import 'core/theme.dart';
 import 'core/widgets.dart';
 import 'data/models.dart';
@@ -121,10 +122,12 @@ class ZayaApp extends StatefulWidget {
 
 class _ZayaAppState extends State<ZayaApp> {
   late final Session _session = Session(widget.repository);
+  final LanguageController _language = LanguageController();
 
   @override
   void initState() {
     super.initState();
+    _language.restore();
     _session.refresh();
   }
 
@@ -132,21 +135,28 @@ class _ZayaAppState extends State<ZayaApp> {
   void dispose() {
     _session.feed.dispose();
     _session.dispose();
+    _language.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return _SessionScope(
-      session: _session,
-      child: MaterialApp(
-        title: 'ZAYA',
-        debugShowCheckedModeBanner: false,
-        theme: buildZayaTheme(),
-        locale: const Locale('fr'),
-        supportedLocales: const [Locale('fr'), Locale('en')],
-        localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        home: const _RootGate(),
+    return LanguageScope(
+      controller: _language,
+      child: _SessionScope(
+        session: _session,
+        child: ListenableBuilder(
+          listenable: _language,
+          builder: (context, _) => MaterialApp(
+            title: 'ZAYA',
+            debugShowCheckedModeBanner: false,
+            theme: buildZayaTheme(),
+            locale: _language.locale,
+            supportedLocales: const [Locale('fr'), Locale('en')],
+            localizationsDelegates: GlobalMaterialLocalizations.delegates,
+            home: const _RootGate(),
+          ),
+        ),
       ),
     );
   }
