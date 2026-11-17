@@ -23,15 +23,19 @@ Mis à jour le 17/11/2026.
 
 ### Préproduction (projet Supabase `wocgmmwwopzrgleeevof`, décision B5)
 
-Constaté le 17/11/2026, en lecture seule avec la clé publique :
+Le projet s'appelle « zaya-production » dans le tableau de bord, mais il sert de préproduction tant qu'aucun vrai
+membre n'est inscrit. Avant l'ouverture : créer un projet de production distinct, ou retirer les comptes d'essai,
+les numéros de test et le rôle de modérateur d'essai.
+
+Constaté le 17/11/2026 :
 
 | Point | État |
 |---|---|
 | Base installée ([INSTALLATION_SUPABASE.md](INSTALLATION_SUPABASE.md)) | Oui : 9 pays et 18 villes lisibles ; profils et communautés refusés à un visiteur non connecté, comme prévu |
-| Fonctions serveur appelées par l'application | Les 43 existent dans les migrations installées (contrôle du code, aucun appel réel) |
-| Connexion par téléphone (fournisseur « Phone » de Supabase Auth) | **Désactivée** : personne ne peut se connecter tant qu'elle n'est pas activée |
-| Envoi réel du code de connexion | Non configuré (décision B3) |
-| Application connectée installée sur un téléphone | Non vérifié |
+| Fonctions serveur appelées par l'application | Les 43 existent dans les migrations installées (contrôle du code) |
+| Connexion par téléphone | **Activée** le 17/11/2026 avec l'accord du propriétaire, avec deux numéros de test, sans aucun envoi : 224620000001 et 224620000002, code 123456, valables jusqu'au 31/01/2027. Vérifié par appel réel : code demandé, session ouverte avec 123456, mauvais code refusé ; ensuite profil vide (l'application ouvrira l'inscription), villes lisibles, profils des autres invisibles |
+| Envoi réel du code aux autres numéros | Non configuré (décision B3) : ces numéros ne reçoivent rien |
+| Application connectée installée sur un téléphone | Non vérifié (première construction Android en cours) |
 
 ## 2. Lot A — indispensable avant l'ouverture
 
@@ -40,7 +44,7 @@ Critères d'acceptation : cahier des charges §18 (tests fonctionnels), §36 et 
 | # | Bloc | Statut | Preuve | Reste à faire |
 |---|---|---|---|---|
 | A1 | Socle : dépôt GitHub, application Flutter (Android d'abord, iOS compatible), migrations `0001` à `0006`, fichier d'installation unique, tests | Vérifié | 67 tests SQL, 51 tests Flutter | Intégration continue (§17, phase 1) ; build iOS jamais lancé (pas de Mac) ; branches `lot/<nom>` et relecture Codex (jusqu'ici, tout est poussé sur `main`) |
-| A2 | Connexion par téléphone et code | Non vérifié | Mode démo seulement : code incorrect refusé | Activer le fournisseur Phone ; envoi du code (B3) ; essai réel ; compte à rebours avant renvoi du code (§9) ; récupération du compte (CARTE_ECRANS, Q2) |
+| A2 | Connexion par téléphone et code | Vérifié sur le serveur avec un numéro de test ; non vérifié dans l'application sur téléphone | Appel réel à la préproduction (§1) ; mode démo : code incorrect refusé | Envoi réel du code (B3) ; essai depuis l'application ; compte à rebours avant renvoi du code (§9) ; récupération du compte (CARTE_ECRANS, Q2) |
 | A3 | Inscription et consentements : 18 ans minimum, reprise du brouillon, conditions jamais restaurées | Vérifié | SQL : moins de 18 ans refusé, consentements non modifiables, date de naissance et genre figés. Flutter : parcours d'inscription, contrôle de majorité | Textes juridiques définitifs (B1) |
 | A4 | Profil, photos, données sensibles à part (`profile_sensitive`) | Vérifié côté serveur ; envoi réel de photos non vérifié | SQL : confession d'autrui illisible, photos privées masquées, auto-approbation des photos interdite | Essai d'envoi de photos sur le vrai stockage |
 | A5 | Vérification de profil | Vérifié côté serveur | SQL : consentement biométrique exigé, décision réservée à l'équipe. Flutter : impossible avant 3 photos | Écran de revue dans la console (A12) ; prestataire (B2). En attendant, outil de préproduction (§4) |
@@ -70,9 +74,7 @@ statistiques, rendez-vous sécurisés.
 
 ## 4. Prochaines étapes
 
-1. **Activer la connexion par téléphone** sur la préproduction, avec des numéros de test (aucun code réellement
-   envoyé). Action du propriétaire dans le tableau de bord Supabase : voir
-   [INSTALLATION_SUPABASE.md](INSTALLATION_SUPABASE.md).
+1. ~~Activer la connexion par téléphone sur la préproduction~~ : fait le 17/11/2026 (numéros de test, §1).
 2. **Installer l'application connectée** sur un téléphone Android et faire le parcours complet, avec deux comptes
    d'essai pour le like, le match et la messagerie. Un compte seul ne voit personne dans Découvrir : c'est normal.
 3. **Valider la vérification des comptes d'essai** avec
