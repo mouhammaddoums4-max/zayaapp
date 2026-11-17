@@ -31,6 +31,7 @@ Explorer, achats, publicité ».
 | Réglages, langue, aide, documents légaux, matchs terminés | S2 | |
 | Fin d'inscription, compte à rebours du code, nationalité et profession | S2 | |
 | Mise à jour de l'application et avis Google Play | S2 | 0014 |
+| Filtres avancés réservés à Premium | S3 | 0025 ; Premium : langues parlées, projet de mariage, situation matrimoniale. Gratuit garde âge, ville/commune, confession. Contrôlé par le serveur (sans Premium : ignorés et non modifiables). Pas de filtre « vérifiés uniquement » : Découvrir ne montre déjà que des profils vérifiés |
 
 ## En cours ou à faire
 
@@ -62,3 +63,6 @@ Explorer, achats, publicité ».
 - **Onglet « Amis »** dans les discussions : ZAYA est une application de rencontre en vue du mariage ; faut-il vraiment un
   mode « amis » ?
 - **Appels audio et vidéo** dans la discussion : à prévoir dans un lot ultérieur ?
+- **Filtres « études » et « enfants »** (Premium) : ces informations ne sont pas encore demandées aux membres (ni à
+  l'inscription ni dans « Modifier le profil »). Faut-il d'abord les ajouter au profil (études : liste de niveaux, pas
+  un texte libre), pour pouvoir ensuite les filtrer ?

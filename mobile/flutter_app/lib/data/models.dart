@@ -406,8 +406,14 @@ class DiscoveryPrefs {
     this.confessionMode = 'no_filter',
     List<String>? confessions,
     List<int>? cityIds,
+    List<String>? languages,
+    List<String>? horizons,
+    List<String>? maritalStatuses,
   })  : confessions = confessions ?? <String>[],
-        cityIds = cityIds ?? <int>[];
+        cityIds = cityIds ?? <int>[],
+        languages = languages ?? <String>[],
+        horizons = horizons ?? <String>[],
+        maritalStatuses = maritalStatuses ?? <String>[];
 
   int ageMin;
   int ageMax;
@@ -417,13 +423,28 @@ class DiscoveryPrefs {
   /// Villes ou communes choisies (vide = toutes) ; filtre à sens unique (migration 0012).
   List<int> cityIds;
 
+  // Filtres avancés, réservés à Premium (migration 0025) ; vide = tous. Le serveur ne les applique que pour un
+  // membre Premium, et refuse qu'un membre Gratuit les définisse.
+
+  /// Langues parlées : au moins une en commun.
+  List<String> languages;
+
+  /// Projets de mariage acceptés (clés de [horizonLabels]).
+  List<String> horizons;
+
+  /// Situations matrimoniales acceptées (clés de [maritalLabels]).
+  List<String> maritalStatuses;
+
+  bool get hasAdvancedFilters => languages.isNotEmpty || horizons.isNotEmpty || maritalStatuses.isNotEmpty;
+
   /// Un réglage s'écarte des valeurs par défaut (point sur l'icône des filtres).
   bool get isFiltered {
     final d = DiscoveryPrefs();
     return ageMin != d.ageMin ||
         ageMax != d.ageMax ||
         !const {'no_filter', 'all'}.contains(confessionMode) ||
-        cityIds.isNotEmpty;
+        cityIds.isNotEmpty ||
+        hasAdvancedFilters;
   }
 }
 

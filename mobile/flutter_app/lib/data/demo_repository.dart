@@ -522,10 +522,22 @@ class DemoRepository implements ZayaRepository {
       ageMax: _prefs.ageMax,
       confessionMode: _prefs.confessionMode,
       confessions: [..._prefs.confessions],
-      cityIds: [..._prefs.cityIds]);
+      cityIds: [..._prefs.cityIds],
+      languages: [..._prefs.languages],
+      horizons: [..._prefs.horizons],
+      maritalStatuses: [..._prefs.maritalStatuses]);
 
   @override
   Future<void> savePreferences(DiscoveryPrefs prefs) async {
+    // Même règle que le serveur (0025) : un compte Gratuit ne peut pas définir ni changer de filtre avancé.
+    bool change(List<String> avant, List<String> apres) =>
+        apres.isNotEmpty && (avant.length != apres.length || avant.any((v) => !apres.contains(v)));
+    if (!(_profile?.isPremium ?? false) &&
+        (change(_prefs.languages, prefs.languages) ||
+            change(_prefs.horizons, prefs.horizons) ||
+            change(_prefs.maritalStatuses, prefs.maritalStatuses))) {
+      throw Exception('PREMIUM_REQUIRED');
+    }
     _prefs = prefs;
   }
 
@@ -537,13 +549,21 @@ class DemoRepository implements ZayaRepository {
       for (final c in await cities())
         if (_prefs.cityIds.contains(c.id)) c.name,
     };
+    // Filtres avancés (0025) : appliqués seulement pour un compte Premium ; liste vide = tous.
+    final avances = _profile?.isPremium ?? false;
+    final langues = avances ? _prefs.languages : const <String>[];
+    final projets = avances ? _prefs.horizons : const <String>[];
+    final situations = avances ? _prefs.maritalStatuses : const <String>[];
     return [
       for (final p in _pool)
         if (!_seen.contains(p.profile.id) &&
             !_blocked.containsKey(p.profile.id) &&
             p.profile.age >= _prefs.ageMin &&
             p.profile.age <= _prefs.ageMax &&
-            (villes.isEmpty || villes.contains(p.profile.city)))
+            (villes.isEmpty || villes.contains(p.profile.city)) &&
+            (langues.isEmpty || p.profile.languages.any(langues.contains)) &&
+            (projets.isEmpty || projets.contains(p.profile.horizon)) &&
+            (situations.isEmpty || situations.contains(p.maritalStatus)))
           p.profile,
     ];
   }

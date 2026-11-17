@@ -5,6 +5,7 @@ import '../../core/motion.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/models.dart';
+import '../premium/premium_screens.dart';
 
 /// Préférences de découverte : elles filtrent uniquement les profils proposés au membre.
 /// Se ferme en renvoyant `true` si les préférences ont été enregistrées.
@@ -61,10 +62,83 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
     }
   }
 
+  /// Un filtre réservé (CDC §4.4) : l'offre Premium s'ouvre au moment où le membre essaie de s'en servir.
+  Future<void> _offerPremium() async {
+    await Navigator.of(context).push(zRoute<void>(const PremiumScreen()));
+    if (mounted) setState(() {});
+  }
+
+  /// Filtres avancés (Premium, migration 0025) : un groupe de puces à choix multiples ; aucun choix = tous.
+  /// Sans Premium, les puces portent un cadenas et ouvrent l'offre Premium au lieu de changer le choix.
+  Widget _advancedChips(String title, Map<String, String> options, List<String> selected, bool premium) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const SizedBox(height: 10),
+      Text(title, style: Theme.of(context).textTheme.labelLarge),
+      const SizedBox(height: 4),
+      Wrap(spacing: 8, runSpacing: 4, children: [
+        for (final e in options.entries)
+          FilterChip(
+            label: Text(e.value),
+            avatar: premium ? null : const Icon(Icons.lock_outline, size: 16, color: ZColors.muted),
+            selected: selected.contains(e.key),
+            selectedColor: ZColors.primarySoft,
+            checkmarkColor: ZColors.primaryDark,
+            onSelected: premium
+                ? (on) => setState(() => on ? selected.add(e.key) : selected.remove(e.key))
+                : (_) => _offerPremium(),
+          ),
+      ]),
+    ]);
+  }
+
+  List<Widget> _advancedSection(DiscoveryPrefs prefs, bool premium) => [
+        const SizedBox(height: 16),
+        SectionTitle('Filtres avancés', trailing: premium ? null : const PremiumBadge()),
+        Text(
+          premium
+              ? 'Ils s’ajoutent à vos préférences. Sans choix dans un groupe, tous les profils sont proposés.'
+              : 'Avec ZAYA Premium, affinez les profils proposés par langue parlée, projet de mariage et situation '
+                  'matrimoniale.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        if (!premium && prefs.hasAdvancedFilters) ...[
+          const SizedBox(height: 10),
+          InfoBanner(
+            icon: Icons.info_outline,
+            text: 'Vos filtres avancés sont conservés, mais ils ne s’appliquent pas sans ZAYA Premium.',
+            action: TextButton(
+              onPressed: () => setState(() {
+                prefs.languages.clear();
+                prefs.horizons.clear();
+                prefs.maritalStatuses.clear();
+              }),
+              child: const Text('Les retirer'),
+            ),
+          ),
+        ],
+        _advancedChips('Langues parlées', {for (final l in languageOptions) l: l}, prefs.languages, premium),
+        _advancedChips('Projet de mariage', horizonLabels, prefs.horizons, premium),
+        _advancedChips('Situation matrimoniale', maritalLabels, prefs.maritalStatuses, premium),
+        if (!premium) ...[
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: _offerPremium,
+            icon: const Icon(Icons.workspace_premium_outlined),
+            label: const Text('Découvrir ZAYA Premium'),
+          ),
+        ],
+      ];
+
   /// Choix des villes : « Toutes », raccourci « Tout Conakry », communes de Conakry puis autres villes.
   Widget _cityChips(DiscoveryPrefs prefs) {
-    final communes = [for (final c in _cities) if (c.name.startsWith(_conakry)) c];
-    final autres = [for (final c in _cities) if (!c.name.startsWith(_conakry)) c];
+    final communes = [
+      for (final c in _cities)
+        if (c.name.startsWith(_conakry)) c
+    ];
+    final autres = [
+      for (final c in _cities)
+        if (!c.name.startsWith(_conakry)) c
+    ];
     final toutConakry = communes.isNotEmpty && communes.every((c) => prefs.cityIds.contains(c.id));
     Widget chip(String label, bool selected, VoidCallback onTap) => FilterChip(
           label: Text(label),
@@ -111,6 +185,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
   @override
   Widget build(BuildContext context) {
     final prefs = _prefs;
+    final premium = Session.of(context).me?.isPremium ?? false;
     return Scaffold(
       appBar: AppBar(title: const Text('Préférences de découverte')),
       body: SafeArea(
@@ -183,6 +258,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                             ),
                       ]),
                     ],
+                    ..._advancedSection(prefs, premium),
                   ]),
                 ),
                 Padding(

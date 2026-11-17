@@ -277,6 +277,9 @@ class SupabaseRepository implements ZayaRepository {
       confessionMode: row['confession_mode'] as String,
       confessions: _strings(row['confessions']),
       cityIds: [for (final v in (row['city_ids'] as List? ?? const <dynamic>[])) (v as num).toInt()],
+      languages: _strings(row['languages']),
+      horizons: _strings(row['marriage_horizons']),
+      maritalStatuses: _strings(row['marital_statuses']),
     );
   }
 
@@ -289,6 +292,10 @@ class SupabaseRepository implements ZayaRepository {
       'confession_mode': prefs.confessionMode,
       'confessions': prefs.confessions,
       'city_ids': prefs.cityIds,
+      // Filtres avancés : un compte Gratuit ne peut que les laisser tels quels ou les vider (refus PREMIUM_REQUIRED).
+      'languages': prefs.languages,
+      'marriage_horizons': prefs.horizons,
+      'marital_statuses': prefs.maritalStatuses,
     });
   }
 
