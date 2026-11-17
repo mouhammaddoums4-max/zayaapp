@@ -161,6 +161,24 @@ await test("un membre ne peut pas approuver ses propres photos", async () => {
   const r = await db.query(`select moderation from profile_photos where storage_path = 'x/p9.jpg'`);
   assert(r.rows[0].moderation === 'pending');
 });
+await test("un membre voit le fichier des photos approuvées et publiques des autres, jamais des privées", async () => {
+  await db.exec(`grant usage on schema storage to authenticated;
+                 grant select on storage.objects to authenticated`); // droits accordés par Supabase
+  const [publique, privee] = [`${U.aicha}/p0.jpg`, `${U.aicha}/privee.jpg`];
+  await db.query(`insert into storage.objects (bucket_id, name) values ('profile-photos', $1), ('profile-photos', $2)`,
+    [publique, privee]);
+  await db.query(`insert into profile_photos (user_id, storage_path, position, visibility, moderation)
+                  values ($1, $2, 5, 'private', 'approved')`, [U.aicha, privee]);
+  const vus = async (id) => (await as(id, `select name from storage.objects
+    where bucket_id = 'profile-photos' and name like $1 order by name`, [`${U.aicha}/%`])).rows.map((x) => x.name);
+  try {
+    assert(JSON.stringify(await vus(U.moussa)) === JSON.stringify([publique]), `Moussa voit : [${await vus(U.moussa)}]`);
+    assert((await vus(U.aicha)).length === 2, 'la propriétaire doit voir toutes ses photos');
+  } finally {
+    await db.query(`delete from profile_photos where storage_path = $1`, [privee]);
+    await db.query(`delete from storage.objects where name in ($1, $2)`, [publique, privee]);
+  }
+});
 
 console.log('\nDécouverte (filtres réciproques)');
 const feed = async (u) => (await as(u, `select * from discovery_feed(20)`)).rows;

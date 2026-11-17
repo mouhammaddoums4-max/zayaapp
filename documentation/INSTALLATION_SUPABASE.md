@@ -20,6 +20,8 @@ Projet : `wocgmmwwopzrgleeevof`, à utiliser comme **préproduction** (tests). L
 
 Le fichier est généré à partir de `supabase/migrations` et `supabase/seed` ; les tests (`cd supabase/tests && npm test`) vérifient qu'il est à jour et qu'il s'installe d'un seul bloc.
 
+**Base déjà installée :** le fichier d'installation refuse de s'exécuter une seconde fois. Pour une correction publiée après votre installation, collez seulement la nouvelle migration dans l'éditeur SQL, par exemple [0007_photos_lecture.sql](../supabase/migrations/0007_photos_lecture.sql) : sans elle, un membre ne peut pas afficher les photos des autres membres.
+
 ## 2. Activer la connexion par téléphone
 
 **Pour tester tout de suite, sans SMS :**
@@ -44,34 +46,42 @@ Sans ce paramètre, l'application démarre en mode démo (profils fictifs, aucun
 
 > La clé « publishable » (`sb_publishable_…`) est publique par conception : elle est intégrée à l'application et les données restent protégées par les règles d'accès du serveur. La clé **secrète** (`sb_secret_…`) et le mot de passe de la base ne doivent jamais être partagés, ni écrits dans le code ou sur GitHub.
 
-## 4. Envoyer de vrais SMS avec Nimba (quand le contrat est prêt, décision B3)
+## 4. Envoyer de vrais SMS avec Nimba (décision B3)
 
-Dans un terminal, sur votre ordinateur :
+Compte Nimba fourni le 17/11/2026 : identifiants valides, expéditeur **« Pinal Group »** accepté par Nimba.
+Le solde SMS était à **0** à cette date : achetez du crédit SMS chez Nimba avant tout essai réel.
+
+Dans un terminal, sur votre ordinateur (remplacez `...` par les valeurs de votre espace Nimba, sans jamais les écrire dans un fichier du projet) :
 
 ```bash
 cd "ZAYA APP"
 npx supabase login                                   # ouvre le navigateur
-npx supabase link --project-ref wocgmmwwopzrgleeevof
-npx supabase functions deploy send-sms-hook --no-verify-jwt
-npx supabase secrets set NIMBA_SERVICE_ID=... NIMBA_SECRET=... NIMBA_SENDER=ZAYA
+npx supabase functions deploy send-sms-hook --no-verify-jwt --project-ref wocgmmwwopzrgleeevof
+npx supabase secrets set --project-ref wocgmmwwopzrgleeevof NIMBA_SERVICE_ID=... NIMBA_SECRET=... "NIMBA_SENDER=Pinal Group"
 ```
 
 Puis **Authentication → Hooks → Send SMS hook** : type HTTPS, adresse
 `https://wocgmmwwopzrgleeevof.supabase.co/functions/v1/send-sms-hook`. Générez le secret proposé, puis enregistrez-le :
-`npx supabase secrets set SEND_SMS_HOOK_SECRET="v1,whsec_..."`.
+`npx supabase secrets set --project-ref wocgmmwwopzrgleeevof SEND_SMS_HOOK_SECRET="v1,whsec_..."`.
+Une fois le hook actif, les champs Twilio du fournisseur Phone ne servent plus : c'est le hook qui envoie le SMS.
 
 Enfin, dans **SQL Editor**, fixez le budget SMS : tant qu'il vaut 0, aucun SMS n'est envoyé.
 
 ```sql
+-- Valeurs d'exemple : à remplacer par le tarif réel de votre contrat Nimba et le plafond choisi.
 update app_config set value = '500000' where key = 'sms_monthly_budget_gnf';  -- plafond mensuel en GNF
 update app_config set value = '150' where key = 'sms_unit_cost_gnf';          -- coût d'un SMS selon le contrat Nimba
 ```
 
-Le hook n'a jamais été exécuté contre l'API Nimba réelle : à tester d'abord avec un numéro de l'équipe.
+Le hook n'a encore envoyé aucun SMS réel : à tester d'abord avec un numéro de l'équipe.
 
 ## 5. Valider un profil de test (préproduction uniquement)
 
-La console d'administration n'est pas encore construite. Pour qu'un profil de test apparaisse dans Découvrir et puisse publier dans la Communauté, validez sa vérification dans **SQL Editor** (remplacez le numéro, sans le `+`) :
+La console d'administration n'est pas encore construite. Pour qu'un profil de test apparaisse dans Découvrir et puisse publier dans la Communauté, sa vérification doit être validée.
+
+**Méthode conseillée :** chaque compte d'essai se connecte, ajoute 3 photos et demande la vérification (Profil → Vérifier mon profil). Collez ensuite [supabase/preproduction/valider_verifications_essai.sql](../supabase/preproduction/valider_verifications_essai.sql) dans **SQL Editor**, adaptez la liste des numéros en tête du fichier, puis cliquez sur **Run**. Le premier numéro devient modérateur, et les demandes validées sont tracées dans le journal d'audit.
+
+**Méthode manuelle** (sans trace dans le journal d'audit), dans **SQL Editor** (remplacez le numéro, sans le `+`) :
 
 ```sql
 with membre as (select id from auth.users where phone = '224620000001')
@@ -92,6 +102,18 @@ Pour vous donner le rôle d'administrateur (utile pour la future console) :
 insert into staff_roles (user_id, role)
 select id, 'super_admin' from auth.users where phone = '224620000001';
 ```
+
+### Profils d'essai : 20 femmes et 20 hommes fictifs
+
+Pour remplir Découvrir pendant les essais, [supabase/preproduction/profils_essai.mjs](../supabase/preproduction/profils_essai.mjs) crée 40 profils fictifs, actifs et vérifiés, avec 3 photos chacun (silhouettes illustrées générées par le script, aucune photo de personne réelle). Les comptes utilisent une adresse en `.invalid` : aucun vrai numéro de téléphone ne peut tomber sur l'un d'eux. Relancer la création ne fait pas de doublon.
+
+```bash
+# Clé service_role : Project Settings → API Keys. Ne jamais l'écrire dans un fichier du projet.
+SUPABASE_URL=https://wocgmmwwopzrgleeevof.supabase.co SUPABASE_SERVICE_ROLE_KEY=... node supabase/preproduction/profils_essai.mjs creer
+SUPABASE_URL=https://wocgmmwwopzrgleeevof.supabase.co SUPABASE_SERVICE_ROLE_KEY=... node supabase/preproduction/profils_essai.mjs supprimer
+```
+
+Créés le 17/11/2026 sur `wocgmmwwopzrgleeevof` (40 sur 40 visibles dans Découvrir). **À supprimer avant toute ouverture au public** : de faux profils présentés à de vrais membres seraient trompeurs.
 
 ## 6. Avant la production
 
