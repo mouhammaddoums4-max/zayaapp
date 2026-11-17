@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show SynchronousFuture;
 import 'package:material_ui/material_ui.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -52,7 +53,15 @@ class _ProfilePhotoViewState extends State<ProfilePhotoView> {
 
   void _resolve() {
     final path = widget.photoPath;
-    _url = path == null ? null : Session.read(context).repo.photoUrl(path, blurred: widget.blurred);
+    if (path == null) {
+      _url = null;
+      return;
+    }
+    final repo = Session.read(context).repo;
+    // URL déjà signée : réponse immédiate, la photo s'affiche dès la première image au lieu du fond provisoire.
+    // Sans cela, une carte qui passe devant ou la photo qui vole vers la fiche clignote en rose une image.
+    final known = repo.cachedPhotoUrl(path, blurred: widget.blurred);
+    _url = known != null ? SynchronousFuture<String?>(known) : repo.photoUrl(path, blurred: widget.blurred);
   }
 
   @override

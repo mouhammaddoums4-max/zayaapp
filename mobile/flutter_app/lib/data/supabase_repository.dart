@@ -244,12 +244,19 @@ class SupabaseRepository implements ZayaRepository {
   final Map<String, ({String url, DateTime expires})> _signedUrls = <String, ({String url, DateTime expires})>{};
 
   @override
+  String? cachedPhotoUrl(String? path, {bool blurred = false}) {
+    if (path == null) return null;
+    final cached = _signedUrls['${blurred ? 'profile-photos-blur' : 'profile-photos'}/$path'];
+    return cached != null && cached.expires.isAfter(DateTime.now()) ? cached.url : null;
+  }
+
+  @override
   Future<String?> photoUrl(String? path, {bool blurred = false}) async {
     if (path == null) return null;
+    final cached = cachedPhotoUrl(path, blurred: blurred);
+    if (cached != null) return cached;
     final bucket = blurred ? 'profile-photos-blur' : 'profile-photos';
     final key = '$bucket/$path';
-    final cached = _signedUrls[key];
-    if (cached != null && cached.expires.isAfter(DateTime.now())) return cached.url;
     try {
       final url = await _db.storage.from(bucket).createSignedUrl(path, 3600);
       _signedUrls[key] = (url: url, expires: DateTime.now().add(const Duration(minutes: 50)));

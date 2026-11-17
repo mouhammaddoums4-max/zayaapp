@@ -510,6 +510,9 @@ class DemoRepository implements ZayaRepository {
   Future<String?> photoUrl(String? path, {bool blurred = false}) async => null;
 
   @override
+  String? cachedPhotoUrl(String? path, {bool blurred = false}) => null;
+
+  @override
   Future<DiscoveryPrefs> loadPreferences() async => DiscoveryPrefs(
       ageMin: _prefs.ageMin,
       ageMax: _prefs.ageMax,

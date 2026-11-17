@@ -46,6 +46,10 @@ abstract class ZayaRepository {
   /// URL temporaire d'une photo ; `blurred` : version floutée fabriquée par le serveur (bucket profile-photos-blur).
   Future<String?> photoUrl(String? path, {bool blurred = false});
 
+  /// URL déjà signée et encore valide, sans appel réseau (sinon `null`). Permet d'afficher une photo
+  /// dès la première image d'un écran ou d'une animation, au lieu d'un fond provisoire qui clignote.
+  String? cachedPhotoUrl(String? path, {bool blurred = false});
+
   // ── Préférences de découverte
   Future<DiscoveryPrefs> loadPreferences();
   Future<void> savePreferences(DiscoveryPrefs prefs);

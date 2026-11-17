@@ -27,10 +27,17 @@ class DiscoveryScreen extends StatefulWidget {
 
 class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProviderStateMixin {
   late final AnimationController _fly = AnimationController(vsync: this, duration: ZMotion.medium);
-  Offset _drag = Offset.zero;
+
+  /// Position de la carte du dessus. Un `ValueNotifier` plutôt que `setState` : pendant le geste, seules les
+  /// transformations des deux cartes sont recalculées, pas tout l'écran (en-tête, bannière, textes).
+  final ValueNotifier<Offset> _drag = ValueNotifier<Offset>(Offset.zero);
   Offset _from = Offset.zero;
   Offset _to = Offset.zero;
   bool _acting = false;
+  late final FeedStore _feed;
+
+  /// Profils dont la photo a déjà été préparée à l'avance.
+  final Set<String> _prefetched = <String>{};
 
   /// Un filtre s'écarte des réglages par défaut : point sur l'icône des filtres.
   bool _filtersActive = false;
@@ -39,12 +46,32 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
   void initState() {
     super.initState();
     _fly.addListener(_onFly);
-    final feed = Session.read(context).feed;
-    if (!feed.loaded && !feed.loading) {
-      // Après la première image, pour ne pas notifier les écouteurs pendant la construction.
-      WidgetsBinding.instance.addPostFrameCallback((_) => feed.load());
-    }
+    _feed = Session.read(context).feed;
+    _feed.addListener(_prefetchAhead);
+    // Après la première image, pour ne pas notifier les écouteurs pendant la construction.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_feed.loaded && !_feed.loading) {
+        _feed.load();
+      } else {
+        _prefetchAhead();
+      }
+    });
     _refreshFiltersState();
+  }
+
+  /// Prépare la photo des deux profils qui suivent la carte de derrière (URL signée + image décodée),
+  /// pour qu'une carte qui avance s'affiche déjà prête au lieu d'apparaître sur un fond provisoire.
+  /// Les deux premières cartes sont affichées, donc déjà chargées par leur propre widget.
+  void _prefetchAhead() {
+    if (!mounted) return;
+    final repo = Session.read(context).repo;
+    for (final profile in _feed.profiles.skip(2).take(2)) {
+      final path = profile.photoPath;
+      if (path == null || !_prefetched.add(profile.id)) continue;
+      repo.photoUrl(path).then((url) {
+        if (url != null && mounted) precacheImage(NetworkImage(url), context, onError: (_, __) {});
+      }, onError: (_) {});
+    }
   }
 
   Future<void> _refreshFiltersState() async {
@@ -58,23 +85,25 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
 
   @override
   void dispose() {
+    _feed.removeListener(_prefetchAhead);
     _fly.removeListener(_onFly);
     _fly.dispose();
+    _drag.dispose();
     super.dispose();
   }
 
   void _onFly() {
-    setState(() => _drag = Offset.lerp(_from, _to, ZMotion.emphasized.transform(_fly.value))!);
+    _drag.value = Offset.lerp(_from, _to, ZMotion.emphasized.transform(_fly.value))!;
   }
 
   /// Anime la carte vers [target] (sortie d'écran ou retour au centre).
   Future<void> _animateTo(Offset target) async {
     if (!mounted) return;
     if (ZMotion.reduced(context)) {
-      setState(() => _drag = target);
+      _drag.value = target;
       return;
     }
-    _from = _drag;
+    _from = _drag.value;
     _to = target;
     try {
       await _fly.forward(from: 0).orCancel;
@@ -93,8 +122,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
     session.repo.pass(profile.id).then((_) {}, onError: (_) {});
     await _animateTo(_exit(-1));
     if (!mounted) return;
-    _drag = Offset.zero;
-    _acting = false;
+    // Remise au centre et retrait de la carte dans la même image : la suivante prend sa place sans saut.
+    _drag.value = Offset.zero;
+    setState(() => _acting = false);
     session.feed.remove(profile.id);
   }
 
@@ -112,7 +142,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
       await _animateTo(Offset.zero);
       if (!mounted) return;
     } else {
-      _drag = Offset.zero;
+      // Le retrait de la carte (applyLikeResult) a lieu sans attente, dans la même image.
+      _drag.value = Offset.zero;
     }
     setState(() => _acting = false);
     if (result != null) await applyLikeResult(context, profile, result);
@@ -120,9 +151,10 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
 
   void _onDragEnd(DiscoveryProfile profile) {
     final threshold = MediaQuery.of(context).size.width * 0.28;
-    if (_drag.dx > threshold) {
+    final dx = _drag.value.dx;
+    if (dx > threshold) {
       _like(profile);
-    } else if (_drag.dx < -threshold) {
+    } else if (dx < -threshold) {
       _pass(profile);
     } else {
       _animateTo(Offset.zero);
@@ -131,13 +163,18 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
 
   Future<void> _openProfile(DiscoveryProfile profile) async {
     if (_acting) return;
-    final action = await Navigator.of(context).push<String>(zRoute<String>(ProfileDetailScreen(
+    final route = zRoute<String>(ProfileDetailScreen(
       userId: profile.id,
       name: profile.displayName,
       preview: profile,
       heroTag: 'discover-${profile.id}',
       showActions: true,
-    )));
+    ));
+    final action = await Navigator.of(context).push<String>(route);
+    if (!mounted) return;
+    // La fiche rend son résultat dès sa fermeture, alors que la photo revient encore vers la carte.
+    // On attend la fin de ce retour avant de faire partir la carte, sinon les deux mouvements se percutent.
+    if (action != null && route is TransitionRoute<String>) await route.completed;
     if (!mounted) return;
     if (action == 'like') {
       await _like(profile);
@@ -287,43 +324,65 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
     final top = feed.profiles.first;
     final next = feed.profiles.length > 1 ? feed.profiles[1] : null;
     final width = MediaQuery.of(context).size.width;
-    final progress = (_drag.dx.abs() / (width * 0.28)).clamp(0.0, 1.0).toDouble();
-    final swipe = (_drag.dx / (width * 0.28)).clamp(-1.0, 1.0).toDouble();
+    final threshold = width * 0.28;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       child: Column(children: [
         Expanded(
-          child: Stack(children: [
-            if (next != null)
-              Positioned.fill(
-                // La carte suivante grandit à mesure que la première s'éloigne.
-                child: Transform.scale(
-                  scale: 0.94 + 0.06 * progress,
-                  child: Opacity(opacity: 0.6 + 0.4 * progress, child: _ProfileCard(profile: next)),
-                ),
-              ),
-            Positioned.fill(
-              child: GestureDetector(
-                onTap: () => _openProfile(top),
-                onPanUpdate: _acting ? null : (details) => setState(() => _drag += details.delta),
-                onPanEnd: _acting ? null : (_) => _onDragEnd(top),
-                child: Transform.translate(
-                  offset: _drag,
-                  child: Transform.rotate(
-                    angle: _drag.dx / width * 0.3,
-                    child: _ProfileCard(
-                      key: ValueKey<String>(top.id),
-                      profile: top,
-                      swipe: swipe,
-                      heroTag: 'discover-${top.id}',
-                      onMore: () => _showCardMenu(top),
+          child: GestureDetector(
+            onTap: () => _openProfile(top),
+            onPanUpdate: _acting ? null : (details) => _drag.value += details.delta,
+            onPanEnd: _acting ? null : (_) => _onDragEnd(top),
+            child: Stack(children: [
+              // Carte de derrière puis carte du dessus, avec la même structure et une clé par profil :
+              // quand la carte de derrière passe devant, elle est conservée telle quelle (photo déjà
+              // affichée) au lieu d'être reconstruite sur le fond provisoire.
+              for (final profile in [if (next != null) next, top])
+                Positioned.fill(
+                  key: ValueKey<String>(profile.id),
+                  child: ValueListenableBuilder<Offset>(
+                    valueListenable: _drag,
+                    // La carte est dessinée une fois ; pendant le geste, elle est seulement déplacée.
+                    child: RepaintBoundary(
+                      child: _ProfileCard(
+                        profile: profile,
+                        heroTag: 'discover-${profile.id}',
+                        onMore: profile.id == top.id ? () => _showCardMenu(top) : null,
+                      ),
                     ),
+                    builder: (context, drag, card) {
+                      final isTop = profile.id == top.id;
+                      final progress = (drag.dx.abs() / threshold).clamp(0.0, 1.0).toDouble();
+                      final swipe = (drag.dx / threshold).clamp(-1.0, 1.0).toDouble();
+                      final scale = 0.94 + 0.06 * progress;
+                      return Transform(
+                        alignment: Alignment.center,
+                        // Dessus : suit le doigt en pivotant. Derrière : grandit à mesure que l'autre s'éloigne.
+                        transform: isTop
+                            ? (Matrix4.translationValues(drag.dx, drag.dy, 0)..rotateZ(drag.dx / width * 0.3))
+                            : Matrix4.diagonal3Values(scale, scale, 1),
+                        child: Stack(fit: StackFit.expand, children: [
+                          card!,
+                          if (isTop && swipe.abs() > 0.12) _SwipeStamp(swipe: swipe),
+                          // Voile couleur fond plutôt qu'une opacité animée : même rendu, sans recomposer
+                          // toute la carte hors écran à chaque image (coûteux sur les téléphones modestes).
+                          if (!isTop && progress < 1)
+                            IgnorePointer(
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: ZColors.bg.withValues(alpha: 0.4 * (1 - progress)),
+                                  borderRadius: BorderRadius.circular(_cardRadius),
+                                ),
+                              ),
+                            ),
+                        ]),
+                      );
+                    },
                   ),
                 ),
-              ),
-            ),
-          ]),
+            ]),
+          ),
         ),
         const SizedBox(height: 14),
         Row(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.center, children: [
@@ -368,25 +427,84 @@ class _QuotaChip extends StatelessWidget {
       );
 }
 
+/// Rayon des coins d'une carte de profil.
+const double _cardRadius = 28;
+
+/// Vol de la photo entre la carte et la fiche : les coins s'arrondissent ou s'aplatissent progressivement
+/// (de 28 à 0 à l'ouverture, l'inverse au retour) au lieu de changer d'un coup au début ou à la fin du vol.
+Widget _cardPhotoShuttle(BuildContext flightContext, Animation<double> animation, HeroFlightDirection direction,
+    BuildContext fromHeroContext, BuildContext toHeroContext) {
+  final hero = toHeroContext.widget as Hero;
+  return AnimatedBuilder(
+    animation: animation,
+    child: hero.child,
+    builder: (context, child) => ClipRRect(
+      borderRadius: BorderRadius.circular(_cardRadius * (1 - animation.value).clamp(0.0, 1.0)),
+      child: child,
+    ),
+  );
+}
+
+/// Tampon « J'aime » / « Passer » affiché sur la carte pendant le geste ; [swipe] va de -1 (passer) à 1 (aimer).
+/// Il est dessiné au-dessus de la carte, pour que celle-ci n'ait pas à être redessinée à chaque mouvement.
+class _SwipeStamp extends StatelessWidget {
+  const _SwipeStamp({required this.swipe});
+  final double swipe;
+
+  @override
+  Widget build(BuildContext context) {
+    final like = swipe > 0;
+    return Positioned(
+      top: 30,
+      left: like ? 24 : null,
+      right: like ? null : 24,
+      child: IgnorePointer(
+        child: Opacity(
+          opacity: swipe.abs(),
+          child: Transform.rotate(
+            angle: like ? -0.2 : 0.2,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: like ? ZColors.primary : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(like ? Icons.favorite : Icons.close, size: 20, color: like ? Colors.white : ZColors.ink),
+                const SizedBox(width: 6),
+                Text(like ? 'J’aime' : 'Passer',
+                    style: GoogleFonts.sora(
+                        fontSize: 18, fontWeight: FontWeight.w700, color: like ? Colors.white : ZColors.ink)),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ProfileCard extends StatelessWidget {
-  const _ProfileCard({super.key, required this.profile, this.swipe = 0, this.heroTag, this.onMore});
+  const _ProfileCard({required this.profile, required this.heroTag, this.onMore});
   final DiscoveryProfile profile;
 
-  /// Avancement du geste : -1 (passer) … 1 (aimer).
-  final double swipe;
-  final String? heroTag;
+  /// Toujours présent (même sur la carte de derrière), pour que la photo garde la même place dans
+  /// l'arbre quand la carte passe devant.
+  final String heroTag;
   final VoidCallback? onMore;
 
   @override
   Widget build(BuildContext context) {
     final p = profile;
-    Widget photo = ProfilePhotoView(name: p.displayName, photoPath: p.photoPath, initialSize: 150);
-    final tag = heroTag;
-    if (tag != null) photo = Hero(tag: tag, child: photo);
+    final photo = Hero(
+      tag: heroTag,
+      flightShuttleBuilder: _cardPhotoShuttle,
+      child: ProfilePhotoView(name: p.displayName, photoPath: p.photoPath, initialSize: 150),
+    );
     final tags = <String>[...p.languages, ...p.interests].take(4).toList();
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(28),
+      borderRadius: BorderRadius.circular(_cardRadius),
       child: Stack(fit: StackFit.expand, children: [
         photo,
         const PhotoScrim(start: 0.35),
@@ -399,33 +517,6 @@ class _ProfileCard extends StatelessWidget {
               icon: const Icon(Icons.more_horiz, color: Colors.white),
               tooltip: 'Signaler ou bloquer',
               onPressed: onMore,
-            ),
-          ),
-        if (swipe.abs() > 0.12)
-          Positioned(
-            top: 30,
-            left: swipe > 0 ? 24 : null,
-            right: swipe < 0 ? 24 : null,
-            child: Opacity(
-              opacity: swipe.abs(),
-              child: Transform.rotate(
-                angle: swipe > 0 ? -0.2 : 0.2,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: swipe > 0 ? ZColors.primary : Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(swipe > 0 ? Icons.favorite : Icons.close,
-                        size: 20, color: swipe > 0 ? Colors.white : ZColors.ink),
-                    const SizedBox(width: 6),
-                    Text(swipe > 0 ? 'J’aime' : 'Passer',
-                        style: GoogleFonts.sora(
-                            fontSize: 18, fontWeight: FontWeight.w700, color: swipe > 0 ? Colors.white : ZColors.ink)),
-                  ]),
-                ),
-              ),
             ),
           ),
         Positioned(
