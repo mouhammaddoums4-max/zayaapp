@@ -101,12 +101,10 @@ class Session extends ChangeNotifier {
   }
 
   /// Accès avec abonnement aux changements (à utiliser dans `build`).
-  static Session of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<_SessionScope>()!.notifier!;
+  static Session of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<_SessionScope>()!.notifier!;
 
   /// Accès ponctuel sans abonnement (utilisable dans `initState` et les callbacks).
-  static Session read(BuildContext context) =>
-      context.getInheritedWidgetOfExactType<_SessionScope>()!.notifier!;
+  static Session read(BuildContext context) => context.getInheritedWidgetOfExactType<_SessionScope>()!.notifier!;
 }
 
 class _SessionScope extends InheritedNotifier<Session> {
@@ -193,7 +191,7 @@ class _RestrictedAccount extends StatelessWidget {
     final suspended = status == 'suspended';
     return Scaffold(
       body: SafeArea(
-        child: Padding(
+        child: FillOrScroll(
           padding: const EdgeInsets.all(28),
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
             const Icon(Icons.lock_outline, size: 56, color: ZColors.danger),

@@ -126,7 +126,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
             child: CustomScrollView(slivers: [
               if (collections.isNotEmpty) ...[
                 const SliverToBoxAdapter(
-                  child: Padding(padding: EdgeInsets.fromLTRB(16, 4, 16, 0), child: SectionTitle('Sélections pour vous')),
+                  child:
+                      Padding(padding: EdgeInsets.fromLTRB(16, 4, 16, 0), child: SectionTitle('Sélections pour vous')),
                 ),
                 SliverToBoxAdapter(
                   child: SizedBox(

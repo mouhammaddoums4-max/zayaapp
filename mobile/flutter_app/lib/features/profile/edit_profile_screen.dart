@@ -110,13 +110,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     selected: _languages.contains(language),
                     selectedColor: ZColors.primarySoft,
                     checkmarkColor: ZColors.primaryDark,
-                    onSelected: (on) =>
-                        setState(() => on ? _languages.add(language) : _languages.remove(language)),
+                    onSelected: (on) => setState(() => on ? _languages.add(language) : _languages.remove(language)),
                   ),
               ]),
               const SizedBox(height: 14),
               SectionTitle('Centres d’intérêt',
-                  trailing: Text('${_interests.length} / $_maxInterests', style: Theme.of(context).textTheme.bodyMedium)),
+                  trailing:
+                      Text('${_interests.length} / $_maxInterests', style: Theme.of(context).textTheme.bodyMedium)),
               Wrap(spacing: 8, runSpacing: 4, children: [
                 for (final interest in interestOptions)
                   FilterChip(

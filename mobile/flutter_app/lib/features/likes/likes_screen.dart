@@ -47,7 +47,9 @@ class _LikesScreenState extends State<LikesScreen> {
     return _LikesData(count: count, premium: premium, profiles: profiles);
   }
 
-  void _reload() => setState(() => _future = _load());
+  void _reload() => setState(() {
+        _future = _load();
+      });
 
   @override
   Widget build(BuildContext context) {
@@ -141,7 +143,8 @@ class _LikesScreenState extends State<LikesScreen> {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(_headline(data.count),
-                    style: GoogleFonts.sora(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white, height: 1.25)),
+                    style:
+                        GoogleFonts.sora(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white, height: 1.25)),
                 const SizedBox(height: 4),
                 Text('Si vous aimez l’une d’elles dans Découvrir, le match est immédiat.',
                     style: GoogleFonts.inter(fontSize: 13, color: Colors.white.withValues(alpha: 0.95), height: 1.35)),

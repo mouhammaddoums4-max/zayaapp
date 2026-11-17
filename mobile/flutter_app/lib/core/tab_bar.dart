@@ -122,7 +122,8 @@ class _TabButton extends StatelessWidget {
                     child: Text(
                       badge > 99 ? '99+' : '$badge',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white, height: 1.2),
+                      style: GoogleFonts.inter(
+                          fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white, height: 1.2),
                     ),
                   ),
                 ),

@@ -64,7 +64,8 @@ abstract class ZayaRepository {
   Future<void> block(String userId);
   Future<void> unblock(String userId);
   Future<List<BlockedUser>> blockedUsers();
-  Future<void> report(String userId, {required String context, required String reason, String? details, String? matchId});
+  Future<void> report(String userId,
+      {required String context, required String reason, String? details, String? matchId});
 
   // ── Données personnelles
   /// Demande la suppression du compte ; retourne la date d'effet (délai de rétractation).

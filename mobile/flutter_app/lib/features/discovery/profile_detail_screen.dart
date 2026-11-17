@@ -107,8 +107,8 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
             automaticallyImplyLeading: false,
             leading: Padding(
               padding: const EdgeInsets.only(left: 8),
-              child: _RoundIconButton(
-                  icon: Icons.arrow_back, tooltip: 'Retour', onTap: () => Navigator.of(context).pop()),
+              child:
+                  _RoundIconButton(icon: Icons.arrow_back, tooltip: 'Retour', onTap: () => Navigator.of(context).pop()),
             ),
             actions: [
               _RoundIconButton(icon: Icons.more_horiz, tooltip: 'Signaler ou bloquer', onTap: () => _openMenu(name)),
@@ -122,7 +122,8 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                   left: 20,
                   right: 20,
                   bottom: 18,
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  child:
+                      Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                     Row(children: [
                       Flexible(
                         child: Text(base == null ? name : '$name, ${base.age}',
@@ -152,7 +153,8 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
           SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.fromLTRB(20, 20, 20, widget.showActions ? 124 : 32),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: _sections(context, base, detail, me)),
+              child:
+                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: _sections(context, base, detail, me)),
             ),
           ),
         ]),

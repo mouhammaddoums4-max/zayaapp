@@ -175,7 +175,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
     return Scaffold(
       // En-tête : filtres à gauche ; à droite, likes restants, notifications et Boost (flamme animée).
       appBar: AppBar(
-        leading: IconButton(icon: const Icon(Icons.tune), tooltip: 'Préférences de découverte', onPressed: _openFilters),
+        leading:
+            IconButton(icon: const Icon(Icons.tune), tooltip: 'Préférences de découverte', onPressed: _openFilters),
         titleSpacing: 0,
         title: Row(mainAxisSize: MainAxisSize.min, children: [
           const ZayaLogo(size: 28),
@@ -216,7 +217,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
                   ? null
                   : TextButton(
                       style: TextButton.styleFrom(
-                          padding: EdgeInsets.zero, minimumSize: const Size(0, 32), foregroundColor: const Color(0xFF5C4100)),
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(0, 32),
+                          foregroundColor: const Color(0xFF5C4100)),
                       onPressed: () => Navigator.of(context).push(zRoute<void>(const VerificationScreen())),
                       child: const Text('Vérifier mon profil  →', style: TextStyle(fontWeight: FontWeight.w700)),
                     ),
@@ -311,10 +314,14 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
           _RoundAction(icon: Icons.close, label: 'Passer', color: ZColors.ink, onTap: () => _pass(top)),
           const SizedBox(width: 22),
           _RoundAction(
-              icon: Icons.person_outline, label: 'Voir le profil', color: ZColors.muted, small: true,
+              icon: Icons.person_outline,
+              label: 'Voir le profil',
+              color: ZColors.muted,
+              small: true,
               onTap: () => _openProfile(top)),
           const SizedBox(width: 22),
-          _RoundAction(icon: Icons.favorite, label: 'Aimer', color: ZColors.primary, filled: true, onTap: () => _like(top)),
+          _RoundAction(
+              icon: Icons.favorite, label: 'Aimer', color: ZColors.primary, filled: true, onTap: () => _like(top)),
         ]),
       ]),
     );

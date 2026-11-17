@@ -10,3 +10,6 @@ linter:
   rules:
     prefer_const_constructors: true
     avoid_print: true
+
+formatter:
+  page_width: 120

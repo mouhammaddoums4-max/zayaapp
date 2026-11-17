@@ -157,7 +157,9 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
               title: 'Connexion interrompue',
               message: 'Vos abonnements ne peuvent pas être chargés.',
               action: FilledButton(
-                onPressed: () => setState(() => _future = Session.read(context).repo.premiumHistory()),
+                onPressed: () => setState(() {
+                  _future = Session.read(context).repo.premiumHistory();
+                }),
                 child: const Text('Réessayer'),
               ),
             );
@@ -175,7 +177,8 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: active == null ? ZColors.line : ZColors.premium, width: active == null ? 1 : 1.5),
+                border:
+                    Border.all(color: active == null ? ZColors.line : ZColors.premium, width: active == null ? 1 : 1.5),
               ),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('Offre actuelle', style: Theme.of(context).textTheme.bodyMedium),
@@ -309,7 +312,9 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
               title: 'Connexion interrompue',
               message: 'Vos paiements ne peuvent pas être chargés.',
               action: FilledButton(
-                onPressed: () => setState(() => _future = Session.read(context).repo.payments()),
+                onPressed: () => setState(() {
+                  _future = Session.read(context).repo.payments();
+                }),
                 child: const Text('Réessayer'),
               ),
             );
@@ -347,7 +352,8 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                       ),
                     ]),
                     const SizedBox(height: 6),
-                    Text(_amount(tx), style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w700, color: ZColors.ink)),
+                    Text(_amount(tx),
+                        style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w700, color: ZColors.ink)),
                     const SizedBox(height: 4),
                     Text('${formatDate(tx.createdAt)} à ${formatTime(tx.createdAt)} · ${tx.method}',
                         style: Theme.of(context).textTheme.bodyMedium),

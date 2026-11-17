@@ -25,8 +25,8 @@ class _VerificationScreenState extends State<VerificationScreen> {
     final session = Session.read(context);
     try {
       // Compression côté appareil : limite la consommation de données à l'envoi.
-      final file = await _picker.pickImage(
-          source: ImageSource.gallery, maxWidth: 1600, maxHeight: 1600, imageQuality: 82);
+      final file =
+          await _picker.pickImage(source: ImageSource.gallery, maxWidth: 1600, maxHeight: 1600, imageQuality: 82);
       if (file == null || !mounted) return;
       setState(() => _busy = true);
       await session.repo.addPhoto(await file.readAsBytes());
@@ -86,7 +86,8 @@ class _VerificationScreenState extends State<VerificationScreen> {
             number: 1,
             done: photosDone,
             title: 'Ajoutez au moins $_minPhotos photos',
-            text: 'Des photos récentes où votre visage est bien visible. Pas de nudité ni de photo d’une autre personne.',
+            text:
+                'Des photos récentes où votre visage est bien visible. Pas de nudité ni de photo d’une autre personne.',
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(99),
@@ -137,7 +138,8 @@ class _VerificationScreenState extends State<VerificationScreen> {
               ),
               if (!photosDone) ...[
                 const SizedBox(height: 8),
-                Text('Disponible après l’ajout de vos $_minPhotos photos.', style: Theme.of(context).textTheme.bodyMedium),
+                Text('Disponible après l’ajout de vos $_minPhotos photos.',
+                    style: Theme.of(context).textTheme.bodyMedium),
               ],
             ]),
           ),
@@ -166,7 +168,8 @@ class _VerificationScreenState extends State<VerificationScreen> {
         'rejected' => const InfoBanner(
             tone: BannerTone.danger,
             icon: Icons.error_outline,
-            text: 'Votre demande n’a pas pu être validée. Vous pouvez envoyer un nouveau selfie ou demander un réexamen à l’assistance.',
+            text:
+                'Votre demande n’a pas pu être validée. Vous pouvez envoyer un nouveau selfie ou demander un réexamen à l’assistance.',
           ),
         'more_info_required' || 'redo' => const InfoBanner(
             tone: BannerTone.warning,
@@ -176,7 +179,8 @@ class _VerificationScreenState extends State<VerificationScreen> {
         _ => const InfoBanner(
             tone: BannerTone.warning,
             icon: Icons.visibility_off_outlined,
-            text: 'Votre profil n’est pas encore visible des autres membres. Terminez la vérification pour apparaître dans la découverte.',
+            text:
+                'Votre profil n’est pas encore visible des autres membres. Terminez la vérification pour apparaître dans la découverte.',
           ),
       };
 }
@@ -206,8 +210,7 @@ class _Step extends StatelessWidget {
               child: Center(
                 child: done
                     ? const Icon(Icons.check, size: 18, color: Colors.white)
-                    : Text('$number',
-                        style: const TextStyle(fontWeight: FontWeight.w700, color: ZColors.primaryDark)),
+                    : Text('$number', style: const TextStyle(fontWeight: FontWeight.w700, color: ZColors.primaryDark)),
               ),
             ),
             const SizedBox(width: 10),

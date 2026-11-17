@@ -18,8 +18,7 @@ import 'verification_screen.dart';
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
-  Future<void> _push(BuildContext context, Widget screen) =>
-      Navigator.of(context).push(zRoute<void>(screen));
+  Future<void> _push(BuildContext context, Widget screen) => Navigator.of(context).push(zRoute<void>(screen));
 
   Future<void> _openPreferences(BuildContext context) async {
     final feed = Session.read(context).feed;
@@ -69,7 +68,8 @@ class ProfileScreen extends StatelessWidget {
           InfoBanner(
             tone: BannerTone.danger,
             icon: Icons.delete_outline,
-            text: 'Suppression du compte prévue le ${formatDate(deletion)}. Votre profil n’est plus proposé aux autres membres.',
+            text:
+                'Suppression du compte prévue le ${formatDate(deletion)}. Votre profil n’est plus proposé aux autres membres.',
             action: TextButton(
               style: TextButton.styleFrom(
                   padding: EdgeInsets.zero, minimumSize: const Size(0, 32), foregroundColor: ZColors.danger),
@@ -230,7 +230,8 @@ class _Header extends StatelessWidget {
             ]),
             if (me.city != null) ...[
               const SizedBox(height: 2),
-              Text(me.city!, style: Theme.of(context).textTheme.bodyMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
+              Text(me.city!,
+                  style: Theme.of(context).textTheme.bodyMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
             ],
             const SizedBox(height: 8),
             Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
@@ -288,7 +289,8 @@ class _ActionCard extends StatelessWidget {
               Container(
                 width: 44,
                 height: 44,
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(14)),
+                decoration:
+                    BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(14)),
                 child: Icon(icon, color: color),
               ),
               const SizedBox(width: 14),

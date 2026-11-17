@@ -219,7 +219,10 @@ class _ChatScreenState extends State<ChatScreen> {
               onTap: () {
                 Navigator.of(sheetContext).pop();
                 showReportSheet(context,
-                    userId: match.userId, name: match.displayName, reportContext: 'conversation', matchId: match.matchId);
+                    userId: match.userId,
+                    name: match.displayName,
+                    reportContext: 'conversation',
+                    matchId: match.matchId);
               },
             ),
             ListTile(
@@ -256,8 +259,7 @@ class _ChatScreenState extends State<ChatScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Mettre fin au match ?'),
-        content: Text(
-            'Vous ne pourrez plus échanger de messages avec ${match.displayName}. '
+        content: Text('Vous ne pourrez plus échanger de messages avec ${match.displayName}. '
             'Les éléments nécessaires au traitement d’un éventuel signalement sont conservés pour une durée limitée.'),
         actions: [
           TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Annuler')),
@@ -393,7 +395,10 @@ class _ChatScreenState extends State<ChatScreen> {
                   child: Text('Modification du message',
                       style: TextStyle(fontWeight: FontWeight.w600, color: ZColors.primaryDark)),
                 ),
-                IconButton(icon: const Icon(Icons.close, size: 20), tooltip: 'Annuler la modification', onPressed: _cancelEditing),
+                IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    tooltip: 'Annuler la modification',
+                    onPressed: _cancelEditing),
               ]),
             ),
           Padding(

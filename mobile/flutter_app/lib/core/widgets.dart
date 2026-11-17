@@ -31,7 +31,8 @@ class VerifiedBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Tooltip(
-        message: 'Profil vérifié : contrôle photo/selfie réussi. Ce badge ne garantit pas les intentions de la personne.',
+        message:
+            'Profil vérifié : contrôle photo/selfie réussi. Ce badge ne garantit pas les intentions de la personne.',
         child: Icon(Icons.verified, color: ZColors.verified, size: size, semanticLabel: 'Profil vérifié'),
       );
 }
@@ -230,9 +231,8 @@ class ZTag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final background = onDark
-        ? Colors.white.withValues(alpha: 0.18)
-        : (highlighted ? ZColors.primarySoft : Colors.white);
+    final background =
+        onDark ? Colors.white.withValues(alpha: 0.18) : (highlighted ? ZColors.primarySoft : Colors.white);
     final foreground = onDark ? Colors.white : (highlighted ? ZColors.primaryDark : ZColors.ink);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
@@ -298,9 +298,28 @@ class SectionTitle extends StatelessWidget {
       );
 }
 
+/// Occupe toute la hauteur disponible quand le contenu tient à l'écran (les `Spacer` répartissent
+/// alors l'espace), et devient défilant sinon : petit écran, grande taille de texte.
+class FillOrScroll extends StatelessWidget {
+  const FillOrScroll({super.key, required this.child, this.padding = EdgeInsets.zero});
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: IntrinsicHeight(child: Padding(padding: padding, child: child)),
+          ),
+        ),
+      );
+}
+
 /// Bandeau d'information (ton neutre, avertissement ou erreur).
 class InfoBanner extends StatelessWidget {
-  const InfoBanner({super.key, required this.text, this.icon = Icons.info_outline, this.tone = BannerTone.info, this.action});
+  const InfoBanner(
+      {super.key, required this.text, this.icon = Icons.info_outline, this.tone = BannerTone.info, this.action});
   final String text;
   final IconData icon;
   final BannerTone tone;

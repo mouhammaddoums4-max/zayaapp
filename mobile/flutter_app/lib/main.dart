@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -20,6 +22,7 @@ const _supabaseKey = String.fromEnvironment(
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  _registerFontLicenses();
   late final ZayaRepository repository;
   if (_supabaseUrl.isEmpty || _supabaseKey.isEmpty) {
     repository = DemoRepository();
@@ -28,4 +31,12 @@ Future<void> main() async {
     repository = SupabaseRepository(Supabase.instance.client);
   }
   runApp(ZayaApp(repository: repository));
+}
+
+/// Les polices Inter et Sora sont embarquées (assets/google_fonts) sous licence SIL Open Font License.
+void _registerFontLicenses() {
+  LicenseRegistry.addLicense(() async* {
+    yield LicenseEntryWithLineBreaks(const ['Inter'], await rootBundle.loadString('assets/google_fonts/OFL-Inter.txt'));
+    yield LicenseEntryWithLineBreaks(const ['Sora'], await rootBundle.loadString('assets/google_fonts/OFL-Sora.txt'));
+  });
 }

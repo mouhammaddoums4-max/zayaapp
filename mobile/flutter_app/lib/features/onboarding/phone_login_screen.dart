@@ -64,7 +64,8 @@ class _PhoneOtpFormState extends State<PhoneOtpForm> {
         enabled: !_codeSent,
         keyboardType: TextInputType.phone,
         inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9+ ]'))],
-        decoration: const InputDecoration(labelText: 'Numéro de téléphone', prefixText: '+224  ', hintText: '6XX XX XX XX'),
+        decoration:
+            const InputDecoration(labelText: 'Numéro de téléphone', prefixText: '+224  ', hintText: '6XX XX XX XX'),
         onChanged: (_) => setState(() {}),
       ),
       const SizedBox(height: 8),
@@ -136,8 +137,7 @@ class PhoneLoginScreen extends StatelessWidget {
         child: ListView(padding: const EdgeInsets.all(24), children: [
           Text('Bon retour sur ZAYA', style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 8),
-          Text('Entrez votre numéro pour recevoir un code de connexion.',
-              style: Theme.of(context).textTheme.bodyLarge),
+          Text('Entrez votre numéro pour recevoir un code de connexion.', style: Theme.of(context).textTheme.bodyLarge),
           const SizedBox(height: 24),
           PhoneOtpForm(onVerified: (_) async {
             final session = Session.read(context);

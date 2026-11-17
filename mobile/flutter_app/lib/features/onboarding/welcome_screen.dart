@@ -19,7 +19,7 @@ class WelcomeScreen extends StatelessWidget {
       body: DecoratedBox(
         decoration: const BoxDecoration(gradient: ZColors.brandGradient),
         child: SafeArea(
-          child: Padding(
+          child: FillOrScroll(
             padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
             child: Column(children: [
               SizedBox(
@@ -44,7 +44,8 @@ class WelcomeScreen extends StatelessWidget {
                 index: 1,
                 child: Text('Des rencontres sérieuses,\npour construire à deux',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.sora(fontSize: 26, fontWeight: FontWeight.w700, color: Colors.white, height: 1.25)),
+                    style:
+                        GoogleFonts.sora(fontSize: 26, fontWeight: FontWeight.w700, color: Colors.white, height: 1.25)),
               ),
               const SizedBox(height: 12),
               FadeSlideIn(

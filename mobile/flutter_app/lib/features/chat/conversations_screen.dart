@@ -25,7 +25,9 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
 
   void _reload() {
     final session = Session.read(context);
-    setState(() => _future = session.repo.matches());
+    setState(() {
+      _future = session.repo.matches();
+    });
     session.refreshBadges();
   }
 

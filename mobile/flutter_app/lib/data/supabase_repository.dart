@@ -191,7 +191,8 @@ class SupabaseRepository implements ZayaRepository {
         .uploadBinary(path, selfie, fileOptions: const FileOptions(contentType: 'image/jpeg'));
     // Consentement biométrique explicite, recueilli à l'écran juste avant l'envoi du selfie.
     await _db.from('consents').insert({'user_id': uid, 'kind': 'biometric', 'granted': true});
-    final res = Map<String, dynamic>.from(await _db.rpc('request_verification', params: {'p_selfie_path': path}) as Map);
+    final res =
+        Map<String, dynamic>.from(await _db.rpc('request_verification', params: {'p_selfie_path': path}) as Map);
     return res['status'] as String;
   }
 
@@ -336,8 +337,8 @@ class SupabaseRepository implements ZayaRepository {
 
   @override
   Future<SendResult> sendMessage(String matchId, String body) async {
-    final r = Map<String, dynamic>.from(
-        await _db.rpc('send_message', params: {'p_match': matchId, 'p_body': body}) as Map);
+    final r =
+        Map<String, dynamic>.from(await _db.rpc('send_message', params: {'p_match': matchId, 'p_body': body}) as Map);
     return r['status'] == 'blocked' ? SendResult.blocked(r['category'] as String) : const SendResult.sent();
   }
 

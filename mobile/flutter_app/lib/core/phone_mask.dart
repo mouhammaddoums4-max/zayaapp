@@ -12,8 +12,8 @@ class MessageSegment {
 // Les barres obliques ne sont pas des séparateurs : une date (12/05/2026) n'est donc pas reconnue.
 final RegExp _candidate = RegExp(r'(?<![\w/])(?:\+|00)?\d(?:[ .\-]?\d){7,14}(?![\w/])');
 final RegExp _currencyAfter = RegExp(r'^\s*(gnf|fg|francs?|fcfa|cfa|euros?|usd|dollars?|€|\$)', caseSensitive: false);
-final RegExp _referenceBefore = RegExp(r'(commande|référence|reference|réf|ref|ticket|dossier|n°)\s*[:#]?\s*$',
-    caseSensitive: false);
+final RegExp _referenceBefore =
+    RegExp(r'(commande|référence|reference|réf|ref|ticket|dossier|n°)\s*[:#]?\s*$', caseSensitive: false);
 
 List<MessageSegment> splitPhones(String text) {
   final segments = <MessageSegment>[];

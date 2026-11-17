@@ -34,12 +34,30 @@ const confessionModeLabels = <String, String>{
 
 /// Listes proposées dans l'application (à rendre administrables au lot « référentiels »).
 const languageOptions = <String>[
-  'Français', 'Anglais', 'Poular', 'Malinké', 'Soussou', 'Kissi', 'Guerzé', 'Arabe', 'Wolof',
+  'Français',
+  'Anglais',
+  'Poular',
+  'Malinké',
+  'Soussou',
+  'Kissi',
+  'Guerzé',
+  'Arabe',
+  'Wolof',
 ];
 
 const interestOptions = <String>[
-  'Famille', 'Lecture', 'Cuisine', 'Sport', 'Voyages', 'Entrepreneuriat', 'Éducation', 'Bénévolat',
-  'Musique', 'Traditions', 'Technologie', 'Nature',
+  'Famille',
+  'Lecture',
+  'Cuisine',
+  'Sport',
+  'Voyages',
+  'Entrepreneuriat',
+  'Éducation',
+  'Bénévolat',
+  'Musique',
+  'Traditions',
+  'Technologie',
+  'Nature',
 ];
 
 class City {

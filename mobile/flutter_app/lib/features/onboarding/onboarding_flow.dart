@@ -366,8 +366,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
       case _Step.marital:
         return [
-          ..._title(context, 'Votre situation matrimoniale',
-              'Facultatif. Vous choisissez ce que vous souhaitez indiquer.'),
+          ..._title(
+              context, 'Votre situation matrimoniale', 'Facultatif. Vous choisissez ce que vous souhaitez indiquer.'),
           for (final e in maritalLabels.entries)
             ChoiceTile(
               label: e.value,
@@ -441,8 +441,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     selected: _d.selectedConfessions.contains(e.key),
                     selectedColor: ZColors.primarySoft,
                     checkmarkColor: ZColors.primaryDark,
-                    onSelected: (on) => setState(
-                        () => on ? _d.selectedConfessions.add(e.key) : _d.selectedConfessions.remove(e.key)),
+                    onSelected: (on) =>
+                        setState(() => on ? _d.selectedConfessions.add(e.key) : _d.selectedConfessions.remove(e.key)),
                   ),
             ]),
           const SizedBox(height: 10),
@@ -469,8 +469,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
       case _Step.phone:
         return [
-          ..._title(context, 'Vérifiez votre numéro',
-              'Un code vous est envoyé par SMS pour sécuriser votre compte.'),
+          ..._title(context, 'Vérifiez votre numéro', 'Un code vous est envoyé par SMS pour sécuriser votre compte.'),
           if (_phoneVerified)
             const InfoBanner(tone: BannerTone.success, icon: Icons.check_circle, text: 'Votre numéro est vérifié.')
           else

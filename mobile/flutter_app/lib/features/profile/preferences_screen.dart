@@ -96,9 +96,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                     for (final e in confessionModeLabels.entries)
                       ChoiceTile(
                         label: e.value,
-                        subtitle: e.key == 'mine_only'
-                            ? 'S’applique si vous avez indiqué votre confession.'
-                            : null,
+                        subtitle: e.key == 'mine_only' ? 'S’applique si vous avez indiqué votre confession.' : null,
                         selected: prefs.confessionMode == e.key,
                         onTap: () => setState(() => prefs.confessionMode = e.key),
                       ),
@@ -112,8 +110,8 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                               selected: prefs.confessions.contains(e.key),
                               selectedColor: ZColors.primarySoft,
                               checkmarkColor: ZColors.primaryDark,
-                              onSelected: (on) => setState(
-                                  () => on ? prefs.confessions.add(e.key) : prefs.confessions.remove(e.key)),
+                              onSelected: (on) =>
+                                  setState(() => on ? prefs.confessions.add(e.key) : prefs.confessions.remove(e.key)),
                             ),
                       ]),
                     ],
@@ -134,9 +132,8 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                   child: GradientButton(
                     label: 'Enregistrer',
                     busy: _saving,
-                    onPressed: prefs.confessionMode == 'selected' && prefs.confessions.isEmpty
-                        ? null
-                        : () => _save(prefs),
+                    onPressed:
+                        prefs.confessionMode == 'selected' && prefs.confessions.isEmpty ? null : () => _save(prefs),
                   ),
                 ),
               ]),

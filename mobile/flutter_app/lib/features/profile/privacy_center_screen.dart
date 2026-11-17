@@ -273,7 +273,9 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
       await session.repo.unblock(user.userId);
       if (!mounted) return;
       showZayaSnack(context, '${user.displayName} est débloqué(e).');
-      setState(() => _future = session.repo.blockedUsers());
+      setState(() {
+        _future = session.repo.blockedUsers();
+      });
       session.feed.load();
     } catch (e) {
       if (mounted) showZayaSnack(context, friendlyError(e), error: true);

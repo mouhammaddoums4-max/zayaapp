@@ -6,7 +6,8 @@ import 'models.dart';
 import 'repository.dart';
 
 class _DemoPerson {
-  const _DemoPerson(this.profile, {this.maritalStatus = 'single', this.education, this.heightCm, this.childrenCount = 0});
+  const _DemoPerson(this.profile,
+      {this.maritalStatus = 'single', this.education, this.heightCm, this.childrenCount = 0});
   final DiscoveryProfile profile;
   final String maritalStatus;
   final String? education;
@@ -46,53 +47,97 @@ class DemoRepository implements ZayaRepository {
   static const _women = <_DemoPerson>[
     _DemoPerson(
       DiscoveryProfile(
-        id: 'w1', displayName: 'Aïssatou', age: 27, city: 'Conakry — Ratoma', horizon: 'few_months',
-        profession: 'Santé', languages: ['Français', 'Poular'], interests: ['Lecture', 'Cuisine', 'Famille'],
+        id: 'w1',
+        displayName: 'Aïssatou',
+        age: 27,
+        city: 'Conakry — Ratoma',
+        horizon: 'few_months',
+        profession: 'Santé',
+        languages: ['Français', 'Poular'],
+        interests: ['Lecture', 'Cuisine', 'Famille'],
         isVerified: true,
         bio: 'Infirmière, proche de ma famille. Je cherche une relation sérieuse, fondée sur le respect et l’écoute.',
       ),
-      education: 'Licence', heightCm: 165,
+      education: 'Licence',
+      heightCm: 165,
     ),
     _DemoPerson(
       DiscoveryProfile(
-        id: 'w2', displayName: 'Kadiatou', age: 25, city: 'Conakry — Dixinn', horizon: 'soon',
-        profession: 'Commerce', languages: ['Français', 'Soussou'], interests: ['Entrepreneuriat', 'Voyages'],
-        isVerified: true, isPremium: true,
+        id: 'w2',
+        displayName: 'Kadiatou',
+        age: 25,
+        city: 'Conakry — Dixinn',
+        horizon: 'soon',
+        profession: 'Commerce',
+        languages: ['Français', 'Soussou'],
+        interests: ['Entrepreneuriat', 'Voyages'],
+        isVerified: true,
+        isPremium: true,
         bio: 'Commerçante, souriante et déterminée. Le mariage est pour moi un projet de vie à deux.',
       ),
-      education: 'Baccalauréat', heightCm: 170,
+      education: 'Baccalauréat',
+      heightCm: 170,
     ),
     _DemoPerson(
       DiscoveryProfile(
-        id: 'w3', displayName: 'Hawa', age: 29, city: 'Kindia', horizon: 'medium_term',
-        profession: 'Éducation / enseignement', languages: ['Français', 'Malinké'], interests: ['Éducation', 'Nature'],
+        id: 'w3',
+        displayName: 'Hawa',
+        age: 29,
+        city: 'Kindia',
+        horizon: 'medium_term',
+        profession: 'Éducation / enseignement',
+        languages: ['Français', 'Malinké'],
+        interests: ['Éducation', 'Nature'],
         isVerified: true,
         bio: 'Enseignante. J’aime les discussions sincères et les projets construits pas à pas.',
       ),
-      maritalStatus: 'divorced', education: 'Master', heightCm: 162, childrenCount: 1,
+      maritalStatus: 'divorced',
+      education: 'Master',
+      heightCm: 162,
+      childrenCount: 1,
     ),
     _DemoPerson(
       DiscoveryProfile(
-        id: 'w4', displayName: 'Fatoumata', age: 24, city: 'Conakry — Matoto', horizon: 'no_date',
-        profession: 'Étudiant(e)', languages: ['Français', 'Anglais'], interests: ['Sport', 'Musique', 'Bénévolat'],
+        id: 'w4',
+        displayName: 'Fatoumata',
+        age: 24,
+        city: 'Conakry — Matoto',
+        horizon: 'no_date',
+        profession: 'Étudiant(e)',
+        languages: ['Français', 'Anglais'],
+        interests: ['Sport', 'Musique', 'Bénévolat'],
         isVerified: true,
         bio: 'Étudiante en gestion. Je prends le temps de bien connaître la personne avant de m’engager.',
       ),
-      education: 'Licence en cours', heightCm: 168,
+      education: 'Licence en cours',
+      heightCm: 168,
     ),
     _DemoPerson(
       DiscoveryProfile(
-        id: 'w5', displayName: 'Mabinty', age: 31, city: 'Conakry — Kaloum', horizon: 'soon',
-        profession: 'Banque / finance', languages: ['Français', 'Soussou', 'Anglais'], interests: ['Cuisine', 'Voyages'],
+        id: 'w5',
+        displayName: 'Mabinty',
+        age: 31,
+        city: 'Conakry — Kaloum',
+        horizon: 'soon',
+        profession: 'Banque / finance',
+        languages: ['Français', 'Soussou', 'Anglais'],
+        interests: ['Cuisine', 'Voyages'],
         isVerified: true,
         bio: 'Cadre dans une banque. Je souhaite fonder un foyer stable avec une personne de confiance.',
       ),
-      education: 'Master', heightCm: 172,
+      education: 'Master',
+      heightCm: 172,
     ),
     _DemoPerson(
       DiscoveryProfile(
-        id: 'w6', displayName: 'Oumou', age: 26, city: 'Labé', horizon: 'few_months',
-        profession: 'Artisanat', languages: ['Poular', 'Français'], interests: ['Traditions', 'Famille'],
+        id: 'w6',
+        displayName: 'Oumou',
+        age: 26,
+        city: 'Labé',
+        horizon: 'few_months',
+        profession: 'Artisanat',
+        languages: ['Poular', 'Français'],
+        interests: ['Traditions', 'Famille'],
         isVerified: true,
         bio: 'Couturière passionnée. La famille et la parole donnée comptent beaucoup pour moi.',
       ),
@@ -103,57 +148,102 @@ class DemoRepository implements ZayaRepository {
   static const _men = <_DemoPerson>[
     _DemoPerson(
       DiscoveryProfile(
-        id: 'm1', displayName: 'Ibrahima', age: 30, city: 'Conakry — Ratoma', horizon: 'few_months',
-        profession: 'Informatique / télécoms', languages: ['Français', 'Poular', 'Anglais'],
-        interests: ['Technologie', 'Sport', 'Famille'], isVerified: true,
+        id: 'm1',
+        displayName: 'Ibrahima',
+        age: 30,
+        city: 'Conakry — Ratoma',
+        horizon: 'few_months',
+        profession: 'Informatique / télécoms',
+        languages: ['Français', 'Poular', 'Anglais'],
+        interests: ['Technologie', 'Sport', 'Famille'],
+        isVerified: true,
         bio: 'Ingénieur réseau. Calme et attentionné, je cherche une compagne pour construire un foyer serein.',
       ),
-      education: 'Master', heightCm: 180,
+      education: 'Master',
+      heightCm: 180,
     ),
     _DemoPerson(
       DiscoveryProfile(
-        id: 'm2', displayName: 'Mamadou', age: 33, city: 'Conakry — Kaloum', horizon: 'soon',
-        profession: 'Commerce', languages: ['Français', 'Malinké'], interests: ['Entrepreneuriat', 'Voyages'],
-        isVerified: true, isPremium: true,
+        id: 'm2',
+        displayName: 'Mamadou',
+        age: 33,
+        city: 'Conakry — Kaloum',
+        horizon: 'soon',
+        profession: 'Commerce',
+        languages: ['Français', 'Malinké'],
+        interests: ['Entrepreneuriat', 'Voyages'],
+        isVerified: true,
+        isPremium: true,
         bio: 'Entrepreneur. Sérieux dans mes engagements, je souhaite me marier et fonder une famille.',
       ),
-      education: 'Licence', heightCm: 176,
+      education: 'Licence',
+      heightCm: 176,
     ),
     _DemoPerson(
       DiscoveryProfile(
-        id: 'm3', displayName: 'Alpha', age: 28, city: 'Labé', horizon: 'medium_term',
-        profession: 'Éducation / enseignement', languages: ['Poular', 'Français'], interests: ['Lecture', 'Éducation'],
+        id: 'm3',
+        displayName: 'Alpha',
+        age: 28,
+        city: 'Labé',
+        horizon: 'medium_term',
+        profession: 'Éducation / enseignement',
+        languages: ['Poular', 'Français'],
+        interests: ['Lecture', 'Éducation'],
         isVerified: true,
         bio: 'Professeur de mathématiques. J’accorde beaucoup d’importance au dialogue et au respect mutuel.',
       ),
-      education: 'Master', heightCm: 174,
+      education: 'Master',
+      heightCm: 174,
     ),
     _DemoPerson(
       DiscoveryProfile(
-        id: 'm4', displayName: 'Sékou', age: 35, city: 'Kankan', horizon: 'soon',
-        profession: 'Santé', languages: ['Français', 'Malinké'], interests: ['Bénévolat', 'Nature', 'Famille'],
+        id: 'm4',
+        displayName: 'Sékou',
+        age: 35,
+        city: 'Kankan',
+        horizon: 'soon',
+        profession: 'Santé',
+        languages: ['Français', 'Malinké'],
+        interests: ['Bénévolat', 'Nature', 'Famille'],
         isVerified: true,
         bio: 'Médecin. Après un premier mariage, je souhaite reconstruire une vie de couple stable.',
       ),
-      maritalStatus: 'divorced', education: 'Doctorat', heightCm: 182, childrenCount: 1,
+      maritalStatus: 'divorced',
+      education: 'Doctorat',
+      heightCm: 182,
+      childrenCount: 1,
     ),
     _DemoPerson(
       DiscoveryProfile(
-        id: 'm5', displayName: 'Ousmane', age: 27, city: 'Conakry — Matoto', horizon: 'no_date',
-        profession: 'Transport / logistique', languages: ['Français', 'Soussou'], interests: ['Sport', 'Musique'],
+        id: 'm5',
+        displayName: 'Ousmane',
+        age: 27,
+        city: 'Conakry — Matoto',
+        horizon: 'no_date',
+        profession: 'Transport / logistique',
+        languages: ['Français', 'Soussou'],
+        interests: ['Sport', 'Musique'],
         isVerified: true,
         bio: 'Logisticien. Simple et travailleur, je veux d’abord bien connaître la personne.',
       ),
-      education: 'BTS', heightCm: 178,
+      education: 'BTS',
+      heightCm: 178,
     ),
     _DemoPerson(
       DiscoveryProfile(
-        id: 'm6', displayName: 'Thierno', age: 31, city: 'Conakry — Dixinn', horizon: 'few_months',
-        profession: 'Banque / finance', languages: ['Français', 'Poular', 'Anglais'], interests: ['Cuisine', 'Voyages'],
+        id: 'm6',
+        displayName: 'Thierno',
+        age: 31,
+        city: 'Conakry — Dixinn',
+        horizon: 'few_months',
+        profession: 'Banque / finance',
+        languages: ['Français', 'Poular', 'Anglais'],
+        interests: ['Cuisine', 'Voyages'],
         isVerified: true,
         bio: 'Analyste financier. Je cherche une relation sincère, avec la bénédiction de nos familles.',
       ),
-      education: 'Master', heightCm: 175,
+      education: 'Master',
+      heightCm: 175,
     ),
   ];
 
@@ -196,9 +286,16 @@ class DemoRepository implements ZayaRepository {
 
   @override
   Future<List<City>> cities() async => const <City>[
-        City(1, 'Conakry — Kaloum'), City(2, 'Conakry — Dixinn'), City(3, 'Conakry — Matam'),
-        City(4, 'Conakry — Ratoma'), City(5, 'Conakry — Matoto'), City(6, 'Kindia'), City(7, 'Labé'),
-        City(8, 'Kankan'), City(9, 'Boké'), City(10, 'N’Zérékoré'),
+        City(1, 'Conakry — Kaloum'),
+        City(2, 'Conakry — Dixinn'),
+        City(3, 'Conakry — Matam'),
+        City(4, 'Conakry — Ratoma'),
+        City(5, 'Conakry — Matoto'),
+        City(6, 'Kindia'),
+        City(7, 'Labé'),
+        City(8, 'Kankan'),
+        City(9, 'Boké'),
+        City(10, 'N’Zérékoré'),
       ];
 
   @override
@@ -216,9 +313,17 @@ class DemoRepository implements ZayaRepository {
     _prefs = DiscoveryPrefs(
         ageMin: d.ageMin, ageMax: d.ageMax, confessionMode: d.confessionMode, confessions: [...d.selectedConfessions]);
     _profile = MyProfile(
-      id: _me, displayName: d.displayName.trim(), status: 'active', verificationStatus: 'not_requested',
-      isPhoneVerified: true, age: ageFrom(birth), city: city, bio: d.bio.trim().isEmpty ? null : d.bio.trim(),
-      horizon: d.horizon, maritalStatus: d.maritalStatus, languages: const <String>['Français'],
+      id: _me,
+      displayName: d.displayName.trim(),
+      status: 'active',
+      verificationStatus: 'not_requested',
+      isPhoneVerified: true,
+      age: ageFrom(birth),
+      city: city,
+      bio: d.bio.trim().isEmpty ? null : d.bio.trim(),
+      horizon: d.horizon,
+      maritalStatus: d.maritalStatus,
+      languages: const <String>['Français'],
     );
 
     // Jeu de données de démonstration : deux personnes ont déjà aimé le profil, un match existe avec une conversation.
@@ -237,13 +342,18 @@ class DemoRepository implements ZayaRepository {
     final now = DateTime.now();
     _messages[matchId] = <ChatMessage>[
       ChatMessage(
-          id: 'seed-1', senderId: friend.id, body: 'Bonjour ! Heureux de ce match 😊',
+          id: 'seed-1',
+          senderId: friend.id,
+          body: 'Bonjour ! Heureux de ce match 😊',
           createdAt: now.subtract(const Duration(hours: 3))),
       ChatMessage(
-          id: 'seed-2', senderId: _me, body: 'Bonjour ${friend.displayName}, moi aussi. Comment se passe ta semaine ?',
+          id: 'seed-2',
+          senderId: _me,
+          body: 'Bonjour ${friend.displayName}, moi aussi. Comment se passe ta semaine ?',
           createdAt: now.subtract(const Duration(hours: 2, minutes: 40))),
       ChatMessage(
-          id: 'seed-3', senderId: friend.id,
+          id: 'seed-3',
+          senderId: friend.id,
           body: 'Très bien, merci. Si tu veux, voici mon numéro : +224 622 11 22 33',
           createdAt: now.subtract(const Duration(hours: 2))),
     ];
@@ -300,7 +410,9 @@ class DemoRepository implements ZayaRepository {
 
   @override
   Future<DiscoveryPrefs> loadPreferences() async => DiscoveryPrefs(
-      ageMin: _prefs.ageMin, ageMax: _prefs.ageMax, confessionMode: _prefs.confessionMode,
+      ageMin: _prefs.ageMin,
+      ageMax: _prefs.ageMax,
+      confessionMode: _prefs.confessionMode,
       confessions: [..._prefs.confessions]);
 
   @override
@@ -326,8 +438,13 @@ class DemoRepository implements ZayaRepository {
     final p = _person(userId);
     if (p == null || _blocked.containsKey(userId)) throw Exception('Ce profil n’est plus disponible.');
     return ProfileDetail(
-      base: p.profile, maritalStatus: p.maritalStatus, childrenCount: p.childrenCount, education: p.education,
-      heightCm: p.heightCm, isPhoneVerified: true, matched: _matches.any((m) => m.userId == userId),
+      base: p.profile,
+      maritalStatus: p.maritalStatus,
+      childrenCount: p.childrenCount,
+      education: p.education,
+      heightCm: p.heightCm,
+      isPhoneVerified: true,
+      matched: _matches.any((m) => m.userId == userId),
     );
   }
 
@@ -380,8 +497,12 @@ class DemoRepository implements ZayaRepository {
       if (!x.unsent) last = x;
     }
     return MatchSummary(
-      matchId: m.matchId, userId: m.userId, displayName: m.displayName, isVerified: m.isVerified,
-      lastMessage: last?.body, lastAt: last?.createdAt,
+      matchId: m.matchId,
+      userId: m.userId,
+      displayName: m.displayName,
+      isVerified: m.isVerified,
+      lastMessage: last?.body,
+      lastAt: last?.createdAt,
     );
   }
 
@@ -424,7 +545,8 @@ class DemoRepository implements ZayaRepository {
       final i = e.value.indexWhere((m) => m.id == messageId && m.senderId == _me && !m.unsent);
       if (i >= 0) {
         final m = e.value[i];
-        e.value[i] = ChatMessage(id: m.id, senderId: m.senderId, body: body.trim(), createdAt: m.createdAt, edited: true);
+        e.value[i] =
+            ChatMessage(id: m.id, senderId: m.senderId, body: body.trim(), createdAt: m.createdAt, edited: true);
         _emit(e.key);
       }
     }

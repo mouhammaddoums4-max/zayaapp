@@ -63,7 +63,10 @@ Future<void> showReportSheet(
                         try {
                           final text = details.text.trim();
                           await repo.report(userId,
-                              context: reportContext, reason: reason!, details: text.isEmpty ? null : text, matchId: matchId);
+                              context: reportContext,
+                              reason: reason!,
+                              details: text.isEmpty ? null : text,
+                              matchId: matchId);
                           navigator.pop(true);
                         } catch (_) {
                           navigator.pop(false);
@@ -123,14 +126,26 @@ class SafetyTipsScreen extends StatelessWidget {
   const SafetyTipsScreen({super.key});
 
   static const _rules = <(IconData, String, String)>[
-    (Icons.favorite_border, 'Respect et intentions sérieuses',
-        'ZAYA est destiné aux adultes qui recherchent une relation sérieuse. Pas de harcèlement, d’insultes ni de menaces.'),
-    (Icons.no_adult_content, 'Aucun contenu sexuel',
-        'La nudité, les contenus sexuels explicites et les sollicitations sexuelles sont interdits.'),
-    (Icons.payments_outlined, 'Jamais d’argent',
-        'Les demandes d’argent, de codes ou de coordonnées bancaires sont interdites et doivent être signalées.'),
-    (Icons.person_off_outlined, 'Pas de faux profil',
-        'Usurper une identité ou utiliser les photos d’une autre personne entraîne la fermeture du compte.'),
+    (
+      Icons.favorite_border,
+      'Respect et intentions sérieuses',
+      'ZAYA est destiné aux adultes qui recherchent une relation sérieuse. Pas de harcèlement, d’insultes ni de menaces.'
+    ),
+    (
+      Icons.no_adult_content,
+      'Aucun contenu sexuel',
+      'La nudité, les contenus sexuels explicites et les sollicitations sexuelles sont interdits.'
+    ),
+    (
+      Icons.payments_outlined,
+      'Jamais d’argent',
+      'Les demandes d’argent, de codes ou de coordonnées bancaires sont interdites et doivent être signalées.'
+    ),
+    (
+      Icons.person_off_outlined,
+      'Pas de faux profil',
+      'Usurper une identité ou utiliser les photos d’une autre personne entraîne la fermeture du compte.'
+    ),
   ];
 
   @override

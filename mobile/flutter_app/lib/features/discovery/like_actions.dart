@@ -146,7 +146,7 @@ class _MatchOverlay extends StatelessWidget {
       body: DecoratedBox(
         decoration: const BoxDecoration(gradient: ZColors.brandGradient),
         child: SafeArea(
-          child: Padding(
+          child: FillOrScroll(
             padding: const EdgeInsets.fromLTRB(28, 12, 28, 24),
             child: Column(children: [
               Align(
@@ -171,11 +171,15 @@ class _MatchOverlay extends StatelessWidget {
                     child: Stack(alignment: Alignment.center, children: [
                       Transform.translate(
                         offset: Offset(-46 - gap, 0),
-                        child: Opacity(opacity: t, child: _ringed(ProfileAvatar(name: me?.displayName ?? '', size: 112))),
+                        child:
+                            Opacity(opacity: t, child: _ringed(ProfileAvatar(name: me?.displayName ?? '', size: 112))),
                       ),
                       Transform.translate(
                         offset: Offset(46 + gap, 0),
-                        child: Opacity(opacity: t, child: _ringed(RemoteAvatar(name: profile.displayName, photoPath: profile.photoPath, size: 112))),
+                        child: Opacity(
+                            opacity: t,
+                            child: _ringed(
+                                RemoteAvatar(name: profile.displayName, photoPath: profile.photoPath, size: 112))),
                       ),
                       Transform.scale(
                         scale: heart,
