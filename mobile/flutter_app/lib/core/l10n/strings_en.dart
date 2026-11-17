@@ -147,6 +147,8 @@ class ZStringsEn extends ZStrings {
   @override
   String get chipHelp => 'Help';
   @override
+  String get chipSafety => 'Safety & tips';
+  @override
   String get planFreeTitle => 'Free plan';
   @override
   String planFreeLikes(int perDay) => '$perDay likes per day';
@@ -170,6 +172,12 @@ class ZStringsEn extends ZStrings {
   String get likesUnlimitedPremium => 'With Premium, you get more likes every day.';
   @override
   String inviteMessage(String url) => 'Join me on ZAYA, the app for serious relationships leading to marriage: $url';
+
+  // ── Advertising
+  @override
+  String get adSponsored => 'Sponsored';
+  @override
+  String get adLearnMore => 'Learn more';
 
   // ── Language
   @override

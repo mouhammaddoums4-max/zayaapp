@@ -95,6 +95,7 @@ abstract class ZStrings {
   String get chipSubscription;
   String get chipInvite;
   String get chipHelp;
+  String get chipSafety;
   String get planFreeTitle;
   String planFreeLikes(int perDay);
   String get planFreeEssentials;
@@ -107,6 +108,10 @@ abstract class ZStrings {
   String get likesMore;
   String get likesUnlimitedPremium;
   String inviteMessage(String url);
+
+  // ── Publicité
+  String get adSponsored;
+  String get adLearnMore;
 
   // ── Langue
   String get languageTitle;

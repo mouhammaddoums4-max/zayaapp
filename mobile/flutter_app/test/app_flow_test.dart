@@ -389,7 +389,7 @@ void main() {
     // ── Profil → Réglages : informations personnelles (date de naissance et genre figés)
     await tapText(tester, 'Profil');
     // Profil : raccourcis, offre en cours avec ce qui est réellement inclus, likes restants du jour.
-    for (final chip in ['Abonnement', 'Inviter', 'Aide']) {
+    for (final chip in ['Abonnement', 'Inviter', 'Sécurité & conseils']) {
       expect(find.text(chip), findsOneWidget, reason: chip);
     }
     expect(find.text('Offre Gratuit'), findsOneWidget);

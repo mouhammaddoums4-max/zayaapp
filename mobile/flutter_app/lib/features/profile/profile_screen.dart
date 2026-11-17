@@ -7,8 +7,10 @@ import '../../core/motion.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/models.dart';
+import '../ads/sponsored_card.dart';
 import '../discovery/profile_widgets.dart';
 import '../premium/premium_screens.dart';
+import '../safety/safety_sheets.dart';
 import '../settings/help_screen.dart';
 import '../settings/settings_screen.dart';
 import 'edit_profile_screen.dart';
@@ -64,6 +66,7 @@ class ProfileScreen extends StatelessWidget {
             () => _push(context, me.isPremium ? const SubscriptionsScreen() : const PremiumScreen()),
           ),
           (Icons.person_add_alt, s.chipInvite, () => inviteToZaya(context)),
+          (Icons.health_and_safety_outlined, s.chipSafety, () => _push(context, const SafetyTipsScreen())),
           (Icons.help_outline, s.chipHelp, () => _push(context, const HelpScreen())),
         ]),
         const SizedBox(height: 14),
@@ -111,6 +114,8 @@ class ProfileScreen extends StatelessWidget {
           index: 3,
           child: LikesLeftCard(premium: me.isPremium, onMore: () => _push(context, const PremiumScreen())),
         ),
+        // Emplacement « Sponsorisé » de la régie : invisible tant qu'aucune campagne n'est active.
+        const SponsoredSlot(placement: 'profile', padding: EdgeInsets.only(top: 12)),
         const SizedBox(height: 18),
         const SectionTitle('Mon profil'),
         _MenuGroup(children: [

@@ -149,6 +149,8 @@ class ZStringsFr extends ZStrings {
   @override
   String get chipHelp => 'Aide';
   @override
+  String get chipSafety => 'Sécurité & conseils';
+  @override
   String get planFreeTitle => 'Offre Gratuit';
   @override
   String planFreeLikes(int perDay) => '$perDay likes par jour';
@@ -173,6 +175,12 @@ class ZStringsFr extends ZStrings {
   @override
   String inviteMessage(String url) =>
       'Je t’invite à découvrir ZAYA, l’application de rencontres sérieuses en vue du mariage : $url';
+
+  // ── Publicité
+  @override
+  String get adSponsored => 'Sponsorisé';
+  @override
+  String get adLearnMore => 'En savoir plus';
 
   // ── Langue
   @override
