@@ -56,9 +56,17 @@ abstract class ZayaRepository {
 
   // ── Découverte, likes, matchs
   Future<List<DiscoveryProfile>> discoveryFeed();
-  Future<ProfileDetail> profileDetail(String userId);
+  /// Fiche d'un profil. [recordView] à `false` pour un préchargement (carte suivante de Découvrir) : la visite
+  /// n'est alors comptée qu'avec [recordProfileView], si le membre regarde vraiment la fiche.
+  Future<ProfileDetail> profileDetail(String userId, {bool recordView = true});
   Future<LikeResult> like(String userId);
   Future<void> pass(String userId);
+
+  /// Fait revenir le dernier profil passé (0016 : Gratuit, le dernier ; Premium, plusieurs) ; `null` s'il n'y en a pas.
+  Future<DiscoveryProfile?> rewindLastPass();
+
+  /// Compte une visite du profil (statistiques « Visites du profil »), quand le membre regarde vraiment sa fiche.
+  Future<void> recordProfileView(String userId);
   Future<LikeQuota> likeQuota();
   Future<int> receivedInterestsCount();
 

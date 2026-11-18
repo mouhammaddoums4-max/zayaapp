@@ -307,10 +307,20 @@ class SupabaseRepository implements ZayaRepository {
   }
 
   @override
-  Future<ProfileDetail> profileDetail(String userId) async {
+  Future<ProfileDetail> profileDetail(String userId, {bool recordView = true}) async {
     final json = Map<String, dynamic>.from(await _db.rpc('get_profile', params: {'p_id': userId}) as Map);
-    _fireAndForget('record_profile_view', {'p_target': userId});
+    if (recordView) recordProfileView(userId);
     return ProfileDetail.fromJson(json);
+  }
+
+  @override
+  Future<void> recordProfileView(String userId) async =>
+      _fireAndForget('record_profile_view', {'p_target': userId});
+
+  @override
+  Future<DiscoveryProfile?> rewindLastPass() async {
+    final r = Map<String, dynamic>.from(await _db.rpc('rewind_last_pass') as Map);
+    return r['status'] == 'rewound' ? DiscoveryProfile.fromRow(r) : null;
   }
 
   @override
@@ -336,10 +346,14 @@ class SupabaseRepository implements ZayaRepository {
   @override
   Future<LikeQuota> likeQuota() async {
     final r = Map<String, dynamic>.from(await _db.rpc('my_like_quota') as Map);
+    final reset = r['resets_at'] as String?;
     return LikeQuota(
       limit: (r['limit'] as num).toInt(),
-      remaining: (r['remaining'] as num).toInt(),
-      resetsAt: DateTime.parse(r['resets_at'] as String),
+      // Les swipes supplémentaires (publicité récompensée validée par le serveur, 0016) s'ajoutent à la période.
+      remaining: (r['remaining'] as num).toInt() + ((r['extra'] as num?)?.toInt() ?? 0),
+      resetsAt: reset == null
+          ? DateTime.now().add(Duration(hours: (r['window_hours'] as num?)?.toInt() ?? 8))
+          : DateTime.parse(reset),
     );
   }
 

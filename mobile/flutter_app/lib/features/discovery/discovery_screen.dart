@@ -9,15 +9,17 @@ import '../../core/widgets.dart';
 import '../../data/models.dart';
 import '../boost/boost_button.dart';
 import '../notifications/notifications_screen.dart';
+import '../premium/premium_screens.dart';
 import '../profile/preferences_screen.dart';
 import '../profile/verification_screen.dart';
 import '../safety/safety_sheets.dart';
 import 'like_actions.dart';
-import 'profile_detail_screen.dart';
+import 'profile_sections.dart';
 import 'profile_widgets.dart';
 
-/// Onglet Découvrir : une carte de profil à la fois. On glisse à droite pour aimer, à gauche pour passer ;
-/// les boutons offrent la même chose sans geste, et un appui sur la carte ouvre la fiche complète.
+/// Onglet Mariage (découverte) : une carte de profil à la fois. On glisse à droite pour aimer, à gauche pour passer ;
+/// on fait défiler la carte vers le haut pour lire tout le profil, sans quitter l'écran ; un toucher sur la photo
+/// passe à la suivante. Les boutons offrent les mêmes actions sans geste, plus le retour au profil précédent.
 class DiscoveryScreen extends StatefulWidget {
   const DiscoveryScreen({super.key});
 
@@ -38,6 +40,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
 
   /// Profils dont la photo a déjà été préparée à l'avance.
   final Set<String> _prefetched = <String>{};
+
+  /// Profils dont la visite a déjà été comptée pendant cette session.
+  final Set<String> _viewed = <String>{};
 
   /// Un filtre s'écarte des réglages par défaut : point sur l'icône des filtres.
   bool _filtersActive = false;
@@ -172,29 +177,38 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
     }
   }
 
-  Future<void> _openProfile(DiscoveryProfile profile) async {
+  /// Retour au profil précédent (dernier profil passé, 0016) : il revient de la gauche, à sa place en tête.
+  /// Ne rend pas le swipe consommé ; Premium peut remonter plus loin (réglage serveur).
+  Future<void> _rewind() async {
     if (_acting) return;
-    final route = zRoute<String>(ProfileDetailScreen(
-      userId: profile.id,
-      name: profile.displayName,
-      preview: profile,
-      heroTag: 'discover-${profile.id}',
-      showActions: true,
-    ));
-    final action = await Navigator.of(context).push<String>(route);
-    if (!mounted) return;
-    // La fiche rend son résultat dès sa fermeture, alors que la photo revient encore vers la carte.
-    // On attend la fin de ce retour avant de faire partir la carte, sinon les deux mouvements se percutent.
-    if (action != null && route is TransitionRoute<String>) await route.completed;
-    if (!mounted) return;
-    if (action == 'like') {
-      await _like(profile);
-    } else if (action == 'pass') {
-      await _pass(profile);
-    } else if (action == 'blocked') {
-      Session.read(context).feed.remove(profile.id);
+    final session = Session.read(context);
+    setState(() => _acting = true);
+    DiscoveryProfile? back;
+    try {
+      back = await session.repo.rewindLastPass();
+    } catch (e) {
+      if (mounted) showZayaSnack(context, friendlyError(e), error: true);
     }
+    if (!mounted) return;
+    if (back == null) {
+      setState(() => _acting = false);
+      showZayaSnack(context, 'Aucun profil passé à faire revenir pour le moment.');
+      return;
+    }
+    HapticFeedback.selectionClick();
+    // La carte part de la gauche (là où elle était sortie) et revient au centre.
+    _drag.value = _exit(-1);
+    session.feed.restore(back);
+    await _animateTo(Offset.zero);
+    if (mounted) setState(() => _acting = false);
   }
+
+  /// Le membre fait défiler une carte pour lire le profil : c'est une vraie visite (statistiques du profil).
+  void _onCardRead(DiscoveryProfile profile) {
+    if (_viewed.add(profile.id)) Session.read(context).repo.recordProfileView(profile.id);
+  }
+
+  void _openPremium() => Navigator.of(context).push(zRoute<void>(const PremiumScreen()));
 
   Future<void> _openFilters() async {
     final changed = await Navigator.of(context).push<bool>(zRoute<bool>(const PreferencesScreen()));
@@ -248,7 +262,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
           onPressed: _openFilters,
         ),
         titleSpacing: 0,
-        title: Text('Découvrir', overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleLarge),
+        title: Text('Mariage', overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleLarge),
         actions: [
           ListenableBuilder(
             listenable: session.feed,
@@ -328,6 +342,11 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
           FilledButton(onPressed: _openFilters, child: const Text('Modifier mes préférences')),
           const SizedBox(height: 8),
           TextButton(onPressed: feed.load, child: const Text('Actualiser')),
+          TextButton.icon(
+            onPressed: _rewind,
+            icon: const Icon(Icons.replay_rounded, size: 20),
+            label: const Text('Revenir au profil précédent'),
+          ),
         ]),
       );
     }
@@ -341,10 +360,11 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       child: Column(children: [
         Expanded(
+          // Glissement horizontal : aimer / passer. Le glissement vertical reste à la carte, qui défile pour montrer
+          // la suite du profil ; les deux gestes se départagent selon la direction du doigt.
           child: GestureDetector(
-            onTap: () => _openProfile(top),
-            onPanUpdate: _acting ? null : (details) => _drag.value += details.delta,
-            onPanEnd: _acting ? null : (_) => _onDragEnd(top),
+            onHorizontalDragUpdate: _acting ? null : (details) => _drag.value += Offset(details.delta.dx, 0),
+            onHorizontalDragEnd: _acting ? null : (_) => _onDragEnd(top),
             child: Stack(children: [
               // Carte de derrière puis carte du dessus, avec la même structure et une clé par profil :
               // quand la carte de derrière passe devant, elle est conservée telle quelle (photo déjà
@@ -359,7 +379,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
                       child: _ProfileCard(
                         profile: profile,
                         heroTag: 'discover-${profile.id}',
-                        onMore: profile.id == top.id ? () => _showCardMenu(top) : null,
+                        onMore: () => _showCardMenu(profile),
+                        onRead: () => _onCardRead(profile),
+                        onUnlock: _openPremium,
                       ),
                     ),
                     builder: (context, drag, card) {
@@ -397,15 +419,15 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
         ),
         const SizedBox(height: 14),
         Row(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.center, children: [
-          _RoundAction(icon: Icons.close, label: 'Passer', color: ZColors.ink, onTap: () => _pass(top)),
-          const SizedBox(width: 22),
           _RoundAction(
-              icon: Icons.person_outline,
-              label: 'Voir le profil',
-              color: ZColors.muted,
+              icon: Icons.replay_rounded,
+              label: 'Revenir au profil précédent',
+              color: ZColors.premium,
               small: true,
-              onTap: () => _openProfile(top)),
-          const SizedBox(width: 22),
+              onTap: _rewind),
+          const SizedBox(width: 18),
+          _RoundAction(icon: Icons.close, label: 'Passer', color: ZColors.ink, onTap: () => _pass(top)),
+          const SizedBox(width: 18),
           _RoundAction(
               icon: Icons.favorite, label: 'Aimer', color: ZColors.primary, filled: true, onTap: () => _like(top)),
         ]),
@@ -495,8 +517,11 @@ class _SwipeStamp extends StatelessWidget {
   }
 }
 
-class _ProfileCard extends StatelessWidget {
-  const _ProfileCard({required this.profile, required this.heroTag, this.onMore});
+/// Carte d'un profil : la photo occupe toute la carte ; on la fait défiler vers le haut pour lire la suite du profil
+/// (présentation, projet, en bref, langues, vérifications), sans quitter l'écran. Un toucher sur la photo passe à
+/// la suivante. La fiche est préchargée sans compter de visite ; la visite est comptée quand le membre la lit.
+class _ProfileCard extends StatefulWidget {
+  const _ProfileCard({required this.profile, required this.heroTag, this.onMore, this.onRead, this.onUnlock});
   final DiscoveryProfile profile;
 
   /// Toujours présent (même sur la carte de derrière), pour que la photo garde la même place dans
@@ -504,36 +529,85 @@ class _ProfileCard extends StatelessWidget {
   final String heroTag;
   final VoidCallback? onMore;
 
-  @override
-  Widget build(BuildContext context) {
-    final p = profile;
-    final photo = Hero(
-      tag: heroTag,
-      flightShuttleBuilder: _cardPhotoShuttle,
-      child: ProfilePhotoView(name: p.displayName, photoPath: p.photoPath, initialSize: 150),
-    );
-    final tags = <String>[...p.languages, ...p.interests].take(4).toList();
+  /// Appelé une fois, quand le membre fait défiler la carte pour lire le profil.
+  final VoidCallback? onRead;
+  final VoidCallback? onUnlock;
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(_cardRadius),
-      child: Stack(fit: StackFit.expand, children: [
-        photo,
-        const PhotoScrim(start: 0.35),
-        if (onMore != null)
-          Positioned(
-            top: 10,
-            right: 10,
-            child: IconButton(
-              style: IconButton.styleFrom(backgroundColor: Colors.black.withValues(alpha: 0.35)),
-              icon: const Icon(Icons.more_horiz, color: Colors.white),
-              tooltip: 'Signaler ou bloquer',
-              onPressed: onMore,
-            ),
-          ),
+  @override
+  State<_ProfileCard> createState() => _ProfileCardState();
+}
+
+class _ProfileCardState extends State<_ProfileCard> {
+  final ScrollController _scroll = ScrollController();
+  ProfileDetail? _detail;
+  String? _error;
+  bool _read = false;
+  bool _scrolled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_onScroll);
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final detail = await Session.read(context).repo.profileDetail(widget.profile.id, recordView: false);
+      if (mounted) {
+        setState(() {
+          _detail = detail;
+          _error = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = friendlyError(e));
+    }
+  }
+
+  void _onScroll() {
+    final scrolled = _scroll.offset > 24;
+    if (scrolled != _scrolled) setState(() => _scrolled = scrolled);
+    if (!_read && _scroll.offset > 80) {
+      _read = true;
+      widget.onRead?.call();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  Widget _cover(DiscoveryProfile p) {
+    final detail = _detail;
+    return Stack(fit: StackFit.expand, children: [
+      ProfilePhotoPager(
+        name: p.displayName,
+        photos: detail?.photos ?? const <ProfilePhoto>[],
+        fallbackPath: p.photoPath,
+        heroTag: widget.heroTag,
+        heroShuttle: _cardPhotoShuttle,
+        onUnlock: widget.onUnlock,
+      ),
+      const IgnorePointer(child: PhotoScrim(start: 0.42)),
+      if (widget.onMore != null)
         Positioned(
-          left: 20,
-          right: 20,
-          bottom: 20,
+          top: 20,
+          right: 10,
+          child: IconButton(
+            style: IconButton.styleFrom(backgroundColor: Colors.black.withValues(alpha: 0.35)),
+            icon: const Icon(Icons.more_horiz, color: Colors.white),
+            tooltip: 'Plus d’options',
+            onPressed: widget.onMore,
+          ),
+        ),
+      Positioned(
+        left: 18,
+        right: 18,
+        bottom: 14,
+        child: IgnorePointer(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
             Row(children: [
               Flexible(
@@ -544,47 +618,60 @@ class _ProfileCard extends StatelessWidget {
               if (p.isVerified) ...[const SizedBox(width: 8), const VerifiedBadge(size: 24)],
               if (p.isPremium) ...[const SizedBox(width: 8), const PremiumBadge()],
             ]),
-            const SizedBox(height: 6),
-            if (p.city != null) _InfoLine(icon: Icons.place_outlined, text: p.city!),
-            if (p.profession != null) _InfoLine(icon: Icons.work_outline, text: p.profession!),
-            if (p.horizon != null)
-              _InfoLine(icon: Icons.favorite_border, text: 'Mariage : ${horizonLabels[p.horizon] ?? ''}'),
-            if (p.bio != null && p.bio!.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(p.bio!,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(fontSize: 14, color: Colors.white.withValues(alpha: 0.92), height: 1.4)),
-            ],
-            if (tags.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Wrap(spacing: 6, runSpacing: 6, children: [for (final t in tags) ZTag(t, onDark: true)]),
-            ],
+            const SizedBox(height: 10),
+            Wrap(spacing: 6, runSpacing: 6, children: profileChips(p, detail: detail).take(3).toList()),
+            const SizedBox(height: 10),
+            // Invitation à faire défiler : disparaît dès que le membre commence à lire.
+            AnimatedOpacity(
+              opacity: _scrolled ? 0 : 1,
+              duration: ZMotion.of(context, ZMotion.fast),
+              child: Center(
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.keyboard_arrow_up_rounded, color: Colors.white, size: 22),
+                  const SizedBox(width: 2),
+                  Text('Glissez vers le haut pour en savoir plus',
+                      style: GoogleFonts.inter(
+                          fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.white.withValues(alpha: 0.9))),
+                ]),
+              ),
+            ),
           ]),
         ),
-      ]),
-    );
+      ),
+    ]);
   }
-}
-
-class _InfoLine extends StatelessWidget {
-  const _InfoLine({required this.icon, required this.text});
-  final IconData icon;
-  final String text;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(top: 3),
-        child: Row(children: [
-          Icon(icon, size: 16, color: Colors.white),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(text,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white)),
+  Widget build(BuildContext context) {
+    final p = widget.profile;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(_cardRadius),
+      child: ColoredBox(
+        color: ZColors.bg,
+        child: LayoutBuilder(
+          builder: (context, constraints) => CustomScrollView(
+            controller: _scroll,
+            physics: const ClampingScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(child: SizedBox(height: constraints.maxHeight, child: _cover(p))),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(12, 14, 12, 4),
+                sliver: SliverToBoxAdapter(
+                  child: ProfileInfoSections(
+                    base: _detail?.base ?? p,
+                    detail: _detail,
+                    error: _error,
+                    onRetry: _load,
+                    animate: false,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ]),
-      );
+        ),
+      ),
+    );
+  }
 }
 
 /// Bouton rond d'action (alternative accessible au geste de glissement).

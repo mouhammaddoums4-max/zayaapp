@@ -193,13 +193,24 @@ void main() {
     await settle(tester);
     expect(find.textContaining('Alpha, 28'), findsNothing);
 
-    // ── Fiche profil depuis la carte, puis like depuis la fiche
-    await tester.tap(find.bySemanticsLabel('Voir le profil'));
+    // ── Retour au profil précédent : le profil passé revient en tête, puis on le passe à nouveau
+    await tester.tap(find.bySemanticsLabel('Revenir au profil précédent'));
     await settle(tester);
-    expect(find.text('Vérifications'), findsOneWidget);
-    expect(find.text('J’aime ce profil'), findsOneWidget);
-    await tapText(tester, 'J’aime ce profil');
-    expect(find.text('Vérifications'), findsNothing);
+    expect(find.textContaining('Alpha, 28'), findsWidgets);
+    await tester.tap(find.bySemanticsLabel('Passer'));
+    await settle(tester);
+    expect(find.textContaining('Alpha, 28'), findsNothing);
+
+    // ── On fait défiler la carte vers le haut pour lire tout le profil, sur le même écran, puis on aime
+    final nextCard = find.textContaining(RegExp(r', \d\d$')).last;
+    final nextName = (tester.widget<Text>(nextCard)).data!;
+    expect(find.text('Glissez vers le haut pour en savoir plus'), findsWidgets);
+    await tester.dragFrom(tester.getCenter(nextCard), const Offset(0, -420));
+    await settle(tester);
+    expect(find.text('Vérifications'), findsWidgets);
+    await tester.tap(find.bySemanticsLabel('Aimer'));
+    await settle(tester);
+    expect(find.text(nextName), findsNothing);
 
     // ── Explorer : les likes reçus sont en tête. Le compteur est gratuit, l'identité ne l'est pas.
     await tapText(tester, 'Explorer');
@@ -261,7 +272,7 @@ void main() {
     await tapText(tester, 'En pause');
     await goBack(tester);
 
-    await tapText(tester, 'Découvrir');
+    await tapText(tester, 'Mariage');
     expect(find.text('Votre profil est en pause'), findsOneWidget);
   });
 

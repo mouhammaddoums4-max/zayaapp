@@ -5,12 +5,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../app.dart';
 import '../../core/motion.dart';
 import '../../core/tab_bar.dart';
+import '../../core/theme.dart';
+import '../../core/zaya_icons.dart';
 import '../app/app_update.dart';
 import '../app/rating_prompt.dart';
 import '../chat/conversations_screen.dart';
 import '../community/community_screen.dart';
 import '../discovery/discovery_screen.dart';
 import '../discovery/explore_screen.dart';
+import '../discovery/profile_widgets.dart';
 import '../profile/profile_screen.dart';
 
 /// Navigation principale : Découvrir · Explorer · Messages · Communauté · Profil (décision C16).
@@ -119,12 +122,27 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
         index: _index,
         onChanged: _select,
         badges: <int, int>{_exploreTab: session.likesBadge, _messagesTab: session.unreadBadge},
-        items: const [
-          ZTabItem(icon: Icons.style_outlined, activeIcon: Icons.style, label: 'Découvrir'),
-          ZTabItem(icon: Icons.explore_outlined, activeIcon: Icons.explore, label: 'Explorer'),
-          ZTabItem(icon: Icons.chat_bubble_outline, activeIcon: Icons.chat_bubble, label: 'Messages'),
-          ZTabItem(icon: Icons.groups_outlined, activeIcon: Icons.groups, label: 'Communauté'),
-          ZTabItem(icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profil'),
+        items: [
+          ZTabItem(label: 'Mariage', builder: (on, color) => ZIcon(ZGlyph.ring, filled: on, color: color)),
+          ZTabItem(label: 'Explorer', builder: (on, color) => ZIcon(ZGlyph.hearts, filled: on, color: color)),
+          ZTabItem(label: 'Messages', builder: (on, color) => ZIcon(ZGlyph.chat, filled: on, color: color)),
+          const ZTabItem(icon: Icons.groups_outlined, activeIcon: Icons.groups, label: 'Communauté'),
+          // Ma photo de profil, entourée de rose quand l'onglet est ouvert (à défaut de photo : mon initiale).
+          ZTabItem(
+            label: 'Profil',
+            builder: (on, color) => Container(
+              padding: const EdgeInsets.all(1.6),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: on ? ZColors.primary : ZColors.line, width: on ? 2 : 1.4),
+              ),
+              child: RemoteAvatar(
+                name: session.me?.displayName ?? '',
+                photoPath: session.me?.mainPhotoPath,
+                size: on ? 22 : 21,
+              ),
+            ),
+          ),
         ],
       ),
     );

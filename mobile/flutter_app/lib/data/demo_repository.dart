@@ -570,7 +570,10 @@ class DemoRepository implements ZayaRepository {
   }
 
   @override
-  Future<ProfileDetail> profileDetail(String userId) async {
+  Future<void> recordProfileView(String userId) async {}
+
+  @override
+  Future<ProfileDetail> profileDetail(String userId, {bool recordView = true}) async {
     final p = _person(userId);
     if (p == null || _blocked.containsKey(userId)) throw Exception('Ce profil n’est plus disponible.');
     return ProfileDetail(
@@ -619,6 +622,24 @@ class DemoRepository implements ZayaRepository {
   @override
   Future<void> pass(String userId) async {
     _seen.add(userId);
+    _passed.remove(userId);
+    _passed.insert(0, userId);
+  }
+
+  /// Profils passés, du plus récent au plus ancien (retour arrière, même règle que le serveur 0016).
+  final List<String> _passed = <String>[];
+
+  @override
+  Future<DiscoveryProfile?> rewindLastPass() async {
+    final depth = (_profile?.isPremium ?? false) ? 10 : 1;
+    for (final id in _passed.take(depth)) {
+      final p = _person(id);
+      if (p == null || _blocked.containsKey(id)) continue;
+      _passed.remove(id);
+      _seen.remove(id);
+      return p.profile;
+    }
+    return null;
   }
 
   @override

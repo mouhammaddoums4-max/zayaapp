@@ -6,10 +6,14 @@ import 'motion.dart';
 import 'theme.dart';
 
 class ZTabItem {
-  const ZTabItem({required this.icon, required this.activeIcon, required this.label});
-  final IconData icon;
-  final IconData activeIcon;
+  const ZTabItem({this.icon, this.activeIcon, required this.label, this.builder})
+      : assert(builder != null || (icon != null && activeIcon != null));
+  final IconData? icon;
+  final IconData? activeIcon;
   final String label;
+
+  /// Icône dessinée (bague, cœurs, photo de profil…) à la place d'une icône Material.
+  final Widget Function(bool selected, Color color)? builder;
 }
 
 /// Barre d'onglets ZAYA : pastille qui s'élargit, icône qui se remplit et rebondit, libellé qui s'affirme.
@@ -108,11 +112,10 @@ class _TabButton extends StatelessWidget {
                     scale: Tween<double>(begin: 0.7, end: 1).animate(animation),
                     child: FadeTransition(opacity: animation, child: child),
                   ),
-                  child: Icon(
-                    selected ? item.activeIcon : item.icon,
+                  child: KeyedSubtree(
                     key: ValueKey<bool>(selected),
-                    color: color,
-                    size: 24,
+                    child: item.builder?.call(selected, color) ??
+                        Icon(selected ? item.activeIcon : item.icon, color: color, size: 24),
                   ),
                 ),
               ),
