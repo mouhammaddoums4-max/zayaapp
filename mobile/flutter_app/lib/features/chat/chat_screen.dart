@@ -15,15 +15,58 @@ import '../safety/safety_sheets.dart';
 
 const _infoSeenKey = 'zaya_chat_info_seen';
 
-/// Conversation avec un match : filtre avant envoi, numéros masqués, bouclier de sécurité,
-/// modification / annulation d'envoi / suppression pour soi.
-/// Avec [ended], match terminé (CDC §32) : lecture seule, ni saisie ni accès au profil ; signaler et bloquer restent
-/// possibles.
 /// Messages du plus ancien au plus récent, quel que soit l’ordre de la source (le flux temps réel de Supabase
 /// trie par défaut du plus récent au plus ancien) : affichés en liste inversée, le dernier message reste en bas.
 List<ChatMessage> chronologique(List<ChatMessage> messages) =>
     [...messages]..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
+const _joursSemaine = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+const _mois = [
+  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
+];
+
+/// Séparateur de date de la messagerie : « Aujourd’hui », « Hier », le jour de la semaine pendant une semaine,
+/// puis la date (avec l’année si elle diffère).
+String libelleJour(DateTime jour, {DateTime? maintenant}) {
+  final n = maintenant ?? DateTime.now();
+  final aujourdhui = DateTime(n.year, n.month, n.day);
+  final d = DateTime(jour.year, jour.month, jour.day);
+  final ecart = aujourdhui.difference(d).inDays;
+  if (ecart == 0) return 'Aujourd’hui';
+  if (ecart == 1) return 'Hier';
+  if (ecart > 1 && ecart < 7) {
+    final nom = _joursSemaine[d.weekday - 1];
+    return nom[0].toUpperCase() + nom.substring(1);
+  }
+  final date = '${d.day == 1 ? '1er' : d.day} ${_mois[d.month - 1]}';
+  return d.year == aujourdhui.year ? date : '$date ${d.year}';
+}
+
+/// Pictogrammes emoji (smileys, personnes, objets, symboles, drapeaux, tons de peau).
+bool _estEmoji(int r) =>
+    (r >= 0x1F000 && r <= 0x1FAFF) ||
+    (r >= 0x2600 && r <= 0x27BF) ||
+    (r >= 0x2300 && r <= 0x23FF) ||
+    (r >= 0x2B00 && r <= 0x2BFF) ||
+    (r >= 0xE0020 && r <= 0xE007F);
+
+/// Liants d’emoji : jonction (ZWJ), sélecteur de présentation, touche de clavier, espace.
+bool _liantEmoji(int r) => r == 0x200D || r == 0xFE0F || r == 0x20E3 || r == 0x20;
+
+/// Message composé uniquement d’emojis (au plus 6 caractères visibles) : affiché en grand, dans sa bulle.
+bool queDesEmojis(String texte) {
+  final t = texte.trim();
+  return t.isNotEmpty &&
+      t.characters.length <= 6 &&
+      t.runes.any(_estEmoji) &&
+      t.runes.every((r) => _estEmoji(r) || _liantEmoji(r));
+}
+
+/// Conversation avec un match : filtre avant envoi, numéros masqués, bouclier de sécurité,
+/// modification / annulation d'envoi / suppression pour soi.
+/// Avec [ended], match terminé (CDC §32) : lecture seule, ni saisie ni accès au profil ; signaler et bloquer restent
+/// possibles.
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key, required this.match, this.ended = false});
   final MatchSummary match;
@@ -364,12 +407,24 @@ class _ChatScreenState extends State<ChatScreen> {
                     message: 'Un premier message simple et sincère est souvent le meilleur.',
                   );
                 }
+                // Séparateur de date avant le premier message de chaque jour (« Aujourd’hui », « Hier »…).
+                final lignes = <Object>[];
+                DateTime? jourPrecedent;
+                for (final m in items) {
+                  final local = m.createdAt.toLocal();
+                  final jour = DateTime(local.year, local.month, local.day);
+                  if (jour != jourPrecedent) lignes.add(jour);
+                  jourPrecedent = jour;
+                  lignes.add(m);
+                }
                 return ListView.builder(
                   reverse: true,
                   padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                  itemCount: items.length,
+                  itemCount: lignes.length,
                   itemBuilder: (context, i) {
-                    final message = items[items.length - 1 - i];
+                    final ligne = lignes[lignes.length - 1 - i];
+                    if (ligne is DateTime) return _SeparateurJour(libelle: libelleJour(ligne));
+                    final message = ligne as ChatMessage;
                     final mine = message.senderId == myId;
                     return FadeSlideIn(
                       key: ValueKey<String>(message.id),
@@ -480,6 +535,25 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
+/// Séparateur de date centré entre les messages.
+class _SeparateurJour extends StatelessWidget {
+  const _SeparateurJour({required this.libelle});
+  final String libelle;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(color: ZColors.line, borderRadius: BorderRadius.circular(999)),
+            child: Text(libelle,
+                style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: ZColors.muted)),
+          ),
+        ),
+      );
+}
+
 class _Bubble extends StatelessWidget {
   const _Bubble({
     required this.message,
@@ -504,6 +578,9 @@ class _Bubble extends StatelessWidget {
     if (message.unsent) {
       content = Text('Message retiré',
           style: style.copyWith(fontStyle: FontStyle.italic, color: foreground.withValues(alpha: 0.7)));
+    } else if (queDesEmojis(message.body)) {
+      // Emojis seuls : en grand, toujours dans la bulle.
+      content = Text(message.body.trim(), style: style.copyWith(fontSize: 34, height: 1.2));
     } else {
       // Chez le destinataire, un numéro de téléphone reste masqué jusqu'à une action volontaire.
       content = Text.rich(TextSpan(style: style, children: [
