@@ -9,6 +9,7 @@ import { buildInstallSql, installPath, normalizeEol } from '../deploy/build.mjs'
 import { adsTests } from './ads_tests.mjs';
 import { assistanceTests } from './assistance_tests.mjs';
 import { contentTests } from './content_tests.mjs';
+import { rewardsTests } from './rewards_tests.mjs';
 import { swipesTests } from './swipes_tests.mjs';
 import { conversationsTests } from './conversations_tests.mjs';
 import { endedMatchesTests } from './ended_matches_tests.mjs';
@@ -799,6 +800,7 @@ await assistanceTests({ db, test, assert, as, rpc, fails, U });
 await endedMatchesTests({ db, test, assert, as, rpc, fails });
 await adsTests({ db, test, assert, as, rpc, fails, U });
 await contentTests({ db, test, assert, as, rpc, fails, U });
+await rewardsTests({ db, test, assert, as, rpc, fails, U });
 await swipesTests({ db, test, assert, as, rpc, fails, U, seedMember });
 await conversationsTests({ db, test, assert, as, rpc, fails, seedMember });
 await filtresAvancesTests({ db, test, assert, as, rpc, fails, U, seedMember });
