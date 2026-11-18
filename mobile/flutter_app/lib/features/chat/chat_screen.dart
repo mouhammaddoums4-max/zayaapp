@@ -19,6 +19,11 @@ const _infoSeenKey = 'zaya_chat_info_seen';
 /// modification / annulation d'envoi / suppression pour soi.
 /// Avec [ended], match terminé (CDC §32) : lecture seule, ni saisie ni accès au profil ; signaler et bloquer restent
 /// possibles.
+/// Messages du plus ancien au plus récent, quel que soit l’ordre de la source (le flux temps réel de Supabase
+/// trie par défaut du plus récent au plus ancien) : affichés en liste inversée, le dernier message reste en bas.
+List<ChatMessage> chronologique(List<ChatMessage> messages) =>
+    [...messages]..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key, required this.match, this.ended = false});
   final MatchSummary match;
@@ -346,8 +351,9 @@ class _ChatScreenState extends State<ChatScreen> {
                     message: 'Les messages ne peuvent pas être chargés pour le moment.',
                   );
                 }
-                final items = snapshot.data;
-                if (items == null) return const Center(child: CircularProgressIndicator());
+                final recus = snapshot.data;
+                if (recus == null) return const Center(child: CircularProgressIndicator());
+                final items = chronologique(recus);
                 if (items.isEmpty && widget.ended) {
                   return EmptyState(icon: Icons.forum_outlined, title: context.s.endedChatEmpty, message: '');
                 }
