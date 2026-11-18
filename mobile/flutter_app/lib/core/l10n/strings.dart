@@ -99,6 +99,30 @@ abstract class ZStrings {
   String get adSponsored;
   String get adLearnMore;
 
+  // ── Portefeuille et publicités récompensées
+  String get walletTitle;
+  String get walletSubtitle;
+  String get walletAdCredits;
+  String get walletAdCreditsBody;
+  String walletSwipes(int n);
+  String walletBoosts(int n);
+  String get walletCoins;
+  String walletCoinsBalance(int n);
+  String get walletCoinsClosed;
+  String get walletPremium;
+  String walletPremiumUntil(String date);
+  String get walletPremiumNone;
+  String get walletHistory;
+  String get walletEmpty;
+  String rewardedCta(String label, int amount);
+  String rewardedRemaining(int n);
+  String get rewardedConfirmTitle;
+  String rewardedConfirmBody(String label, int amount);
+  String get rewardedWatch;
+  String get rewardedPending;
+  String rewardedCredited(String label, int amount);
+  String get rewardedUnavailable;
+
   // ── Langue
   String get languageTitle;
   String get languageIntro;

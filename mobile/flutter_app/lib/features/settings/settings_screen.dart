@@ -14,6 +14,7 @@ import '../profile/privacy_center_screen.dart';
 import '../safety/safety_sheets.dart';
 import 'help_screen.dart';
 import 'language_screen.dart';
+import '../wallet/wallet_screen.dart';
 import 'legal_screen.dart';
 import 'settings_widgets.dart';
 import 'support_screens.dart';
@@ -183,6 +184,12 @@ class SettingsScreen extends StatelessWidget {
             title: s.settingsSubscriptions,
             subtitle: me.isPremium ? s.settingsSubscriptionPremium : s.settingsSubscriptionFree,
             onTap: () => _push(context, const SubscriptionsScreen()),
+          ),
+          SettingsTile(
+            icon: Icons.account_balance_wallet_outlined,
+            title: s.walletTitle,
+            subtitle: s.walletSubtitle,
+            onTap: () => _push(context, const WalletScreen()),
           ),
           SettingsTile(
             icon: Icons.receipt_long_outlined,

@@ -179,6 +179,54 @@ class ZStringsEn extends ZStrings {
   @override
   String get adLearnMore => 'Learn more';
 
+  // ── Wallet and rewarded ads
+  @override
+  String get walletTitle => 'My wallet';
+  @override
+  String get walletSubtitle => 'Ad credits, coins, Premium';
+  @override
+  String get walletAdCredits => 'Ad credits';
+  @override
+  String get walletAdCreditsBody => 'Earned by choosing to watch an ad. Personal, not transferable, never convertible '
+      'into money.';
+  @override
+  String walletSwipes(int n) => '$n extra swipes earned';
+  @override
+  String walletBoosts(int n) => '$n boost credits';
+  @override
+  String get walletCoins => 'Coins';
+  @override
+  String walletCoinsBalance(int n) => 'Balance: $n coins';
+  @override
+  String get walletCoinsClosed => 'Buying coins is not open yet.';
+  @override
+  String get walletPremium => 'Premium';
+  @override
+  String walletPremiumUntil(String date) => 'Active until $date';
+  @override
+  String get walletPremiumNone => 'Free plan';
+  @override
+  String get walletHistory => 'History';
+  @override
+  String get walletEmpty => 'No transactions yet.';
+  @override
+  String rewardedCta(String label, int amount) => 'Watch an ad: $label +$amount';
+  @override
+  String rewardedRemaining(int n) => '$n left today';
+  @override
+  String get rewardedConfirmTitle => 'Watch an ad?';
+  @override
+  String rewardedConfirmBody(String label, int amount) => 'A short ad, then $label +$amount, credited after Google '
+      'verifies it. The reward is personal and not transferable.';
+  @override
+  String get rewardedWatch => 'Watch';
+  @override
+  String get rewardedPending => 'Checking your reward…';
+  @override
+  String rewardedCredited(String label, int amount) => '$label +$amount added.';
+  @override
+  String get rewardedUnavailable => 'No ad available right now. Try again later.';
+
   // ── Language
   @override
   String get languageTitle => 'App language';

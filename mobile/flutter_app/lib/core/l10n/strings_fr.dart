@@ -182,6 +182,54 @@ class ZStringsFr extends ZStrings {
   @override
   String get adLearnMore => 'En savoir plus';
 
+  // ── Portefeuille et publicités récompensées
+  @override
+  String get walletTitle => 'Mon portefeuille';
+  @override
+  String get walletSubtitle => 'Crédits publicitaires, pièces, Premium';
+  @override
+  String get walletAdCredits => 'Crédits publicitaires';
+  @override
+  String get walletAdCreditsBody => 'Gagnés en regardant volontairement une publicité. Personnels, non transférables, '
+      'jamais convertibles en argent.';
+  @override
+  String walletSwipes(int n) => '$n swipes supplémentaires gagnés';
+  @override
+  String walletBoosts(int n) => '$n crédits de boost';
+  @override
+  String get walletCoins => 'Pièces';
+  @override
+  String walletCoinsBalance(int n) => 'Solde : $n pièces';
+  @override
+  String get walletCoinsClosed => 'L’achat de pièces n’est pas encore ouvert.';
+  @override
+  String get walletPremium => 'Premium';
+  @override
+  String walletPremiumUntil(String date) => 'Actif jusqu’au $date';
+  @override
+  String get walletPremiumNone => 'Offre Gratuit';
+  @override
+  String get walletHistory => 'Historique';
+  @override
+  String get walletEmpty => 'Aucune opération pour le moment.';
+  @override
+  String rewardedCta(String label, int amount) => 'Regarder une publicité : $label +$amount';
+  @override
+  String rewardedRemaining(int n) => 'encore $n aujourd’hui';
+  @override
+  String get rewardedConfirmTitle => 'Regarder une publicité ?';
+  @override
+  String rewardedConfirmBody(String label, int amount) => 'Une courte publicité, puis $label +$amount, '
+      'crédités après vérification par Google. La récompense est personnelle et non transférable.';
+  @override
+  String get rewardedWatch => 'Regarder';
+  @override
+  String get rewardedPending => 'Récompense en cours de vérification…';
+  @override
+  String rewardedCredited(String label, int amount) => '$label +$amount ajoutés.';
+  @override
+  String get rewardedUnavailable => 'Aucune publicité disponible pour le moment. Réessayez plus tard.';
+
   // ── Langue
   @override
   String get languageTitle => 'Langue de l’application';

@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../app.dart';
 import '../../core/motion.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
+import '../ads/rewarded_ad_button.dart';
 import '../premium/premium_screens.dart';
 
 /// Écran affiché quand le membre a utilisé ses swipes de la période (migration 0016 : 50 toutes les 8 h pour un
@@ -65,9 +67,7 @@ class _SwipeLimitScreenState extends State<SwipeLimitScreen> {
               textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 8),
           Text(
-            fini
-                ? 'Vous pouvez reprendre la découverte des profils.'
-                : 'Ils reviennent dans',
+            fini ? 'Vous pouvez reprendre la découverte des profils.' : 'Ils reviennent dans',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyLarge,
           ),
@@ -94,6 +94,16 @@ class _SwipeLimitScreenState extends State<SwipeLimitScreen> {
           if (fini)
             GradientButton(label: 'Reprendre', icon: Icons.style, onPressed: () => Navigator.of(context).pop())
           else ...[
+            // Swipes supplémentaires contre une publicité choisie par le membre (régie v1 §3) : visible seulement si
+            // le serveur la propose ; crédit après vérification de Google, puis retour immédiat à la découverte.
+            RewardedAdButton(
+              reward: 'extra_swipes',
+              padding: const EdgeInsets.only(bottom: 14),
+              onCredited: (_) {
+                Session.read(context).feed.load();
+                Navigator.of(context).pop();
+              },
+            ),
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
