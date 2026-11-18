@@ -11,6 +11,7 @@ import '../../core/widgets.dart';
 import '../../data/models.dart';
 import '../discovery/profile_detail_screen.dart';
 import '../discovery/profile_widgets.dart';
+import '../premium/premium_screens.dart';
 import '../safety/safety_sheets.dart';
 
 const _infoSeenKey = 'zaya_chat_info_seen';
@@ -127,6 +128,9 @@ class _ChatScreenState extends State<ChatScreen> {
       if (result.isBlocked) {
         // Le message n'est pas transmis : il reste dans le champ de saisie pour être corrigé.
         setState(() => _blockedCategory = result.blockedCategory);
+      } else if (result.isActiveLimit) {
+        // Premier message refusé (0040) : le texte reste dans le champ, rien n'est perdu.
+        await _showActiveLimit(result.activeLimit!);
       } else {
         _input.clear();
         setState(() {
@@ -150,6 +154,29 @@ class _ChatScreenState extends State<ChatScreen> {
     _input.selection = TextSelection.collapsed(offset: _input.text.length);
     _focus.requestFocus();
   }
+
+  /// Toutes les places de conversation sont prises : terminer une conversation ou passer à Premium.
+  Future<void> _showActiveLimit(int limit) => showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          icon: const Icon(Icons.forum_outlined, color: ZColors.primary, size: 36),
+          title: Text('Vos $limit conversations actives sont ouvertes'),
+          content: Text(
+            'Pour écrire à ${widget.match.displayName}, terminez d’abord l’une de vos conversations en cours. '
+            'Avec ZAYA Premium, vous disposez de plus de conversations actives à la fois.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                Navigator.of(context).push(zRoute<void>(const PremiumScreen()));
+              },
+              child: const Text('Découvrir Premium'),
+            ),
+            FilledButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Compris')),
+          ],
+        ),
+      );
 
   void _cancelEditing() {
     _input.clear();
@@ -446,7 +473,11 @@ class _ChatScreenState extends State<ChatScreen> {
           if (widget.ended)
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-              child: InfoBanner(icon: Icons.lock_outline, text: context.s.endedChatBanner),
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                InfoBanner(icon: Icons.lock_outline, text: context.s.endedChatBanner),
+                const SizedBox(height: 10),
+                _RematchBar(matchId: widget.match.matchId, name: widget.match.displayName),
+              ]),
             )
           else ...[
             if (blocked != null)
@@ -532,6 +563,92 @@ class _ChatScreenState extends State<ChatScreen> {
         ]),
       ),
     );
+  }
+}
+
+/// Match terminé : demander à reprendre la conversation, ou répondre à la demande de l’autre (migration 0040).
+class _RematchBar extends StatefulWidget {
+  const _RematchBar({required this.matchId, required this.name});
+  final String matchId;
+  final String name;
+
+  @override
+  State<_RematchBar> createState() => _RematchBarState();
+}
+
+class _RematchBarState extends State<_RematchBar> {
+  String? _state; // none | sent | received | accepted | declined
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Session.read(context).repo.rematchState(widget.matchId).then((s) {
+      if (mounted) setState(() => _state = s);
+    }, onError: (Object _) {
+      if (mounted) setState(() => _state = 'none');
+    });
+  }
+
+  Future<void> _run(Future<String> Function() action) async {
+    setState(() => _busy = true);
+    try {
+      final r = await action();
+      if (!mounted) return;
+      if (r == 'rematched' || r == 'active') {
+        showZayaSnack(context, 'Le match avec ${widget.name} a repris : retrouvez la conversation dans Messages.');
+        Navigator.of(context).pop();
+        return;
+      }
+      setState(() => _state = r == 'pending' ? 'sent' : r);
+    } catch (e) {
+      if (mounted) showZayaSnack(context, friendlyError(e), error: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final repo = Session.of(context).repo;
+    final style = Theme.of(context).textTheme.bodyMedium;
+    switch (_state) {
+      case null:
+        return const SizedBox(height: 48);
+      case 'sent':
+        return Text('Demande envoyée à ${widget.name}. Vous serez à nouveau en contact si elle est acceptée.',
+            textAlign: TextAlign.center, style: style);
+      case 'declined':
+        return Text('La demande pour reprendre la conversation a été refusée.', textAlign: TextAlign.center, style: style);
+      case 'received':
+        return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text('${widget.name} souhaite reprendre la conversation.', textAlign: TextAlign.center, style: style),
+          const SizedBox(height: 8),
+          Row(children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _busy ? null : () => _run(() => repo.respondRematch(widget.matchId, accept: false)),
+                child: const Text('Refuser'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: GradientButton(
+                label: 'Accepter',
+                busy: _busy,
+                onPressed: () => _run(() => repo.respondRematch(widget.matchId, accept: true)),
+              ),
+            ),
+          ]),
+        ]);
+      default:
+        return GradientButton(
+          label: 'Demander à re-matcher',
+          icon: Icons.favorite_border,
+          busy: _busy,
+          onPressed: () => _run(() => repo.requestRematch(widget.matchId)),
+        );
+    }
   }
 }
 

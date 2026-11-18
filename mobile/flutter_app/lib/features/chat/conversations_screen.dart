@@ -22,15 +22,49 @@ class ConversationsScreen extends StatefulWidget {
   State<ConversationsScreen> createState() => _ConversationsScreenState();
 }
 
+/// Matchs, places de conversation (« 1/5 ») et demandes de re-match reçues (migration 0040).
+class _Donnees {
+  const _Donnees(this.matches, this.places, this.demandes);
+  final List<MatchSummary> matches;
+  final ({int active, int limit})? places;
+  final List<RematchRequest> demandes;
+}
+
 class _ConversationsScreenState extends State<ConversationsScreen> {
-  late Future<List<MatchSummary>> _future = Session.read(context).repo.matches();
+  late Future<_Donnees> _future = _charger();
+
+  Future<_Donnees> _charger() async {
+    final repo = Session.read(context).repo;
+    final matches = await repo.matches();
+    ({int active, int limit})? places;
+    var demandes = const <RematchRequest>[];
+    try {
+      places = await repo.conversationSlots();
+      demandes = await repo.rematchRequests();
+    } catch (_) {
+      // Serveur sans la migration 0040 : la liste des conversations reste utilisable.
+    }
+    return _Donnees(matches, places, demandes);
+  }
 
   void _reload() {
     final session = Session.read(context);
     setState(() {
-      _future = session.repo.matches();
+      _future = _charger();
     });
     session.refreshBadges();
+  }
+
+  Future<void> _repondre(RematchRequest demande, {required bool accepter}) async {
+    try {
+      await Session.read(context).repo.respondRematch(demande.matchId, accept: accepter);
+      if (!mounted) return;
+      showZayaSnack(context,
+          accepter ? 'Le match avec ${demande.displayName} a repris.' : 'Demande de ${demande.displayName} refusée.');
+      _reload();
+    } catch (e) {
+      if (mounted) showZayaSnack(context, friendlyError(e), error: true);
+    }
   }
 
   Future<void> _open(MatchSummary match) async {
@@ -44,6 +78,12 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
     final now = DateTime.now();
     final sameDay = local.year == now.year && local.month == now.month && local.day == now.day;
     return sameDay ? formatTime(time) : formatDate(time).substring(0, 5);
+  }
+
+  String _placesLibres(({int active, int limit}) p) {
+    final libres = p.limit - p.active;
+    if (libres <= 0) return 'Complet';
+    return libres == 1 ? '1 place libre' : '$libres places libres';
   }
 
   /// L'aperçu ne révèle jamais un numéro de téléphone.
@@ -63,12 +103,13 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
         ),
         const SizedBox(width: 4),
       ]),
-      body: FutureBuilder<List<MatchSummary>>(
+      body: FutureBuilder<_Donnees>(
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) return const _ListSkeleton();
-          final items = snapshot.data;
-          if (snapshot.hasError || items == null) {
+          final donnees = snapshot.data;
+          final items = donnees?.matches;
+          if (snapshot.hasError || donnees == null || items == null) {
             return EmptyState(
               icon: Icons.wifi_off,
               title: 'Connexion interrompue',
@@ -76,7 +117,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
               action: FilledButton(onPressed: _reload, child: const Text('Réessayer')),
             );
           }
-          if (items.isEmpty) {
+          if (items.isEmpty && donnees.demandes.isEmpty) {
             return EmptyState(
               icon: Icons.chat_bubble_outline,
               title: 'Aucune conversation',
@@ -96,6 +137,28 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
             color: ZColors.primary,
             onRefresh: () async => _reload(),
             child: ListView(children: [
+              if (donnees.demandes.isNotEmpty) ...[
+                const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 4, 16, 0), child: SectionTitle('Demandes pour reprendre')),
+                for (final d in donnees.demandes)
+                  ListTile(
+                    leading: RemoteAvatar(name: d.displayName, photoPath: d.photoPath, size: 44),
+                    title: Text(d.displayName, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    subtitle: const Text('souhaite reprendre la conversation'),
+                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        tooltip: 'Refuser',
+                        onPressed: () => _repondre(d, accepter: false),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.favorite, color: ZColors.primary),
+                        tooltip: 'Accepter',
+                        onPressed: () => _repondre(d, accepter: true),
+                      ),
+                    ]),
+                  ),
+              ],
               if (fresh.isNotEmpty) ...[
                 const Padding(padding: EdgeInsets.fromLTRB(16, 4, 16, 0), child: SectionTitle('Nouveaux matchs')),
                 SizedBox(
@@ -112,8 +175,19 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                   ),
                 ),
               ],
-              if (talks.isNotEmpty)
-                const Padding(padding: EdgeInsets.fromLTRB(16, 8, 16, 0), child: SectionTitle('Conversations')),
+              if (talks.isNotEmpty || donnees.places != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: SectionTitle(
+                    donnees.places == null
+                        ? 'Conversations'
+                        : 'Conversations actives (${donnees.places!.active}/${donnees.places!.limit})',
+                    trailing: donnees.places == null
+                        ? null
+                        : Text(_placesLibres(donnees.places!),
+                            style: const TextStyle(fontWeight: FontWeight.w600, color: ZColors.muted)),
+                  ),
+                ),
               for (var i = 0; i < talks.length; i++)
                 FadeSlideIn(
                   index: i,

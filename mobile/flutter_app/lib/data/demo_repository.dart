@@ -313,6 +313,7 @@ class DemoRepository implements ZayaRepository {
     _phone = null;
     _profile = null;
     _ended.clear();
+    _rematchSent.clear();
     _tickets.clear();
     _seen.clear();
     _blocked.clear();
@@ -673,6 +674,34 @@ class DemoRepository implements ZayaRepository {
     _matches.removeWhere((m) => m.matchId == matchId);
   }
 
+  /// Demandes de re-match envoyées (démo : la personne fictive ne répond pas).
+  final Set<String> _rematchSent = <String>{};
+
+  @override
+  Future<({int active, int limit})> conversationSlots() async => (
+        active: _matches
+            .where((m) => !_blocked.containsKey(m.userId) && (_messages[m.matchId] ?? const <ChatMessage>[]).isNotEmpty)
+            .length,
+        limit: 5,
+      );
+
+  @override
+  Future<List<RematchRequest>> rematchRequests() async => const <RematchRequest>[];
+
+  @override
+  Future<String> rematchState(String matchId) async => _rematchSent.contains(matchId) ? 'sent' : 'none';
+
+  @override
+  Future<String> requestRematch(String matchId) async {
+    if (_matches.any((m) => m.matchId == matchId)) return 'active';
+    _rematchSent.add(matchId);
+    return 'pending';
+  }
+
+  @override
+  Future<String> respondRematch(String matchId, {required bool accept}) async =>
+      throw Exception('REQUEST_NOT_FOUND');
+
   @override
   Future<List<EndedMatch>> endedMatches() async => [
         for (final e in _ended)
@@ -692,6 +721,11 @@ class DemoRepository implements ZayaRepository {
   @override
   Future<SendResult> sendMessage(String matchId, String body) async {
     if (!_matches.any((m) => m.matchId == matchId)) throw Exception('Cette conversation est terminée.');
+    // Même règle que le serveur (0040) : le premier message d'un match exige une place de conversation libre.
+    final slots = await conversationSlots();
+    if ((_messages[matchId] ?? const <ChatMessage>[]).isEmpty && slots.active >= slots.limit) {
+      return SendResult.activeLimit(slots.limit);
+    }
     final lower = body.toLowerCase();
     for (final e in _blockedTerms.entries) {
       if (lower.contains(e.key)) return SendResult.blocked(e.value);

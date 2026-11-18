@@ -605,10 +605,30 @@ class ChatMessage {
 
 /// Résultat d'un envoi : `blockedCategory` non nul = message refusé par le filtre avant transmission.
 class SendResult {
-  const SendResult.sent() : blockedCategory = null;
-  const SendResult.blocked(String category) : blockedCategory = category;
+  const SendResult.sent()
+      : blockedCategory = null,
+        activeLimit = null;
+  const SendResult.blocked(String category)
+      : blockedCategory = category,
+        activeLimit = null;
+
+  /// Premier message refusé : toutes les places de conversation sont prises (migration 0040).
+  const SendResult.activeLimit(int limit)
+      : blockedCategory = null,
+        activeLimit = limit;
   final String? blockedCategory;
+  final int? activeLimit;
   bool get isBlocked => blockedCategory != null;
+  bool get isActiveLimit => activeLimit != null;
+}
+
+/// Demande de re-match reçue après la fin d'un match (migration 0040).
+class RematchRequest {
+  const RematchRequest({required this.matchId, required this.userId, required this.displayName, this.photoPath});
+  final String matchId;
+  final String userId;
+  final String displayName;
+  final String? photoPath;
 }
 
 class PremiumGrant {

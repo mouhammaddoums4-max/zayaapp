@@ -437,8 +437,46 @@ class SupabaseRepository implements ZayaRepository {
   Future<SendResult> sendMessage(String matchId, String body) async {
     final r =
         Map<String, dynamic>.from(await _db.rpc('send_message', params: {'p_match': matchId, 'p_body': body}) as Map);
-    return r['status'] == 'blocked' ? SendResult.blocked(r['category'] as String) : const SendResult.sent();
+    return switch (r['status']) {
+      'blocked' => SendResult.blocked(r['category'] as String),
+      'active_limit' => SendResult.activeLimit((r['limit'] as num).toInt()),
+      _ => const SendResult.sent(),
+    };
   }
+
+  @override
+  Future<({int active, int limit})> conversationSlots() async {
+    final r = Map<String, dynamic>.from(await _db.rpc('my_conversation_slots') as Map);
+    return (active: (r['active'] as num).toInt(), limit: (r['limit'] as num).toInt());
+  }
+
+  @override
+  Future<List<RematchRequest>> rematchRequests() async {
+    final rows = await _db.rpc('my_rematch_requests') as List;
+    return [
+      for (final raw in rows)
+        RematchRequest(
+          matchId: (raw as Map)['match_id'] as String,
+          userId: raw['user_id'] as String,
+          displayName: (raw['display_name'] as String?) ?? '',
+          photoPath: raw['photo_path'] as String?,
+        ),
+    ];
+  }
+
+  @override
+  Future<String> rematchState(String matchId) async =>
+      (await _db.rpc('rematch_state', params: {'p_match': matchId}) as String?) ?? 'none';
+
+  @override
+  Future<String> requestRematch(String matchId) async =>
+      Map<String, dynamic>.from(await _db.rpc('request_rematch', params: {'p_match': matchId}) as Map)['status']
+          as String;
+
+  @override
+  Future<String> respondRematch(String matchId, {required bool accept}) async => Map<String, dynamic>.from(
+          await _db.rpc('respond_rematch', params: {'p_match': matchId, 'p_accept': accept}) as Map)['status']
+      as String;
 
   @override
   Future<SendResult> editMessage(String messageId, String body) async {

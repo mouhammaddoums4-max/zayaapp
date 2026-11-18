@@ -77,6 +77,21 @@ abstract class ZayaRepository {
   Stream<List<ChatMessage>> watchMessages(String matchId);
   Future<SendResult> sendMessage(String matchId, String body);
 
+  /// Places de conversation : conversations actives et limite (« 3/5 », migration 0040).
+  Future<({int active, int limit})> conversationSlots();
+
+  /// Demandes de re-match reçues, en attente.
+  Future<List<RematchRequest>> rematchRequests();
+
+  /// État de la demande pour un match terminé : none | sent | received | accepted | declined.
+  Future<String> rematchState(String matchId);
+
+  /// Demande à reprendre un match terminé : pending | rematched | declined | accepted | active.
+  Future<String> requestRematch(String matchId);
+
+  /// Réponse à une demande reçue : rematched | declined.
+  Future<String> respondRematch(String matchId, {required bool accept});
+
   /// Modifie un de mes messages (délai limité côté serveur) ; le nouveau texte repasse par le filtre.
   Future<SendResult> editMessage(String messageId, String body);
   Future<void> unsendMessage(String messageId);
