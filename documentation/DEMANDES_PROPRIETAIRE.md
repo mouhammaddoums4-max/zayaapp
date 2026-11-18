@@ -20,6 +20,8 @@ Explorer, achats, publicité ».
 | 100 profils d'essai de plus (140 au total) | S1 | 70 femmes + 70 hommes, tous visibles dans Découvrir, photos floutées comprises |
 | Likes : onglets « Reçus » et « Envoyés » ; compteur aligné sur la liste | S1 | 0024 ; identité des likes reçus réservée à Premium (CDC V3.0 §4.3) |
 | Match entre les comptes 620 00 00 01 et 620 00 00 02 | S1 | Créé directement en base (préproduction) |
+| Swipes : 50 toutes les 8 h (likes + passages), écran de limite avec compte à rebours et Premium | S1 | 0016, 0026 ; retour arrière : serveur prêt, bouton par S4 |
+| Messagerie : le dernier message toujours en bas | S1 | f6aa4c4 |
 | Toucher la photo d'une personne pour voir ses photos | S1 | Visionneuse plein écran, zoom, sans enregistrement |
 | Floutage des photos (Gratuit : photo principale nette, suivantes floutées) | S1 | Serveur (0009, fonction `blur-photos`) et application (galerie, libellés honnêtes) |
 | Photos des autres membres invisibles (bug) | S1 | Corrigé par 0007 |
@@ -38,7 +40,6 @@ Explorer, achats, publicité ».
 | Demande | Session | État | Notes |
 |---|---|---|---|
 | Confidentialité des photos : choisir publique / floutée / privée, autoriser une personne précise | S1 | à faire | 0013 ; addendum V6.4 §3.2–3.3 |
-| Swipes : 50 toutes les 8 h pour un compte Gratuit (likes + passages), retour arrière sur le dernier profil ; écran « limite atteinte » avec temps restant et Premium | S1 | à faire | 0016 ; paramètres dans `app_config` ; swipes gagnés par publicité récompensée : voir régie (S2, SSV) |
 | Communauté : mentions @ | S1 | à faire | 0017 |
 | Communauté : nombre de vues, publication anonyme | S1 | à faire | 0020 ; anonymat vis-à-vis des membres seulement, jamais de la modération |
 | Communauté : photo, GIF, vidéo, appareil photo ; humeur et emoji | S1 | à faire | 0021 ; médias modérés |
@@ -56,13 +57,18 @@ Explorer, achats, publicité ».
 | Sauvegarde des données, pause, suppression du compte | S2 | à faire | Fonctions serveur déjà présentes |
 | Tous les prix (achats, Premium, cadeaux) fixés par l'administration | S2 | à faire | `app_config` / catalogue administrable |
 
+| Messagerie : envoi de photos et notes vocales, emojis dans une bulle | S1 | à faire | Stockage privé et modération |
+| Notifications avec son | — | à confirmer | Projet Firebase (Google) nécessaire |
+| Lieu détecté automatiquement d’après la position | S2 | à faire | Consentement, position approximative |
+
 ## Questions au propriétaire
 
 - **Conversations actives limitées** : les captures montrent « 5 conversations actives à la fois ». Faut-il une limite
   chez ZAYA, et combien (réglable dans `app_config`) ?
 - **Onglet « Amis »** dans les discussions : ZAYA est une application de rencontre en vue du mariage ; faut-il vraiment un
   mode « amis » ?
-- **Appels audio et vidéo** dans la discussion : à prévoir dans un lot ultérieur ?
+- **Appels audio et vidéo** dans la discussion : service d’appels externe (payant au volume) : lequel, et quand ?
+- **Notifications avec son** : créer un projet Firebase (gratuit) au nom de ZAYA ?
 - **Filtres « études » et « enfants »** (Premium) : ces informations ne sont pas encore demandées aux membres (ni à
   l'inscription ni dans « Modifier le profil »). Faut-il d'abord les ajouter au profil (études : liste de niveaux, pas
   un texte libre), pour pouvoir ensuite les filtrer ?
