@@ -46,6 +46,12 @@ Explorer, achats, publicité ».
 | Communauté : création de communauté réservée aux membres Premium | S1 | à faire | 0018 ; validée par la modération avant d'être publique |
 | Discussions : écrans d'après les captures (conversations, demande de re-match, nouveaux matchs) | S1 | à confirmer | Voir questions ci-dessous |
 | Animations qui « tremblent » | S3 | fait | ebd18b7 (session zaya-app-fa) |
+| Sécurité renforcée contre le piratage | S3 | en cours | Audit serveur fait (RLS, fonctions, stockage, secrets : sains) ; 0050 ; Android : anti-capture (FLAG_SECURE, CDC §7), pas de sauvegarde des données. Restent : fonction blur-photos (S1), clé de signature release (décision du propriétaire) |
+| Interdiction des liens dans les messages | S3 + S1 | en cours | 0051 (serveur : envoi et modification, catégorie « link », anti-spam 20 messages/minute réglable) ; application : libellé et contrôle avant envoi (S1) |
+| Niveau d'études et nombre d'enfants dans le profil, filtres Premium | S3 + S2 | en cours | 0052 (liste des niveaux administrable, filtres) ; inscription (S3), éditeur de profil (zaya-app-ac) |
+| Animation de recherche avant les profils (onglet Mariage), photo du membre au centre | S3 + zaya-app-55 | en cours | Widget `radar_search.dart` ; branchement dans l'écran Mariage par zaya-app-55 |
+| Mises à jour instantanées (photos, likes, matchs, Premium…) | S3 | à faire | Supabase Realtime dans la session de l'application |
+| Application rapide : données chargées avant l'ouverture | S3 | à faire | Préchargement pendant l'écran de démarrage |
 | Retirer les « bientôt disponible » et les infos peu utiles | S1 + S2 | à faire | Chaque session sur ses écrans ; on garde les avertissements de sécurité et les mentions légales |
 | Écran Profil/Menu d'après les captures, « en mieux » | S2 | en cours | Sans compte à rebours d'offre (addendum V6.4 §1.6) |
 | Formules Premium semaine / mois / trimestre, avec des noms ZAYA | S2 | à faire | Prix fixés par l'administration, jamais en dur |
@@ -69,6 +75,3 @@ Explorer, achats, publicité ».
   mode « amis » ?
 - **Appels audio et vidéo** dans la discussion : service d’appels externe (payant au volume) : lequel, et quand ?
 - **Notifications avec son** : créer un projet Firebase (gratuit) au nom de ZAYA ?
-- **Filtres « études » et « enfants »** (Premium) : ces informations ne sont pas encore demandées aux membres (ni à
-  l'inscription ni dans « Modifier le profil »). Faut-il d'abord les ajouter au profil (études : liste de niveaux, pas
-  un texte libre), pour pouvoir ensuite les filtrer ?

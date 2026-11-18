@@ -203,4 +203,8 @@ abstract class ZStrings {
   String get legalDraftNotice;
   String get legalMissing;
   String get legalFrenchOnly;
+
+  // ── Mariage : recherche animée avant l'affichage des profils
+  String get radarSearchTitle;
+  String get radarSearchSubtitle;
 }

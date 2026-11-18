@@ -410,4 +410,10 @@ class ZStringsEn extends ZStrings {
   String get legalMissing => 'This document has not been published yet.';
   @override
   String get legalFrenchOnly => 'This document is not available in your language yet: it is shown in French.';
+
+  // ── Mariage : recherche animée avant l'affichage des profils
+  @override
+  String get radarSearchTitle => 'Looking for profiles';
+  @override
+  String get radarSearchSubtitle => 'matching your preferences';
 }

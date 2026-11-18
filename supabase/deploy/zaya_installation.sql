@@ -3737,6 +3737,284 @@ grant execute on function my_conversation_slots(), request_rematch(uuid), respon
                           my_rematch_requests(), rematch_state(uuid)
   to authenticated;
 
+-- ════════════════════════ 0050_durcissement_securite.sql
+-- ZAYA — Durcissement de la sécurité (demande du propriétaire, 18/11/2026).
+--
+-- Audit en lecture seule de la base de préproduction (18/11/2026) :
+--   • toutes les tables du schéma public ont la RLS activée ; anon n'a aucun droit sur les tables ;
+--   • toutes les fonctions security definer fixent leur search_path ; aucune vue ne contourne la RLS ;
+--   • les fonctions d'administration vérifient le rôle (auth_is_staff → FORBIDDEN) ; la Communauté passe par
+--     community_guard ; les buckets de photos et de vérification sont privés (selfies lisibles par la modération
+--     seulement), seul ad-media (visuels publicitaires) est public ;
+--   • une seule fonction privilégiée restait exécutable par anon : guard_advanced_filters (0025), une fonction de
+--     déclencheur, sans risque réel (elle ne s'appelle pas directement), fermée ici par principe.
+-- Les autres mesures de cette demande sont dans 0051 (liens et limite de fréquence dans la messagerie) et dans
+-- l'application Android (anti-capture, pas de sauvegarde des données, pas de trafic non chiffré).
+
+revoke execute on function guard_advanced_filters() from public, anon, authenticated;
+
+-- ════════════════════════ 0051_liens_messages.sql
+-- ZAYA — Messagerie : liens interdits et limite de fréquence (demande du propriétaire, 18/11/2026).
+--
+-- • « Interdiction d'envoi de lien par message » : un message (envoi ou modification) qui contient un lien n'est ni
+--   stocké ni transmis ; la tentative est comptée dans message_violations (catégorie « link », sans le texte), comme
+--   les autres contenus bloqués (§24.3). CDC : liens suspects et escroqueries (§177, §830, §1443).
+-- • Anti-spam (CDC §1191 « limites de fréquence ») : au plus `message_rate_per_minute` messages par minute et par
+--   membre (réglable dans app_config) ; au-delà, refus MESSAGE_RATE_LIMITED.
+--
+-- Détection des liens : adresse avec protocole (https://, http://, intent://…), « www. », domaine avec une extension
+-- courante (.com, .net, .org…), raccourcisseurs (bit.ly…), domaine suivi d'un chemin (exemple.gn/page), écritures
+-- détournées « site point com ». Les extensions de deux lettres seules (.ma, .me, .ne…) ne comptent que suivies
+-- d'un chemin, pour ne pas bloquer une phrase sans espace après le point (« ok.Ma sœur… »). Une adresse e-mail n'est
+-- pas un lien (elle reste régie par les règles existantes). La détection complète la modération humaine, elle ne la
+-- remplace pas : une écriture très détournée peut passer.
+
+insert into app_config (key, value, description, is_public) values
+  ('message_rate_per_minute', '20', 'Messages au plus par minute et par membre (anti-spam)', false)
+on conflict (key) do nothing;
+
+create index if not exists messages_sender_recent_idx on messages (sender_id, created_at desc);
+
+create function contains_link(p_body text) returns boolean
+language sql immutable set search_path = public as $$
+  select p_body ~* '[a-z][a-z0-9+.-]{1,15}://'
+      or p_body ~* '(^|[^a-z0-9@._-])www\s*\.'
+      or p_body ~* '(^|[^a-z0-9@._-])[a-z0-9-]+(\.[a-z0-9-]+)*\.(com|net|org|info|biz|app|dev|link|site|online|shop|store|xyz|top|live|click|io)\M'
+      -- « site . com » : espace avant le point (une fin de phrase « C'est bon. Top ! » n'est pas un lien)
+      or p_body ~* '(^|[^a-z0-9@._-])[a-z0-9-]+\s+\.\s*(com|net|org)\M'
+      or p_body ~* '(^|[^a-z0-9@._-])(bit\.ly|goo\.gl|tinyurl|t\.co|cutt\.ly|rb\.gy|is\.gd|ow\.ly|shorturl\.at|wa\.me|t\.me|m\.me)\M'
+      or p_body ~* '(^|[^a-z0-9@._-])[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}/\S'
+      or p_body ~* '\m(point|dot)\s*(com|net|org)\M';
+$$;
+revoke execute on function contains_link(text) from public, anon, authenticated;
+
+-- Reprise de send_message (0040, limite des conversations actives comprise) : limite de fréquence et liens.
+create or replace function send_message(p_match uuid, p_body text) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare
+  v_me uuid := auth.uid();
+  v_match matches;
+  v_other uuid;
+  v_category text;
+  v_id uuid;
+  v_body text := trim(p_body);
+begin
+  if v_me is null then raise exception 'NOT_AUTHENTICATED'; end if;
+  if v_body = '' or char_length(v_body) > 2000 then raise exception 'INVALID_MESSAGE'; end if;
+  select * into v_match from matches where id = p_match and v_me in (user_a, user_b);
+  if not found then raise exception 'MATCH_NOT_FOUND'; end if;
+  if v_match.ended_at is not null then raise exception 'MATCH_ENDED'; end if;
+  v_other := case when v_match.user_a = v_me then v_match.user_b else v_match.user_a end;
+  if blocked_between(v_me, v_other) then raise exception 'MATCH_ENDED'; end if;
+  if not exists (select 1 from profiles where id = v_me and status = 'active') then raise exception 'PROFILE_NOT_ACTIVE'; end if;
+
+  -- Anti-spam : nombre de messages envoyés par ce membre dans la dernière minute.
+  if (select count(*) from messages where sender_id = v_me and created_at > now() - interval '1 minute')
+     >= cfg_int('message_rate_per_minute', 20) then
+    raise exception 'MESSAGE_RATE_LIMITED';
+  end if;
+
+  -- Premier message : une place de conversation doit être libre.
+  if not conversation_slot_available(v_me, p_match) then
+    return jsonb_build_object('status', 'active_limit',
+                              'active', active_conversations_count(v_me), 'limit', active_conversations_limit(v_me));
+  end if;
+
+  -- Filtre avant transmission : un message non conforme n'est ni stocké ni transmis (§24.3)
+  v_category := message_violation_category(v_body);
+  if v_category is null and contains_link(v_body) then
+    v_category := 'link';
+  end if;
+  if v_category is not null then
+    insert into message_violations (user_id, category) values (v_me, v_category);
+    return jsonb_build_object('status', 'blocked', 'category', v_category);
+  end if;
+
+  insert into messages (match_id, sender_id, body) values (p_match, v_me, v_body) returning id into v_id;
+  return jsonb_build_object('status', 'sent', 'id', v_id);
+end;
+$$;
+
+-- Reprise de edit_message (0002) : un lien ne peut pas entrer par une modification.
+create or replace function edit_message(p_message uuid, p_body text) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare
+  v_msg messages;
+  v_category text;
+  v_body text := trim(p_body);
+begin
+  select * into v_msg from messages where id = p_message and sender_id = auth.uid();
+  if not found then raise exception 'MESSAGE_NOT_FOUND'; end if;
+  if v_msg.unsent_at is not null then raise exception 'MESSAGE_UNSENT'; end if;
+  if v_msg.created_at < now() - make_interval(mins => cfg_int('message_edit_window_minutes', 15)) then
+    raise exception 'EDIT_WINDOW_EXPIRED';
+  end if;
+  if v_body = '' or char_length(v_body) > 2000 then raise exception 'INVALID_MESSAGE'; end if;
+  v_category := message_violation_category(v_body);
+  if v_category is null and contains_link(v_body) then
+    v_category := 'link';
+  end if;
+  if v_category is not null then
+    insert into message_violations (user_id, category) values (auth.uid(), v_category);
+    return jsonb_build_object('status', 'blocked', 'category', v_category);
+  end if;
+  update messages set body = v_body, edited_at = now() where id = p_message;
+  return jsonb_build_object('status', 'edited');
+end;
+$$;
+
+-- ════════════════════════ 0052_etudes_enfants.sql
+-- ZAYA — Profil : niveau d'études (liste administrable) et nombre d'enfants ; filtres Premium correspondants
+-- (demande du propriétaire, 18/11/2026, suite de 0025).
+--
+-- • Niveau d'études : liste fermée tenue par l'administration (table education_levels), jamais écrite dans
+--   l'application. Le membre choisit une clé (profiles.education_key) ; l'ancienne colonne texte education_level
+--   reçoit automatiquement le libellé, si bien que la fiche profil (get_profile) l'affiche sans changement.
+-- • Nombre d'enfants : colonne existante profiles.children_count (0 à 20), toujours visible sur la fiche.
+-- • Filtres Premium (sens unique, comme 0025) : niveaux d'études acceptés ; nombre d'enfants au plus.
+--   Une information non renseignée ne correspond à aucun choix. Sans Premium : ignorés, et non modifiables.
+
+create table education_levels (
+  key text primary key check (key ~ '^[a-z0-9_]+$'),
+  label_fr text not null check (char_length(label_fr) between 1 and 80),
+  label_en text not null check (char_length(label_en) between 1 and 80),
+  position smallint not null default 0,
+  active boolean not null default true
+);
+alter table education_levels enable row level security;
+create policy education_levels_read on education_levels for select to anon, authenticated using (active);
+create policy education_levels_admin on education_levels for all to authenticated
+  using (auth_is_staff(array['super_admin', 'admin']::staff_role[]))
+  with check (auth_is_staff(array['super_admin', 'admin']::staff_role[]));
+grant select on education_levels to anon;
+grant select, insert, update, delete on education_levels to authenticated;
+
+-- Valeurs de départ (modifiables depuis l'administration) : parcours scolaire guinéen.
+insert into education_levels (key, label_fr, label_en, position) values
+  ('none', 'Sans diplôme', 'No diploma', 10),
+  ('primary', 'Primaire (CEPE)', 'Primary school', 20),
+  ('middle', 'Collège (BEPC)', 'Middle school', 30),
+  ('bac', 'Baccalauréat', 'High school diploma', 40),
+  ('vocational', 'Formation professionnelle', 'Vocational training', 50),
+  ('bac2', 'Bac +2 (BTS, DUT)', 'Two-year degree', 60),
+  ('licence', 'Licence (Bac +3)', 'Bachelor''s degree', 70),
+  ('master', 'Master (Bac +5)', 'Master''s degree', 80),
+  ('doctorate', 'Doctorat', 'Doctorate', 90);
+
+alter table profiles add column education_key text references education_levels (key);
+
+create function sync_education_label() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.education_key is not null then
+    new.education_level := (select label_fr from education_levels where key = new.education_key);
+  elsif tg_op = 'UPDATE' and old.education_key is not null then
+    new.education_level := null;  -- niveau retiré par le membre
+  end if;
+  return new;
+end;
+$$;
+revoke execute on function sync_education_label() from public, anon, authenticated;
+create trigger profiles_education_label
+  before insert or update of education_key on profiles
+  for each row execute function sync_education_label();
+
+-- Reprise des textes existants (profils d'essai) ; un texte non reconnu reste affiché tel quel, sans clé.
+update profiles set education_key = case
+    when education_level ilike 'doctorat%' then 'doctorate'
+    when education_level ilike 'master%' then 'master'
+    when education_level ilike 'licence%' then 'licence'
+    when education_level ilike any (array['bts%', 'dut%', 'bac%+%2%']) then 'bac2'
+    when education_level ilike 'bac%' then 'bac'
+  end
+  where education_level is not null and education_key is null;
+
+-- Filtres Premium
+alter table discovery_preferences
+  add column education_keys text[] not null default '{}',
+  add column children_max smallint check (children_max between 0 and 20);
+
+-- Reprise du garde-fou de 0025 avec les deux nouveaux filtres.
+create or replace function guard_advanced_filters() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  v_old discovery_preferences;  -- reste vide pour une insertion
+begin
+  if auth.uid() is null or is_premium(new.user_id) then
+    return new;
+  end if;
+  if tg_op = 'UPDATE' then
+    v_old := old;
+  end if;
+  if (cardinality(new.languages) > 0 and new.languages is distinct from v_old.languages)
+     or (cardinality(new.marriage_horizons) > 0 and new.marriage_horizons is distinct from v_old.marriage_horizons)
+     or (cardinality(new.marital_statuses) > 0 and new.marital_statuses is distinct from v_old.marital_statuses)
+     or (cardinality(new.education_keys) > 0 and new.education_keys is distinct from v_old.education_keys)
+     or (new.children_max is not null and new.children_max is distinct from v_old.children_max) then
+    raise exception 'PREMIUM_REQUIRED';
+  end if;
+  return new;
+end;
+$$;
+revoke execute on function guard_advanced_filters() from public, anon, authenticated;
+
+-- Reprise de discovery_feed (0025) avec les deux nouveaux filtres avancés ; le reste est inchangé.
+create or replace function discovery_feed(p_limit int default 20)
+returns table (
+  id uuid, display_name text, age int, city text, country_code text, bio text,
+  marriage_horizon marriage_horizon, profession text, languages text[], interests text[],
+  is_verified boolean, is_premium boolean, photo_path text
+)
+language sql stable security definer set search_path = public as $$
+  with me as (
+    select p.*, s.confession as my_confession, age_of(p.birth_date) as my_age, is_premium(p.id) as my_premium
+    from profiles p left join profile_sensitive s on s.user_id = p.id
+    where p.id = auth.uid() and p.status = 'active' and p.account_type = 'candidate'
+  )
+  select c.id, c.display_name, age_of(c.birth_date), ci.name, c.country_code, c.bio,
+         c.marriage_horizon, coalesce(pr.label_fr, c.profession_other), c.languages, c.interests,
+         true, is_premium(c.id),
+         (select ph.storage_path from profile_photos ph
+           where ph.user_id = c.id and ph.moderation = 'approved' and ph.visibility = 'public'
+           order by ph.position limit 1)
+  from me
+  join profiles c on c.id <> me.id
+  left join discovery_preferences mp on mp.user_id = me.id
+  left join discovery_preferences cp on cp.user_id = c.id
+  left join profile_sensitive cs on cs.user_id = c.id
+  left join cities ci on ci.id = c.city_id
+  left join professions pr on pr.id = c.profession_id
+  where is_discoverable(c.id)
+    -- Filtres réciproques (§31.2) : genre recherché, âge, pays, confession
+    and c.gender = me.seeking_gender and c.seeking_gender = me.gender
+    and age_of(c.birth_date) between coalesce(mp.age_min, 18) and coalesce(mp.age_max, 99)
+    and me.my_age between coalesce(cp.age_min, 18) and coalesce(cp.age_max, 99)
+    and c.country_code = any (coalesce(mp.country_codes, array[me.country_code]))
+    and me.country_code = any (coalesce(cp.country_codes, array[c.country_code]))
+    and confession_ok(mp.confession_mode, mp.confessions, me.my_confession, cs.confession)
+    and confession_ok(cp.confession_mode, cp.confessions, cs.confession, me.my_confession)
+    -- Ville ou commune choisie par le membre (sens unique ; liste vide = toutes)
+    and (coalesce(cardinality(mp.city_ids), 0) = 0 or c.city_id = any (mp.city_ids))
+    -- Filtres avancés (sens unique ; liste vide = tous) : seulement pour un membre Premium.
+    -- Une information non renseignée ne correspond à aucun choix.
+    and (not me.my_premium or (
+          (coalesce(cardinality(mp.languages), 0) = 0 or c.languages && mp.languages)
+      and (coalesce(cardinality(mp.marriage_horizons), 0) = 0 or c.marriage_horizon = any (mp.marriage_horizons))
+      and (coalesce(cardinality(mp.marital_statuses), 0) = 0 or c.marital_status = any (mp.marital_statuses))
+      and (coalesce(cardinality(mp.education_keys), 0) = 0 or c.education_key = any (mp.education_keys))
+      and (mp.children_max is null or c.children_count <= mp.children_max)
+    ))
+    -- Sécurité et historique
+    and not blocked_between(me.id, c.id)
+    and not exists (select 1 from interests i where i.from_user = me.id and i.to_user = c.id)
+    and not exists (select 1 from passes x where x.from_user = me.id and x.to_user = c.id)
+    and not exists (select 1 from matches m where m.user_a = least(me.id, c.id) and m.user_b = greatest(me.id, c.id))
+    -- Incognito : visible uniquement par les personnes déjà aimées
+    and (not c.incognito or exists (select 1 from interests i where i.from_user = c.id and i.to_user = me.id))
+  order by c.last_active_at desc
+  limit least(greatest(p_limit, 1), 50);
+$$;
+
 -- ════════════════════════ seed.sql
 -- ZAYA — données de référence (aucune donnée personnelle). Valeurs provisoires : voir DECISIONS_A_CONFIRMER.md
 

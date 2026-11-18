@@ -1,10 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Accès au serveur Supabase (indispensable en version de production). -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Sécurité : pas de sauvegarde ni de transfert automatique des données de l'application (elles contiennent
+         la session de connexion). Le trafic non chiffré est déjà refusé par défaut (cible Android 9 et plus). -->
     <application
         android:label="ZAYA"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules">
         <!-- Identifiant d'application AdMob : celui de TEST de Google par défaut. Le vrai identifiant se passe à la
              construction (-PadmobAppId=…) quand le compte éditeur est validé. Publicités désactivées tant que
              app_config.ads_admob_enabled = false. -->
