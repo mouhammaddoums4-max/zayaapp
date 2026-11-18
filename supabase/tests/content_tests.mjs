@@ -52,4 +52,21 @@ export async function contentTests({ db, test, assert, as, fails, U }) {
     const v = Object.fromEntries(cfg.rows.map((r) => [r.key, r.value]));
     assert(v.max_profile_photos === 6 && String(v.invite_url).startsWith('https://'), JSON.stringify(v));
   });
+
+  await test('photos publiées automatiquement (0032), refus possible ensuite par l’équipe, tracé', async () => {
+    const id = '00000000-0000-0000-0000-0000000000c6';
+    await as(id, `delete from profile_photos where storage_path = $1`, [`${id}/p4.jpg`]);
+    await as(id, `insert into profile_photos (user_id, storage_path, position, moderation) values ($1, $2, 4, 'rejected')`,
+      [id, `${id}/auto.jpg`]);
+    const ph = await db.query(`select id, moderation from profile_photos where storage_path = $1`, [`${id}/auto.jpg`]);
+    assert(ph.rows[0].moderation === 'approved', 'publiée dès l’envoi, quel que soit l’état demandé par le membre');
+    await fails(as(id, `select admin_moderate_photo($1, 'rejected', 'moi')`, [ph.rows[0].id]), /FORBIDDEN/);
+    await fails(as(U.admin, `select admin_moderate_photo($1, 'rejected', '')`, [ph.rows[0].id]), /REASON_REQUIRED/);
+    await as(U.admin, `select admin_moderate_photo($1, 'rejected', 'Photo non conforme')`, [ph.rows[0].id]);
+    const after = await db.query(`select moderation from profile_photos where id = $1`, [ph.rows[0].id]);
+    assert(after.rows[0].moderation === 'rejected');
+    const audit = await db.query(`select count(*)::int as n from audit_log where action = 'photo.rejected' and entity_id = $1`,
+      [ph.rows[0].id]);
+    assert(audit.rows[0].n === 1, 'le refus doit être tracé');
+  });
 }

@@ -167,8 +167,11 @@ await test("un membre peut mettre son profil en pause mais pas lever une suspens
   await db.query(`update profiles set status = 'active' where id = $1`, [U.fatou]);
 });
 await test("un membre ne peut pas approuver ses propres photos", async () => {
+  // En mode « validation préalable » (0032 : photo_auto_publish = false), la photo reste en attente quoi qu'il envoie.
+  await db.query(`update app_config set value = 'false' where key = 'photo_auto_publish'`);
   await as(U.paul, `insert into profile_photos (user_id, storage_path, position, moderation) values ($1, 'x/p9.jpg', 9, 'approved')`, [U.paul]);
   const r = await db.query(`select moderation from profile_photos where storage_path = 'x/p9.jpg'`);
+  await db.query(`update app_config set value = 'true' where key = 'photo_auto_publish'`);
   assert(r.rows[0].moderation === 'pending');
 });
 await test("un membre voit le fichier des photos approuvées et publiques des autres, jamais des privées", async () => {
