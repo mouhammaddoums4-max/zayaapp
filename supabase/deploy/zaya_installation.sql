@@ -3068,6 +3068,166 @@ revoke execute on function swipe_period_start(uuid), swipe_extra_balance(uuid), 
 revoke execute on function my_swipe_quota(), rewind_last_pass() from public, anon;
 grant execute on function my_swipe_quota(), rewind_last_pass() to authenticated;
 
+-- ════════════════════════ 0019_aide_administrable.sql
+-- ZAYA — Aide administrable : les questions fréquentes ne sont plus écrites dans l'application (consigne du propriétaire
+-- « pas de données en dur »). L'équipe (support, admin) les ajoute, modifie, ordonne et désactive ; l'application les lit
+-- dans la langue de l'interface, avec repli en français.
+
+create table help_articles (
+  id bigint generated always as identity primary key,
+  section text not null check (char_length(section) between 2 and 80),
+  lang text not null default 'fr' check (lang ~ '^[a-z]{2,3}$'),
+  question text not null check (char_length(question) between 5 and 200),
+  answer text not null check (char_length(answer) between 5 and 2000),
+  position int not null default 0,
+  active boolean not null default true,
+  updated_by uuid references auth.users (id) on delete set null,
+  updated_at timestamptz not null default now()
+);
+create index help_articles_lang on help_articles (lang, active, position);
+
+alter table help_articles enable row level security;
+create policy help_read on help_articles for select to anon, authenticated using (active);
+create policy help_staff on help_articles for all to authenticated
+  using (auth_is_staff(array['super_admin', 'admin', 'support']::staff_role[]))
+  with check (auth_is_staff(array['super_admin', 'admin', 'support']::staff_role[]));
+grant select on help_articles to anon, authenticated;
+grant insert, update, delete on help_articles to authenticated;
+
+insert into help_articles (section, lang, question, answer, position) values
+  ('Compte et profil', 'fr', 'Pourquoi mon profil n’apparaît-il pas dans Découvrir ?',
+   'Un profil n’est proposé aux autres membres qu’une fois vérifié par l’équipe ZAYA : il faut le nombre minimum de photos demandé et un selfie de contrôle (Profil → Vérification du profil). Un profil en pause ou masqué n’est pas proposé non plus.', 10),
+  ('Compte et profil', 'fr', 'Mon numéro de téléphone est-il visible ?',
+   'Non. Il sert uniquement à vous connecter et à sécuriser votre compte. Il n’apparaît jamais sur votre profil ni dans vos conversations.', 20),
+  ('Compte et profil', 'fr', 'Puis-je modifier ma date de naissance ou mon genre ?',
+   'Non : ils sont fixés à l’inscription pour protéger les membres contre les faux profils. En cas d’erreur, écrivez à l’assistance.', 30),
+  ('Rencontres et messages', 'fr', 'Comment se crée un match ?',
+   'Un match se crée seulement lorsque deux personnes s’aiment mutuellement. La conversation s’ouvre alors pour vous deux.', 40),
+  ('Rencontres et messages', 'fr', 'Pourquoi mon message a-t-il été refusé ?',
+   'Avant l’envoi, ZAYA bloque les messages contraires à la charte, par exemple une demande d’argent ou des insultes. Les numéros de téléphone sont masqués pour vous protéger. Reformulez votre message.', 50),
+  ('Rencontres et messages', 'fr', 'Que se passe-t-il quand un match prend fin ?',
+   'La conversation se ferme pour les deux personnes. Le match apparaît ensuite dans « Matchs terminés », dans l’onglet Messages.', 60),
+  ('Sécurité', 'fr', 'Comment signaler ou bloquer quelqu’un ?',
+   'Depuis son profil ou la conversation, ouvrez le menu ⋯ puis choisissez « Signaler » ou « Bloquer ». La personne n’est pas prévenue. Après un blocage, vous ne vous voyez plus.', 70),
+  ('Sécurité', 'fr', 'Quelqu’un me demande de l’argent : que faire ?',
+   'Ne transférez jamais d’argent à une personne que vous n’avez pas rencontrée, et ne communiquez jamais un code reçu par SMS. Signalez la personne : notre équipe examine chaque signalement.', 80),
+  ('Abonnement et compte', 'fr', 'Que puis-je faire gratuitement ?',
+   'Créer votre profil, découvrir des profils, aimer dans la limite prévue, obtenir des matchs et discuter avec eux restent gratuits. Premium ajoute des avantages, sans jamais fermer une conversation après un match.', 90),
+  ('Abonnement et compte', 'fr', 'Comment supprimer mon compte ?',
+   'Réglages → Gérer mon compte. Votre profil est masqué immédiatement et vous pouvez annuler pendant le délai indiqué. Vous pouvez aussi simplement mettre votre profil en pause.', 100),
+  ('Account and profile', 'en', 'Why doesn’t my profile appear in Discover?',
+   'A profile is only shown to other members once the ZAYA team has verified it: you need the minimum number of photos and a check selfie (Profile → Profile verification). A paused or hidden profile is not shown either.', 10),
+  ('Account and profile', 'en', 'Is my phone number visible?',
+   'No. It is only used to sign you in and secure your account. It never appears on your profile or in your conversations.', 20),
+  ('Account and profile', 'en', 'Can I change my date of birth or gender?',
+   'No: they are set when you sign up, to protect members from fake profiles. If there is a mistake, write to support.', 30),
+  ('Matches and messages', 'en', 'How is a match made?',
+   'A match is only made when two people like each other. The conversation then opens for both of you.', 40),
+  ('Matches and messages', 'en', 'Why was my message refused?',
+   'Before sending, ZAYA blocks messages that break the rules, such as a request for money or insults. Phone numbers are hidden to protect you. Rephrase your message.', 50),
+  ('Matches and messages', 'en', 'What happens when a match ends?',
+   'The conversation closes for both people. The match then appears in “Ended matches”, in the Messages tab.', 60),
+  ('Safety', 'en', 'How do I report or block someone?',
+   'From their profile or the conversation, open the ⋯ menu and choose “Report” or “Block”. The person is not notified. After blocking, you no longer see each other.', 70),
+  ('Safety', 'en', 'Someone is asking me for money: what should I do?',
+   'Never send money to someone you have not met, and never share a code received by SMS. Report the person: our team reviews every report.', 80),
+  ('Subscription and account', 'en', 'What can I do for free?',
+   'Creating your profile, discovering profiles, liking within the limit, getting matches and chatting with them are free. Premium adds benefits, but never closes a conversation after a match.', 90),
+  ('Subscription and account', 'en', 'How do I delete my account?',
+   'Settings → Manage my account. Your profile is hidden immediately and you can cancel during the period shown. You can also simply pause your profile.', 100);
+
+-- ════════════════════════ 0022_formules_premium.sql
+-- ZAYA — Formules et avantages Premium administrables (CDC §22.16 : « avantages et prix Premium hebdomadaire, mensuel
+-- et trimestriel » ; consigne « pas de données en dur »).
+--   • Noms proposés le 17/11/2026 à la demande du propriétaire : Étincelle (7 jours), Flamme (30 jours),
+--     Alliance (90 jours), en écho à la flamme du logo ZAYA et à l'alliance du mariage. Modifiables par l'équipe.
+--   • Prix : non décidés (décision C7) → price_gnf reste vide ; l'achat reste fermé (payments_enabled = false).
+--   • Avantages : liste descriptive affichée dans l'application ; les règles réelles restent appliquées par le serveur.
+
+create table premium_plans (
+  code text primary key check (code ~ '^[a-z_]{2,30}$'),
+  name_fr text not null check (char_length(name_fr) between 2 and 40),
+  name_en text not null check (char_length(name_en) between 2 and 40),
+  tagline_fr text check (char_length(tagline_fr) <= 120),
+  tagline_en text check (char_length(tagline_en) <= 120),
+  duration_days int not null check (duration_days between 1 and 366),
+  price_gnf numeric(12, 0) check (price_gnf >= 0),     -- vide tant que le prix n'est pas décidé (C7)
+  position int not null default 0,
+  active boolean not null default true,
+  updated_at timestamptz not null default now()
+);
+
+create table premium_features (
+  code text primary key check (code ~ '^[a-z_]{2,40}$'),
+  label_fr text not null check (char_length(label_fr) between 2 and 120),
+  label_en text not null check (char_length(label_en) between 2 and 120),
+  in_free boolean not null default false,
+  in_premium boolean not null default true,
+  position int not null default 0,
+  active boolean not null default true
+);
+
+alter table premium_plans enable row level security;
+alter table premium_features enable row level security;
+create policy plans_read on premium_plans for select to anon, authenticated using (active);
+create policy features_read on premium_features for select to anon, authenticated using (active);
+create policy plans_staff on premium_plans for all to authenticated
+  using (auth_is_staff(array['super_admin', 'admin', 'finance']::staff_role[]))
+  with check (auth_is_staff(array['super_admin', 'admin', 'finance']::staff_role[]));
+create policy features_staff on premium_features for all to authenticated
+  using (auth_is_staff(array['super_admin', 'admin', 'finance']::staff_role[]))
+  with check (auth_is_staff(array['super_admin', 'admin', 'finance']::staff_role[]));
+grant select on premium_plans, premium_features to anon, authenticated;
+grant insert, update, delete on premium_plans, premium_features to authenticated;
+
+insert into premium_plans (code, name_fr, name_en, tagline_fr, tagline_en, duration_days, position) values
+  ('week', 'Étincelle', 'Spark', 'Une semaine pour aller plus loin', 'One week to go further', 7, 1),
+  ('month', 'Flamme', 'Flame', 'Un mois pour prendre le temps de bien choisir', 'One month to take your time', 30, 2),
+  ('quarter', 'Alliance', 'Alliance', 'Trois mois pour construire sereinement', 'Three months to build with peace of mind',
+   90, 3)
+on conflict (code) do nothing;
+
+insert into premium_features (code, label_fr, label_en, in_free, in_premium, position) values
+  ('profile', 'Créer et gérer son profil', 'Create and manage your profile', true, true, 10),
+  ('discover', 'Découvrir tous les profils, Gratuit et Premium', 'Discover all profiles, Free and Premium', true, true, 20),
+  ('swipes', 'Swipes à chaque période', 'Swipes every period', true, true, 30),
+  ('matches', 'Matchs réciproques et messagerie', 'Mutual matches and messaging', true, true, 40),
+  ('safety', 'Bloquer, signaler, masquer son profil', 'Block, report, hide your profile', true, true, 50),
+  ('data', 'Exporter et supprimer ses données', 'Export and delete your data', true, true, 60),
+  ('who_liked', 'Voir qui a aimé votre profil', 'See who liked your profile', false, true, 70),
+  ('more_swipes', 'Davantage de swipes', 'More swipes', false, true, 80),
+  ('filters', 'Filtres de recherche avancés', 'Advanced search filters', false, true, 90),
+  ('photos', 'Photos des profils sans floutage', 'Profile photos without blur', false, true, 100)
+on conflict (code) do nothing;
+
+-- ════════════════════════ 0023_photos_et_invitation.sql
+-- ZAYA — Photos du profil : 6 au plus (demande du propriétaire du 17/11/2026), limite réglable et appliquée par le
+-- serveur ; lien d'invitation administrable (consigne « pas de données en dur »).
+--   • max_profile_photos : au-delà, l'ajout est refusé (MAX_PHOTOS), même par un appel direct.
+--   • min_profile_photos (déjà public) reste le minimum demandé pour la vérification.
+--   • invite_url : lien partagé par « Inviter » (fiche Google Play tant qu'aucun autre lien n'est défini).
+-- La suppression et l'ordre des photos par leur propriétaire sont déjà permis par la RLS (photos_update_own,
+-- photos_delete_own) ; photos_guard garde la modération, le chemin et la version floutée hors de sa portée.
+
+insert into app_config (key, value, description, is_public) values
+  ('max_profile_photos', '6', 'Nombre maximal de photos par profil', true),
+  ('invite_url', '"https://play.google.com/store/apps/details?id=com.zaya.app.zaya"',
+   'Lien partagé par le bouton « Inviter » du profil', true)
+on conflict (key) do nothing;
+
+create function photos_max_guard() returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is not null and not zaya_internal()
+     and (select count(*) from profile_photos where user_id = new.user_id) >= cfg_int('max_profile_photos', 6) then
+    raise exception 'MAX_PHOTOS';
+  end if;
+  return new;
+end;
+$$;
+create trigger photos_max_guard_trg before insert on profile_photos
+  for each row execute function photos_max_guard();
+revoke execute on function photos_max_guard() from public, anon, authenticated;
+
 -- ════════════════════════ 0024_likes_envoyes.sql
 -- ZAYA — Likes : liste des likes envoyés ; compteur des likes reçus aligné sur la liste (demande du 17/11/2026).
 --

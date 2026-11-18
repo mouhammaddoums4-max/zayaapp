@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { buildInstallSql, installPath, normalizeEol } from '../deploy/build.mjs';
 import { adsTests } from './ads_tests.mjs';
 import { assistanceTests } from './assistance_tests.mjs';
+import { contentTests } from './content_tests.mjs';
 import { swipesTests } from './swipes_tests.mjs';
 import { endedMatchesTests } from './ended_matches_tests.mjs';
 import { filtresAvancesTests } from './filtres_avances_tests.mjs';
@@ -796,6 +797,7 @@ await test('valider les comptes d’essai : seulement les numéros listés, au n
 await assistanceTests({ db, test, assert, as, rpc, fails, U });
 await endedMatchesTests({ db, test, assert, as, rpc, fails });
 await adsTests({ db, test, assert, as, rpc, fails, U });
+await contentTests({ db, test, assert, as, rpc, fails, U });
 await swipesTests({ db, test, assert, as, rpc, fails, U, seedMember });
 await filtresAvancesTests({ db, test, assert, as, rpc, fails, U, seedMember });
 
