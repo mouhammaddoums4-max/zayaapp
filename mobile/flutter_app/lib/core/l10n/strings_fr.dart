@@ -213,69 +213,6 @@ class ZStringsFr extends ZStrings {
   @override
   String get helpFaqTitle => 'Questions fréquentes';
   @override
-  List<FaqSection> get faq => const [
-        FaqSection('Compte et profil', [
-          FaqItem(
-            'Pourquoi mon profil n’apparaît-il pas dans Découvrir ?',
-            'Un profil n’est proposé aux autres membres qu’une fois vérifié par l’équipe ZAYA : il faut le nombre '
-                'minimum de photos demandé et un selfie de contrôle (Profil → Vérification du profil). Un profil en '
-                'pause ou masqué n’est pas proposé non plus.',
-          ),
-          FaqItem(
-            'Mon numéro de téléphone est-il visible ?',
-            'Non. Il sert uniquement à vous connecter et à sécuriser votre compte. Il n’apparaît jamais sur votre '
-                'profil ni dans vos conversations.',
-          ),
-          FaqItem(
-            'Puis-je modifier ma date de naissance ou mon genre ?',
-            'Non : ils sont fixés à l’inscription pour protéger les membres contre les faux profils. En cas '
-                'd’erreur, écrivez à l’assistance.',
-          ),
-        ]),
-        FaqSection('Rencontres et messages', [
-          FaqItem(
-            'Comment se crée un match ?',
-            'Un match se crée seulement lorsque deux personnes s’aiment mutuellement. La conversation s’ouvre alors '
-                'pour vous deux.',
-          ),
-          FaqItem(
-            'Pourquoi mon message a-t-il été refusé ?',
-            'Avant l’envoi, ZAYA bloque les messages contraires à la charte, par exemple une demande d’argent ou des '
-                'insultes. Les numéros de téléphone sont masqués pour vous protéger. Reformulez votre message.',
-          ),
-          FaqItem(
-            'Que se passe-t-il quand un match prend fin ?',
-            'La conversation se ferme pour les deux personnes. Le match apparaît ensuite dans « Matchs terminés », '
-                'dans l’onglet Messages.',
-          ),
-        ]),
-        FaqSection('Sécurité', [
-          FaqItem(
-            'Comment signaler ou bloquer quelqu’un ?',
-            'Depuis son profil ou la conversation, ouvrez le menu ⋯ puis choisissez « Signaler » ou « Bloquer ». La '
-                'personne n’est pas prévenue. Après un blocage, vous ne vous voyez plus.',
-          ),
-          FaqItem(
-            'Quelqu’un me demande de l’argent : que faire ?',
-            'Ne transférez jamais d’argent à une personne que vous n’avez pas rencontrée, et ne communiquez jamais '
-                'un code reçu par SMS. Signalez la personne : notre équipe examine chaque signalement.',
-          ),
-        ]),
-        FaqSection('Abonnement et compte', [
-          FaqItem(
-            'Que puis-je faire gratuitement ?',
-            'Créer votre profil, découvrir des profils, aimer dans la limite quotidienne, obtenir des matchs et '
-                'discuter avec eux restent gratuits. Premium ajoute des avantages, sans jamais fermer une conversation '
-                'après un match.',
-          ),
-          FaqItem(
-            'Comment supprimer mon compte ?',
-            'Réglages → Gérer mon compte. Votre profil est masqué immédiatement et vous pouvez annuler pendant le '
-                'délai indiqué. Vous pouvez aussi simplement mettre votre profil en pause.',
-          ),
-        ]),
-      ];
-  @override
   String get helpContactTitle => 'Nous contacter';
   @override
   String get helpWriteSupport => 'Écrire à l’assistance';

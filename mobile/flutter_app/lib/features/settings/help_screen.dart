@@ -6,6 +6,7 @@ import '../../core/l10n/l10n.dart';
 import '../../core/motion.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
+import 'help_content.dart';
 import 'settings_widgets.dart';
 import 'support_screens.dart';
 
@@ -20,11 +21,30 @@ class HelpScreen extends StatefulWidget {
 
 class _HelpScreenState extends State<HelpScreen> {
   String? _whatsapp;
+  Future<List<HelpSection>>? _sections;
+  String? _lang;
 
   @override
   void initState() {
     super.initState();
     _loadConfig();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final lang = LanguageScope.maybeOf(context)?.language.code ?? 'fr';
+    if (lang != _lang) {
+      _lang = lang;
+      _sections = HelpContent.forRepository(Session.read(context).repo).sections(lang);
+    }
+  }
+
+  void _reloadFaq() {
+    final next = HelpContent.forRepository(Session.read(context).repo).sections(_lang ?? 'fr');
+    setState(() {
+      _sections = next;
+    });
   }
 
   Future<void> _loadConfig() async {
@@ -53,26 +73,44 @@ class _HelpScreenState extends State<HelpScreen> {
       body: ListView(padding: EdgeInsets.fromLTRB(16, 8, 16, 28 + MediaQuery.paddingOf(context).bottom), children: [
         _SafetyCard(onReport: () => _push(const SupportRequestScreen(initialCategory: 'safety'))),
         SettingsSectionTitle(s.helpFaqTitle),
-        for (final section in s.faq) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
-            child: Text(section.title, style: Theme.of(context).textTheme.titleMedium),
-          ),
-          SettingsGroup(children: [
-            for (final item in section.items)
-              ExpansionTile(
-                shape: const Border(),
-                collapsedShape: const Border(),
-                tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-                childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                expandedAlignment: Alignment.centerLeft,
-                title: Text(item.question,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
-                children: [Text(item.answer, style: Theme.of(context).textTheme.bodyMedium)],
-              ),
-          ]),
-          const SizedBox(height: 10),
-        ],
+        FutureBuilder<List<HelpSection>>(
+          future: _sections,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()));
+            }
+            if (snapshot.hasError) {
+              return InfoBanner(
+                tone: BannerTone.warning,
+                icon: Icons.wifi_off,
+                text: s.loadError,
+                action: TextButton(onPressed: _reloadFaq, child: Text(s.retry)),
+              );
+            }
+            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              for (final section in snapshot.data ?? const <HelpSection>[]) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 6, 4, 8),
+                  child: Text(section.title, style: Theme.of(context).textTheme.titleMedium),
+                ),
+                SettingsGroup(children: [
+                  for (final item in section.articles)
+                    ExpansionTile(
+                      shape: const Border(),
+                      collapsedShape: const Border(),
+                      tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                      childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      expandedAlignment: Alignment.centerLeft,
+                      title: Text(item.question,
+                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+                      children: [Text(item.answer, style: Theme.of(context).textTheme.bodyMedium)],
+                    ),
+                ]),
+                const SizedBox(height: 10),
+              ],
+            ]);
+          },
+        ),
         SettingsSectionTitle(s.helpContactTitle),
         SettingsGroup(children: [
           SettingsTile(

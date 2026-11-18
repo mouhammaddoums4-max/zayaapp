@@ -2,20 +2,6 @@ import 'package:material_ui/material_ui.dart';
 
 import 'l10n.dart';
 
-/// Une question fréquente de l'aide.
-class FaqItem {
-  const FaqItem(this.question, this.answer);
-  final String question;
-  final String answer;
-}
-
-/// Une rubrique de questions fréquentes.
-class FaqSection {
-  const FaqSection(this.title, this.items);
-  final String title;
-  final List<FaqItem> items;
-}
-
 /// Tous les textes de l'interface (AGENTS.md : textes centralisés, français puis anglais).
 /// Chaque langue implémente cette classe : une traduction manquante empêche la compilation.
 abstract class ZStrings {
@@ -126,7 +112,6 @@ abstract class ZStrings {
   // ── Aide et assistance
   String get helpTitle;
   String get helpFaqTitle;
-  List<FaqSection> get faq;
   String get helpContactTitle;
   String get helpWriteSupport;
   String get helpWriteSupportSubtitle;

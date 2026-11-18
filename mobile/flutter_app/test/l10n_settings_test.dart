@@ -7,6 +7,7 @@ import 'package:zaya/core/l10n/l10n.dart';
 import 'package:zaya/core/l10n/strings_en.dart';
 import 'package:zaya/core/l10n/strings_fr.dart';
 import 'package:zaya/data/models.dart';
+import 'package:zaya/features/settings/help_content.dart';
 import 'package:zaya/features/settings/legal_screen.dart';
 import 'package:zaya/features/settings/settings_screen.dart';
 
@@ -42,13 +43,19 @@ void main() {
       expect(c.language, AppLanguage.fr);
     });
 
-    test('français et anglais : mêmes rubriques et mêmes questions dans l’aide', () {
+    test('aide : questions venues de Supabase, regroupées par rubrique dans l’ordre choisi', () {
+      final sections = groupHelp(const [
+        HelpArticle(section: 'Compte', question: 'Q1', answer: 'R1'),
+        HelpArticle(section: 'Sécurité', question: 'Q2', answer: 'R2'),
+        HelpArticle(section: 'Compte', question: 'Q3', answer: 'R3'),
+      ]);
+      expect(sections.map((s) => s.title), ['Compte', 'Sécurité']);
+      expect(sections.first.articles.map((a) => a.question), ['Q1', 'Q3']);
+    });
+
+    test('noms des langues présents en français et en anglais', () {
       const fr = ZStringsFr();
       const en = ZStringsEn();
-      expect(en.faq.length, fr.faq.length);
-      for (var i = 0; i < fr.faq.length; i++) {
-        expect(en.faq[i].items.length, fr.faq[i].items.length, reason: 'rubrique ${fr.faq[i].title}');
-      }
       for (final l in AppLanguage.values) {
         expect(fr.languageName(l), isNotEmpty);
         expect(en.languageName(l), isNotEmpty);

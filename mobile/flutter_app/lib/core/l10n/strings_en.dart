@@ -210,66 +210,6 @@ class ZStringsEn extends ZStrings {
   @override
   String get helpFaqTitle => 'Frequently asked questions';
   @override
-  List<FaqSection> get faq => const [
-        FaqSection('Account and profile', [
-          FaqItem(
-            'Why doesn’t my profile appear in Discover?',
-            'A profile is only shown to other members once the ZAYA team has verified it: you need the minimum number '
-                'of photos and a check selfie (Profile → Profile verification). A paused or hidden profile is not '
-                'shown either.',
-          ),
-          FaqItem(
-            'Is my phone number visible?',
-            'No. It is only used to sign you in and secure your account. It never appears on your profile or in your '
-                'conversations.',
-          ),
-          FaqItem(
-            'Can I change my date of birth or gender?',
-            'No: they are set when you sign up, to protect members from fake profiles. If there is a mistake, write '
-                'to support.',
-          ),
-        ]),
-        FaqSection('Matches and messages', [
-          FaqItem(
-            'How is a match made?',
-            'A match is only made when two people like each other. The conversation then opens for both of you.',
-          ),
-          FaqItem(
-            'Why was my message refused?',
-            'Before sending, ZAYA blocks messages that break the rules, such as a request for money or insults. Phone '
-                'numbers are hidden to protect you. Rephrase your message.',
-          ),
-          FaqItem(
-            'What happens when a match ends?',
-            'The conversation closes for both people. The match then appears in “Ended matches”, in the Messages tab.',
-          ),
-        ]),
-        FaqSection('Safety', [
-          FaqItem(
-            'How do I report or block someone?',
-            'From their profile or the conversation, open the ⋯ menu and choose “Report” or “Block”. The person is '
-                'not notified. After blocking, you no longer see each other.',
-          ),
-          FaqItem(
-            'Someone is asking me for money: what should I do?',
-            'Never send money to someone you have not met, and never share a code received by SMS. Report the '
-                'person: our team reviews every report.',
-          ),
-        ]),
-        FaqSection('Subscription and account', [
-          FaqItem(
-            'What can I do for free?',
-            'Creating your profile, discovering profiles, liking within the daily limit, getting matches and chatting '
-                'with them are free. Premium adds benefits, but never closes a conversation after a match.',
-          ),
-          FaqItem(
-            'How do I delete my account?',
-            'Settings → Manage my account. Your profile is hidden immediately and you can cancel during the period '
-                'shown. You can also simply pause your profile.',
-          ),
-        ]),
-      ];
-  @override
   String get helpContactTitle => 'Contact us';
   @override
   String get helpWriteSupport => 'Write to support';
