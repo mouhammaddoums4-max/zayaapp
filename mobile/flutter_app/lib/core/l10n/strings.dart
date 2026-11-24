@@ -123,6 +123,23 @@ abstract class ZStrings {
   String rewardedCredited(String label, int amount);
   String get rewardedUnavailable;
 
+  // ── Boîte mystère de bienvenue
+  String get mysteryTitle;
+  String get mysterySubtitle;
+  String get mysteryChances;
+  String mysteryChance(String label, String percent);
+  String get mysteryOpen;
+  String get mysteryOpening;
+  String get mysteryWon;
+  String get mysteryCredited;
+  String get mysteryAlreadyOpened;
+  String get mysteryContinue;
+  String get mysteryEntry;
+  String get mysteryEntrySubtitle;
+  String get walletBonus;
+  String get walletBonusBody;
+  String walletBonusPremiumDays(int n);
+
   // ── Langue
   String get languageTitle;
   String get languageIntro;

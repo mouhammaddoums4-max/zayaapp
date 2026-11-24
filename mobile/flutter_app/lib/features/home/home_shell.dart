@@ -14,6 +14,8 @@ import '../community/community_screen.dart';
 import '../discovery/discovery_screen.dart';
 import '../discovery/explore_screen.dart';
 import '../discovery/profile_widgets.dart';
+import '../mystery/mystery_box_screen.dart';
+import '../mystery/mystery_box_service.dart';
 import '../profile/profile_screen.dart';
 
 /// Navigation principale : Découvrir · Explorer · Messages · Communauté · Profil (décision C16).
@@ -39,6 +41,7 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
   int _messagesReload = 0;
   final RatingPrompter _rating = RatingPrompter();
   static const _updateDismissedKey = 'zaya_update_dismissed';
+  static const _mysteryShownKey = 'zaya_mystery_box_shown';
 
   @override
   void initState() {
@@ -47,8 +50,30 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       Session.read(context).refreshBadges();
-      _offerUpdate();
+      _offerUpdate().whenComplete(() {
+        if (mounted) _offerMysteryBox();
+      });
     });
+  }
+
+  /// Boîte mystère de bienvenue (0033) : présentée automatiquement une seule fois, si le serveur la déclare disponible.
+  /// Ensuite, elle reste accessible depuis « Mon portefeuille » tant qu'elle n'est pas ouverte.
+  Future<void> _offerMysteryBox() async {
+    final service = MysteryBoxService.forRepository(Session.read(context).repo);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(_mysteryShownKey) == true) return;
+      final st = await service.status();
+      if (!st.available || !mounted) return;
+      if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
+      await prefs.setBool(_mysteryShownKey, true);
+      if (!mounted) return;
+      await Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => MysteryBoxScreen(service: service, initial: st),
+      ));
+    } catch (_) {
+      // Sans réseau : proposée au prochain lancement.
+    }
   }
 
   /// Mise à jour disponible (non obligatoire) : proposée une seule fois par version.

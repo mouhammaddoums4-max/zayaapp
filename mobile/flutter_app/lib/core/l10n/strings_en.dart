@@ -227,6 +227,38 @@ class ZStringsEn extends ZStrings {
   @override
   String get rewardedUnavailable => 'No ad available right now. Try again later.';
 
+  // ── Welcome mystery box
+  @override
+  String get mysteryTitle => 'Your welcome mystery box';
+  @override
+  String get mysterySubtitle => 'A gift for ZAYA’s first members. Free, one opening per account.';
+  @override
+  String get mysteryChances => 'What the box can contain (real chances)';
+  @override
+  String mysteryChance(String label, String percent) => '$label: $percent %';
+  @override
+  String get mysteryOpen => 'Open my box';
+  @override
+  String get mysteryOpening => 'Opening…';
+  @override
+  String get mysteryWon => 'You won';
+  @override
+  String get mysteryCredited => 'It is already added to your account. Personal reward, not transferable.';
+  @override
+  String get mysteryAlreadyOpened => 'Your box is already open.';
+  @override
+  String get mysteryContinue => 'Continue';
+  @override
+  String get mysteryEntry => 'Welcome mystery box';
+  @override
+  String get mysteryEntrySubtitle => 'A gift is waiting for you';
+  @override
+  String get walletBonus => 'ZAYA gifts';
+  @override
+  String get walletBonusBody => 'Given by ZAYA (welcome mystery box). Personal, non-transferable.';
+  @override
+  String walletBonusPremiumDays(int n) => '$n days of Premium offered';
+
   // ── Language
   @override
   String get languageTitle => 'App language';

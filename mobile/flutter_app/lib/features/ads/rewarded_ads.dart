@@ -34,6 +34,9 @@ class Wallet {
     this.adSwipes = 0,
     this.adBoosts = 0,
     this.coins = 0,
+    this.bonusSwipes = 0,
+    this.bonusBoosts = 0,
+    this.bonusPremiumDays = 0,
     this.premiumActive = false,
     this.premiumEndsAt,
     this.history = const <WalletEntry>[],
@@ -41,11 +44,15 @@ class Wallet {
 
   factory Wallet.fromJson(Map<String, dynamic> j) {
     final ad = Map<String, dynamic>.from(j['ad_credits'] as Map? ?? const {});
+    final bonus = Map<String, dynamic>.from(j['bonus'] as Map? ?? const {});
     final premium = Map<String, dynamic>.from(j['premium'] as Map? ?? const {});
     return Wallet(
       adSwipes: (ad['swipes'] as num?)?.toInt() ?? 0,
       adBoosts: (ad['boosts'] as num?)?.toInt() ?? 0,
       coins: (j['coins'] as num?)?.toInt() ?? 0,
+      bonusSwipes: (bonus['swipes'] as num?)?.toInt() ?? 0,
+      bonusBoosts: (bonus['boosts'] as num?)?.toInt() ?? 0,
+      bonusPremiumDays: (bonus['premium_days'] as num?)?.toInt() ?? 0,
       premiumActive: premium['active'] == true,
       premiumEndsAt: premium['ends_at'] == null ? null : DateTime.parse(premium['ends_at'] as String),
       history: [
@@ -67,15 +74,22 @@ class Wallet {
   final int adSwipes;
   final int adBoosts;
   final int coins;
+
+  /// Cadeaux de ZAYA (boîte mystère, 0033) : catégorie séparée des crédits publicitaires et des pièces.
+  final int bonusSwipes;
+  final int bonusBoosts;
+  final int bonusPremiumDays;
   final bool premiumActive;
   final DateTime? premiumEndsAt;
   final List<WalletEntry> history;
+
+  bool get hasBonus => bonusSwipes > 0 || bonusBoosts > 0 || bonusPremiumDays > 0;
 }
 
 class WalletEntry {
   const WalletEntry(
       {required this.category, required this.asset, required this.amount, required this.reason, required this.at});
-  final String category; // ad_credit | coins
+  final String category; // ad_credit | coins | bonus
   final String asset; // swipes | boost | coins
   final int amount;
   final String reason;

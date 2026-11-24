@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:zaya/features/ads/rewarded_ad_button.dart';
 import 'package:zaya/features/ads/rewarded_ads.dart';
+import 'package:zaya/features/mystery/mystery_box_service.dart';
 import 'package:zaya/features/wallet/wallet_screen.dart';
 
 /// Régie simulée : offre et portefeuille imposés par le test ; aucune vraie publicité.
@@ -101,7 +102,7 @@ void main() {
         ],
       ),
     );
-    await tester.pumpWidget(MaterialApp(home: WalletScreen(service: fake)));
+    await tester.pumpWidget(MaterialApp(home: WalletScreen(service: fake, mystery: const NoMysteryBox())));
     await tester.pumpAndSettle();
     expect(find.text('Crédits publicitaires'), findsOneWidget);
     expect(find.text('20 swipes supplémentaires gagnés'), findsOneWidget);
