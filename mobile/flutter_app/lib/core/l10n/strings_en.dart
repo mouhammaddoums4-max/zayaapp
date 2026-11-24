@@ -178,6 +178,8 @@ class ZStringsEn extends ZStrings {
   String get adSponsored => 'Sponsored';
   @override
   String get adLearnMore => 'Learn more';
+  @override
+  String get adLabel => 'Advertisement';
 
   // ── Wallet and rewarded ads
   @override

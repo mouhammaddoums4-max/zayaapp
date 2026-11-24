@@ -99,6 +99,9 @@ abstract class ZStrings {
   String get adSponsored;
   String get adLearnMore;
 
+  /// Mention des annonces Google (bannières) : distinctes des profils et des publications.
+  String get adLabel;
+
   // ── Portefeuille et publicités récompensées
   String get walletTitle;
   String get walletSubtitle;

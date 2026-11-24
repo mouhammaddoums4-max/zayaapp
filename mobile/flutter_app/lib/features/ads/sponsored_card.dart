@@ -5,18 +5,50 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../app.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/theme.dart';
+import 'ad_settings.dart';
 import 'ads_service.dart';
+import 'google_ads.dart';
 
-/// Emplacement publicitaire : charge au plus une campagne directe pour [placement] et ne prend aucune place s'il n'y en
-/// a pas (régie désactivée, plafond atteint, rien de programmé). Jamais utilisé dans les conversations.
+/// Construit la bannière Google de repli (remplaçable dans les tests, où le SDK Google n'existe pas).
+typedef GoogleBannerBuilder = Widget Function(AdSettings settings, String placement);
+
+Widget defaultGoogleBanner(AdSettings settings, String placement) =>
+    GoogleBanner(unitId: settings.bannerUnit, nonPersonalized: settings.nonPersonalized);
+
+/// Emplacement de bannière Google correspondant à un emplacement de campagne directe.
+String bannerPlacementFor(String placement) => placement == 'community_feed' ? 'community' : placement;
+
+/// Ouvre la destination d'une campagne, après une action volontaire du membre ; le serveur ne compte qu'un clic par
+/// jour, après un affichage réel.
+Future<void> openSponsored(AdsService ads, SponsoredAd ad, String placement) async {
+  final url = ad.destinationUrl;
+  if (url == null || url.isEmpty) return;
+  ads.recordClick(ad.campaignId, placement).then((_) {}, onError: (_) {});
+  await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+}
+
+/// Emplacement publicitaire : une campagne directe pour [placement] en priorité (vendue par ZAYA), sinon une bannière
+/// Google si le serveur l'autorise à cet endroit ; aucune place prise s'il n'y a ni l'une ni l'autre. Jamais utilisé
+/// dans les conversations.
 class SponsoredSlot extends StatefulWidget {
-  const SponsoredSlot({super.key, required this.placement, this.service, this.padding = EdgeInsets.zero});
+  const SponsoredSlot({
+    super.key,
+    required this.placement,
+    this.service,
+    this.settings,
+    this.googleBuilder,
+    this.padding = EdgeInsets.zero,
+  });
 
   /// community_feed | explore | profile (mêmes valeurs que le serveur).
   final String placement;
 
   /// Pour les tests ; sinon, service déduit du dépôt de la session.
   final AdsService? service;
+
+  /// Réglages publicitaires (tests) ; sinon lus sur le serveur (my_ad_settings).
+  final Future<AdSettings> Function()? settings;
+  final GoogleBannerBuilder? googleBuilder;
   final EdgeInsetsGeometry padding;
 
   @override
@@ -26,6 +58,7 @@ class SponsoredSlot extends StatefulWidget {
 class _SponsoredSlotState extends State<SponsoredSlot> {
   late final AdsService _ads = widget.service ?? AdsService.forRepository(Session.read(context).repo);
   SponsoredAd? _ad;
+  AdSettings? _google;
 
   @override
   void initState() {
@@ -33,31 +66,47 @@ class _SponsoredSlotState extends State<SponsoredSlot> {
     _load();
   }
 
+  Future<AdSettings> _settings() {
+    if (widget.settings != null) return widget.settings!();
+    // Service imposé sans réglages (tests) : campagnes directes seules, comme avant 0034.
+    if (widget.service != null) return Future.value(const AdSettings(direct: true));
+    return AdSettings.load(Session.read(context).repo);
+  }
+
   Future<void> _load() async {
     try {
-      final ads = await _ads.sponsored(widget.placement);
-      if (!mounted || ads.isEmpty) return;
-      setState(() => _ad = ads.first);
-      // Affichage réel : compté une fois à l'apparition de la carte.
-      _ads.recordImpression(ads.first.campaignId, widget.placement).then((_) {}, onError: (_) {});
+      final settings = await _settings();
+      final ads = settings.direct ? await _ads.sponsored(widget.placement) : const <SponsoredAd>[];
+      if (!mounted) return;
+      if (ads.isNotEmpty) {
+        setState(() => _ad = ads.first);
+        // Affichage réel : compté une fois à l'apparition de la carte.
+        _ads.recordImpression(ads.first.campaignId, widget.placement).then((_) {}, onError: (_) {});
+      } else if (settings.bannerAllowed(bannerPlacementFor(widget.placement))) {
+        setState(() => _google = settings);
+      }
     } catch (_) {
       // Sans publicité, rien ne s'affiche : aucune gêne pour le membre.
     }
   }
 
-  Future<void> _open(SponsoredAd ad) async {
-    final url = ad.destinationUrl;
-    if (url == null || url.isEmpty) return;
-    // Action volontaire du membre ; le serveur ne compte qu'un clic par jour, après affichage.
-    _ads.recordClick(ad.campaignId, widget.placement).then((_) {}, onError: (_) {});
-    await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-  }
-
   @override
   Widget build(BuildContext context) {
     final ad = _ad;
-    if (ad == null) return const SizedBox.shrink();
-    return Padding(padding: widget.padding, child: SponsoredCard(ad: ad, onOpen: () => _open(ad)));
+    if (ad != null) {
+      return Padding(
+        padding: widget.padding,
+        child: SponsoredCard(ad: ad, onOpen: () => openSponsored(_ads, ad, widget.placement)),
+      );
+    }
+    final google = _google;
+    if (google != null) {
+      return Padding(
+        padding: widget.padding,
+        child: (widget.googleBuilder ?? defaultGoogleBanner)(google, bannerPlacementFor(widget.placement)),
+      );
+    }
+    return const SizedBox.shrink();
   }
 }
 

@@ -59,7 +59,8 @@ Explorer, achats, publicité ».
 | Proches (cercle de confiance) | S2 | à faire | CDC §8 |
 | Explorer : onglets Pour toi / Événements / Historique, filtre, membres à proximité | S2 | à faire | Consentement de géolocalisation, position approximative |
 | Boutique : cadeaux, compliments, emojis | S2 | à faire | Régie publicitaire §6–7 |
-| Publicité : AdMob, publicités directes, « Sponsorisé » dans la Communauté, récompenses, portefeuille | S2 | à faire | [Régie publicitaire](cahier-des-charges/ZAYA_Regie_publicitaire_v1.md) ; 0015 |
+| Boîte mystère de bienvenue pour les premiers inscrits, tout côté serveur | S2 | fait | 0033 (serveur), f650320 (application) ; décision C19 |
+| Publicité : AdMob, publicités directes, « Sponsorisé » dans la Communauté, récompenses, portefeuille | S2 | en cours | 0015, 0031, 0034. Fait : portefeuille, publicités récompensées vérifiées par Google (SSV), carte « Sponsorisé » (profil, Communauté) avec bannière Google en repli, réglages décidés par le serveur (`my_ad_settings`), interstitiel prêt (désactivé). Reste : identifiants AdMob du propriétaire, Explorer et Découvrir (après les sessions qui modifient ces écrans), console d'administration de la régie |
 | Sauvegarde des données, pause, suppression du compte | S2 | à faire | Fonctions serveur déjà présentes |
 | Tous les prix (achats, Premium, cadeaux) fixés par l'administration | S2 | à faire | `app_config` / catalogue administrable |
 

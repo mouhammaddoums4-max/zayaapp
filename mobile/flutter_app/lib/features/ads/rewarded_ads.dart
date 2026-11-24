@@ -4,6 +4,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../data/repository.dart';
+import 'google_ads.dart';
 
 /// Récompense proposée AVANT le visionnage (régie v1 §2.1) : montant, nombre restant aujourd'hui, libellé.
 class RewardOffer {
@@ -146,7 +147,7 @@ class SupabaseRewardsService implements RewardsService {
     final userId = _repo.userId;
     if (config['ads_admob_enabled'] != true || unit.isEmpty || userId == null) return false;
     if (!_initialized) {
-      await MobileAds.instance.initialize();
+      await ensureMobileAds();
       _initialized = true;
     }
     final loaded = Completer<RewardedAd?>();

@@ -7,6 +7,7 @@ import '../../core/motion.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/models.dart';
+import '../ads/feed_ads.dart';
 import 'communities_screen.dart';
 import 'community_widgets.dart';
 import 'compose_post_screen.dart';
@@ -39,15 +40,34 @@ class _CommunityScreenState extends State<CommunityScreen> {
   String? _error;
   int _generation = 0;
 
+  /// Cartes publicitaires du fil (campagnes directes, sinon Google), au rythme fixé par le serveur.
+  FeedAds? _ads;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _load();
+      if (!mounted) return;
+      _load();
+      _ads = FeedAds.forRepository('community_feed', Session.read(context).repo)
+        ..addListener(_onAds)
+        ..load();
     });
     SharedPreferences.getInstance().then((prefs) {
       if (mounted && prefs.getBool(_rulesSeenKey) != true) setState(() => _showRules = true);
     }, onError: (_) {});
+  }
+
+  void _onAds() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _ads
+      ?..removeListener(_onAds)
+      ..dispose();
+    super.dispose();
   }
 
   Community? get _selectedCommunity {
@@ -334,7 +354,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
           itemCount: _posts.length,
           itemBuilder: (context, i) {
             final post = _posts[i];
-            return Padding(
+            final tile = Padding(
               key: ValueKey<String>(post.id),
               padding: const EdgeInsets.only(bottom: 12),
               child: FadeSlideIn(
@@ -346,6 +366,13 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 ),
               ),
             );
+            final ads = _ads;
+            final slot = ads?.slotAfter(i);
+            if (ads == null || slot == null) return tile;
+            return Column(mainAxisSize: MainAxisSize.min, children: [
+              tile,
+              FeedAdSlot(ads: ads, slot: slot, padding: const EdgeInsets.only(bottom: 12)),
+            ]);
           },
         ),
       ),
