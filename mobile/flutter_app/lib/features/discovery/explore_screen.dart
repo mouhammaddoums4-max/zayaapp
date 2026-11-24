@@ -6,6 +6,7 @@ import '../../core/motion.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/models.dart';
+import '../games/games_home_screen.dart';
 import '../likes/likes_screen.dart';
 import 'like_actions.dart';
 import 'profile_widgets.dart';
@@ -122,7 +123,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
           final likes = SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
-              child: _LikesCard(count: session.likesBadge, onTap: _openLikes),
+              child: Column(children: [
+                _LikesCard(count: session.likesBadge, onTap: _openLikes),
+                // Espace Jeux (lot Jeux) : jeux en solo, et à deux depuis une conversation.
+                const SizedBox(height: 10),
+                const GamesEntryCard(),
+              ]),
             ),
           );
           final Widget? placeholder;
