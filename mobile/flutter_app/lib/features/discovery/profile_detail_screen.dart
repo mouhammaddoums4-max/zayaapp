@@ -1,12 +1,14 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../app.dart';
+import '../../core/l10n/l10n.dart';
 import '../../core/motion.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/models.dart';
 import '../premium/premium_screens.dart';
 import '../safety/safety_sheets.dart';
+import '../shop/shop_screen.dart';
 import 'photo_viewer.dart';
 import 'profile_sections.dart';
 import 'profile_widgets.dart';
@@ -154,6 +156,8 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     final base = detail?.base ?? widget.preview;
     final name = base?.displayName ?? widget.name;
     final canZoom = detail != null && PhotoViewerScreen.viewable(detail.photos).isNotEmpty;
+    // Jamais de cadeau à soi-même ; prix, solde, blocages et limite du jour sont vérifiés par le serveur (0035).
+    final canGift = Session.of(context).me?.id != widget.userId;
 
     return Scaffold(
       backgroundColor: ZColors.bg,
@@ -171,6 +175,14 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                   _RoundIconButton(icon: Icons.arrow_back, tooltip: 'Retour', onTap: () => Navigator.of(context).pop()),
             ),
             actions: [
+              if (canGift) ...[
+                _RoundIconButton(
+                  icon: Icons.card_giftcard_outlined,
+                  tooltip: context.s.shopGiveGift,
+                  onTap: () => openGiftShop(context, userId: widget.userId, name: name),
+                ),
+                const SizedBox(width: 6),
+              ],
               if (canZoom) ...[
                 _RoundIconButton(icon: Icons.zoom_out_map, tooltip: 'Agrandir les photos', onTap: _openPhotos),
                 const SizedBox(width: 6),
