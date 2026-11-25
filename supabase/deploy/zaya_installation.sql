@@ -6798,6 +6798,10 @@ on conflict (code) do nothing;
 insert into cities (country_code, name) values
   ('GN', 'Conakry — Kaloum'), ('GN', 'Conakry — Dixinn'), ('GN', 'Conakry — Matam'),
   ('GN', 'Conakry — Ratoma'), ('GN', 'Conakry — Matoto'),
+  ('GN', U&'Conakry \2014 Gbessia'), ('GN', U&'Conakry \2014 Kagb\00E9len'),
+  ('GN', U&'Conakry \2014 Lambanyi'), ('GN', U&'Conakry \2014 Man\00E9ah'),
+  ('GN', U&'Conakry \2014 Sanoyah'), ('GN', U&'Conakry \2014 Sonfonia'),
+  ('GN', U&'Conakry \2014 Tombolia'), ('GN', U&'Conakry \2014 Kassa'),
   ('GN', 'Coyah'), ('GN', 'Dubréka'), ('GN', 'Kindia'), ('GN', 'Boké'), ('GN', 'Kamsar'),
   ('GN', 'Labé'), ('GN', 'Mamou'), ('GN', 'Kankan'), ('GN', 'Siguiri'), ('GN', 'Faranah'),
   ('GN', 'N''Zérékoré'), ('GN', 'Kissidougou'), ('GN', 'Guéckédou')
