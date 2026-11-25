@@ -90,10 +90,11 @@ statistiques, rendez-vous sécurisés.
 
 ## 5. ZAYA 2.0 et demandes du 25/11/2026 (session zaya-app-0d)
 
-État au 25/11/2026. « Vérifié » = tests exécutés et réussis dans l'arbre de travail ; **rien de cette section n'est
-encore appliqué sur Supabase en ligne** (accès refusé : jeton 401, `npx supabase login` à refaire par le
-propriétaire). Tant que les migrations ne sont pas en ligne, l'application masque ces blocs ou affiche « arrive
-bientôt » au lieu d'une erreur.
+État au 25/11/2026. « Vérifié » = tests exécutés et réussis. **En ligne depuis le 25/11/2026** (projet
+`wocgmmwwopzrgleeevof`) : mises à jour 0055-0059, 0060-0065 et 0066-0071 appliquées, présence de chaque migration
+contrôlée ; fonction Edge `pin-login` déployée avec son secret ; connexion par code activée et essayée de bout en
+bout sur un compte d'essai (code accepté, changement imposé, session ouverte). Si une fonction est coupée côté
+serveur, l'application masque le bloc ou affiche « arrive bientôt » au lieu d'une erreur.
 
 | Sujet | Migration | État | Tests |
 |---|---|---|---|
@@ -106,12 +107,13 @@ bientôt » au lieu d'une erreur.
 | Mon profil : mes photos (principale, ajout, suppression), aperçu public | — (RLS existante) | Vérifié en démo | my_profile_test |
 | Fond blanc partout, accueil et démarrage allégés, jeux retirés | — | Vérifié (analyse, tests) ; aperçus à refaire | — |
 
-Mise en ligne (à faire par une personne qui a l'accès, dans cet ordre) :
-1. Appliquer 0066 à 0071 (fichier `supabase/deploy/zaya_installation.sql` régénéré, ou migration par migration).
-2. Coffre Vault : `select vault.create_secret('<64 caractères aléatoires>', 'zaya_pin_pepper');`
-3. Fonction Edge : `supabase secrets set PIN_LOGIN_SECRET=<64 caractères aléatoires>` puis
-   `supabase functions deploy pin-login --no-verify-jwt`.
-4. Réglage Auth : durée du code SMS 300 s (`sms_otp_exp`), pour le « code oublié » en 5 minutes.
-5. Préproduction seulement : `supabase/preproduction/codes_par_defaut.sql` (code 6236 pour les comptes existants,
-   changement imposé) et `node supabase/preproduction/creer_compte_code.mjs 627843030 6236`.
-6. Fixer les montants de récompense (D8, D10, D11) dans `app_config` quand le propriétaire les aura décidés.
+Mise en ligne :
+1. ~~Appliquer 0055 à 0071~~ : fait le 25/11/2026 (`supabase/deploy/mise_a_jour_*.sql`, dans l'ordre).
+2. ~~Poivre des codes dans Vault (`zaya_pin_pepper`)~~ : créé par `mise_a_jour_0066_0071.sql`.
+3. ~~Fonction Edge `pin-login` et secret `PIN_LOGIN_SECRET`~~ : déployés ; `pin_login_enabled = true`.
+4. ~~Code 6236 pour les comptes existants (préproduction)~~ : 142 comptes, changement imposé à la connexion.
+5. À faire : durée du code SMS à 300 s (Authentication > Providers > Phone > OTP expiry) pour le « code oublié ».
+6. À faire : compte 627843030 (aucun compte avec ce numéro) : à créer en s'inscrivant dans l'application ou depuis
+   Authentication > Users > Add user (numéro confirmé), puis `select admin_set_member_pin(id, '6236') from auth.users
+   where phone = '224627843030';` (la clé de service n'est pas accessible à l'assistant).
+7. Fixer les montants de récompense (D8, D10, D11) dans `app_config` quand le propriétaire les aura décidés.
