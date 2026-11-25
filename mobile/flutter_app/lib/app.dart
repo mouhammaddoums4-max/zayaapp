@@ -11,6 +11,8 @@ import 'features/app/app_update.dart';
 import 'features/app/rating_prompt.dart';
 import 'features/home/home_shell.dart';
 import 'features/onboarding/welcome_screen.dart';
+import 'features/security/app_lock.dart';
+import 'features/security/lock_screen.dart';
 
 /// Fil de découverte partagé entre les onglets Découvrir et Explorer.
 class FeedStore extends ChangeNotifier {
@@ -299,6 +301,18 @@ class _ZayaAppState extends State<ZayaApp> with WidgetsBindingObserver {
             supportedLocales: const [Locale('fr'), Locale('en')],
             localizationsDelegates: GlobalMaterialLocalizations.delegates,
             home: const _RootGate(),
+            // Verrouillage par code PIN, empreinte ou Face ID (CDC V6.4 §22.9), au-dessus de tous les écrans.
+            builder: (context, child) => ListenableBuilder(
+              listenable: _session,
+              builder: (context, _) => AppLockGate(
+                signedIn: _session.me != null && _session.me!.status != 'draft',
+                onForgot: () async {
+                  await AppLock.instance.disable();
+                  await _session.signOut();
+                },
+                child: child ?? const SizedBox.shrink(),
+              ),
+            ),
           ),
         ),
       ),

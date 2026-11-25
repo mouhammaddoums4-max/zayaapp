@@ -3,9 +3,10 @@ package com.zaya.app.zaya
 import android.content.pm.ApplicationInfo
 import android.os.Bundle
 import android.view.WindowManager
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 
-class MainActivity : FlutterActivity() {
+// FlutterFragmentActivity : exigée par le verrouillage par empreinte ou visage (local_auth).
+class MainActivity : FlutterFragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Protection anti-capture (CDC V6.4 §7 et V2.3 §1.2) : profils, photos et conversations sont présents sur

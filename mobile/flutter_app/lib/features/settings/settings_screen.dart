@@ -12,6 +12,7 @@ import '../premium/premium_screens.dart';
 import '../profile/edit_profile_screen.dart';
 import '../profile/privacy_center_screen.dart';
 import '../safety/safety_sheets.dart';
+import '../security/app_lock_settings_screen.dart';
 import 'help_screen.dart';
 import 'language_screen.dart';
 import '../wallet/wallet_screen.dart';
@@ -169,6 +170,12 @@ class SettingsScreen extends StatelessWidget {
             title: s.settingsPrivacy,
             subtitle: s.settingsPrivacySubtitle,
             onTap: () => _push(context, const PrivacyCenterScreen()),
+          ),
+          SettingsTile(
+            icon: Icons.pin_outlined,
+            title: s.lockSettingsTitle,
+            subtitle: s.lockSettingsSubtitle,
+            onTap: () => _push(context, const AppLockSettingsScreen()),
           ),
           SettingsTile(
             icon: Icons.health_and_safety_outlined,

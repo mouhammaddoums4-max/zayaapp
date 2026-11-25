@@ -261,6 +261,58 @@ class ZStringsEn extends ZStrings {
   @override
   String walletBonusPremiumDays(int n) => '$n days of Premium offered';
 
+  // ── App lock
+  @override
+  String get lockTitle => 'ZAYA is locked';
+  @override
+  String get lockEnterPin => 'Enter your code';
+  @override
+  String get lockWrongPin => 'Wrong code';
+  @override
+  String get lockUseDevice => 'Fingerprint or face';
+  @override
+  String get lockReason => 'Unlock ZAYA';
+  @override
+  String get lockForgot => 'Forgot your code?';
+  @override
+  String get lockForgotBody => 'To protect your account, the lock will be turned off and you will need to sign in again with your phone number.';
+  @override
+  String get lockForgotConfirm => 'Sign in again';
+  @override
+  String get lockSettingsTitle => 'App lock';
+  @override
+  String get lockSettingsSubtitle => 'PIN code, fingerprint, Face ID';
+  @override
+  String get lockSwitch => 'Lock ZAYA with a code';
+  @override
+  String get lockBiometricSwitch => 'Fingerprint or face recognition';
+  @override
+  String get lockBiometricUnavailable => 'No fingerprint or face is enrolled on this phone.';
+  @override
+  String get lockDelayTitle => 'Lock';
+  @override
+  String get lockChangePin => 'Change code';
+  @override
+  String get lockPrivacyNote => 'Your code and fingerprint stay on this phone: ZAYA never receives them.';
+  @override
+  String get lockNewPin => 'Choose a 4-digit code';
+  @override
+  String get lockConfirmPin => 'Confirm the code';
+  @override
+  String get lockPinMismatch => 'The two codes do not match.';
+  @override
+  String get lockCurrentPin => 'Enter your current code';
+  @override
+  String get lockEnabled => 'App lock turned on';
+  @override
+  String lockWait(int seconds) => 'Too many attempts. Try again in $seconds s.';
+  @override
+  String lockDelay(int seconds) => seconds == 0
+      ? 'Immediately'
+      : seconds < 120
+          ? 'After 1 minute'
+          : 'After ${seconds ~/ 60} minutes';
+
   // ── Language
   @override
   String get languageTitle => 'App language';

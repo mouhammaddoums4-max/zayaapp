@@ -264,6 +264,58 @@ class ZStringsFr extends ZStrings {
   @override
   String walletBonusPremiumDays(int n) => '$n jours de Premium offerts';
 
+  // ── Verrouillage de l'application
+  @override
+  String get lockTitle => 'ZAYA est verrouillé';
+  @override
+  String get lockEnterPin => 'Saisissez votre code';
+  @override
+  String get lockWrongPin => 'Code incorrect';
+  @override
+  String get lockUseDevice => 'Empreinte ou visage';
+  @override
+  String get lockReason => 'Déverrouiller ZAYA';
+  @override
+  String get lockForgot => 'Code oublié ?';
+  @override
+  String get lockForgotBody => 'Pour protéger votre compte, le verrouillage sera désactivé et vous devrez vous reconnecter avec votre numéro de téléphone.';
+  @override
+  String get lockForgotConfirm => 'Me reconnecter';
+  @override
+  String get lockSettingsTitle => 'Verrouillage de l’application';
+  @override
+  String get lockSettingsSubtitle => 'Code PIN, empreinte digitale, Face ID';
+  @override
+  String get lockSwitch => 'Verrouiller ZAYA par un code';
+  @override
+  String get lockBiometricSwitch => 'Empreinte digitale ou reconnaissance faciale';
+  @override
+  String get lockBiometricUnavailable => 'Aucune empreinte ni aucun visage enregistré sur ce téléphone.';
+  @override
+  String get lockDelayTitle => 'Verrouiller';
+  @override
+  String get lockChangePin => 'Changer le code';
+  @override
+  String get lockPrivacyNote => 'Votre code et votre empreinte restent sur ce téléphone : ZAYA ne les reçoit jamais.';
+  @override
+  String get lockNewPin => 'Choisissez un code à 4 chiffres';
+  @override
+  String get lockConfirmPin => 'Confirmez le code';
+  @override
+  String get lockPinMismatch => 'Les deux codes ne correspondent pas.';
+  @override
+  String get lockCurrentPin => 'Saisissez votre code actuel';
+  @override
+  String get lockEnabled => 'Verrouillage activé';
+  @override
+  String lockWait(int seconds) => 'Trop d’essais. Réessayez dans $seconds s.';
+  @override
+  String lockDelay(int seconds) => seconds == 0
+      ? 'Immédiatement'
+      : seconds < 120
+          ? 'Après 1 minute'
+          : 'Après ${seconds ~/ 60} minutes';
+
   // ── Langue
   @override
   String get languageTitle => 'Langue de l’application';

@@ -143,6 +143,31 @@ abstract class ZStrings {
   String get walletBonusBody;
   String walletBonusPremiumDays(int n);
 
+  // ── Verrouillage de l'application (code PIN, empreinte, Face ID)
+  String get lockTitle;
+  String get lockEnterPin;
+  String get lockWrongPin;
+  String get lockUseDevice;
+  String get lockReason;
+  String get lockForgot;
+  String get lockForgotBody;
+  String get lockForgotConfirm;
+  String get lockSettingsTitle;
+  String get lockSettingsSubtitle;
+  String get lockSwitch;
+  String get lockBiometricSwitch;
+  String get lockBiometricUnavailable;
+  String get lockDelayTitle;
+  String get lockChangePin;
+  String get lockPrivacyNote;
+  String get lockNewPin;
+  String get lockConfirmPin;
+  String get lockPinMismatch;
+  String get lockCurrentPin;
+  String get lockEnabled;
+  String lockWait(int seconds);
+  String lockDelay(int seconds);
+
   // ── Langue
   String get languageTitle;
   String get languageIntro;
