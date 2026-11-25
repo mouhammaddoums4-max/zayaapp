@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -6,6 +8,7 @@ import '../../core/motion.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/models.dart';
+import '../ads/feed_ads.dart';
 import '../likes/likes_screen.dart';
 import 'like_actions.dart';
 import 'profile_widgets.dart';
@@ -85,6 +88,9 @@ class ExploreScreen extends StatefulWidget {
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
+  /// Cartes publicitaires de la grille (campagnes directes, sinon Google), au rythme fixé par le serveur.
+  late final FeedAds _ads = FeedAds.forRepository('explore', Session.read(context).repo);
+
   @override
   void initState() {
     super.initState();
@@ -92,6 +98,60 @@ class _ExploreScreenState extends State<ExploreScreen> {
     if (!feed.loaded && !feed.loading) {
       WidgetsBinding.instance.addPostFrameCallback((_) => feed.load());
     }
+    _ads
+      ..addListener(_onAds)
+      ..load();
+  }
+
+  void _onAds() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _ads
+      ..removeListener(_onAds)
+      ..dispose();
+    super.dispose();
+  }
+
+  /// Grille « Tous les profils » découpée en tranches, avec une carte publicitaire entre deux tranches ; une seule
+  /// grille si la régie est éteinte.
+  List<Widget> _profileGrid(List<DiscoveryProfile> profiles) {
+    final every = _ads.settings.everyFor('explore');
+    final chunk = every > 0 ? every : max(profiles.length, 1);
+    final slivers = <Widget>[];
+    for (var start = 0; start < profiles.length; start += chunk) {
+      final end = min(start + chunk, profiles.length);
+      final first = start;
+      slivers.add(SliverPadding(
+        padding: EdgeInsets.fromLTRB(16, 0, 16, end == profiles.length ? 24 : 12),
+        sliver: SliverGrid.builder(
+          gridDelegate: _gridDelegate,
+          itemCount: end - first,
+          itemBuilder: (context, j) {
+            final i = first + j;
+            final p = profiles[i];
+            return FadeSlideIn(
+              key: ValueKey<String>(p.id),
+              index: i,
+              child: ProfileTile(
+                profile: p,
+                heroTag: 'explore-${p.id}',
+                onTap: () => openProfileWithActions(context, p, heroTag: 'explore-${p.id}'),
+              ),
+            );
+          },
+        ),
+      ));
+      final slot = end < profiles.length ? _ads.slotAfter(end - 1) : null;
+      if (slot != null) {
+        slivers.add(SliverToBoxAdapter(
+          child: FeedAdSlot(ads: _ads, slot: slot, padding: const EdgeInsets.fromLTRB(16, 0, 16, 12)),
+        ));
+      }
+    }
+    return slivers;
   }
 
   Future<void> _openLikes() async {
@@ -206,25 +266,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               const SliverToBoxAdapter(
                 child: Padding(padding: EdgeInsets.fromLTRB(16, 14, 16, 0), child: SectionTitle('Tous les profils')),
               ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                sliver: SliverGrid.builder(
-                  gridDelegate: _gridDelegate,
-                  itemCount: feed.profiles.length,
-                  itemBuilder: (context, i) {
-                    final p = feed.profiles[i];
-                    return FadeSlideIn(
-                      key: ValueKey<String>(p.id),
-                      index: i,
-                      child: ProfileTile(
-                        profile: p,
-                        heroTag: 'explore-${p.id}',
-                        onTap: () => openProfileWithActions(context, p, heroTag: 'explore-${p.id}'),
-                      ),
-                    );
-                  },
-                ),
-              ),
+              ..._profileGrid(feed.profiles),
             ]),
           );
         },
