@@ -20,10 +20,16 @@ export async function signauxTests({ db, test, assert, as, rpc, fails, U, seedMe
     assert((await rpc(G.w, 'send_like', [G.m])).status === 'liked');
     assert((await signaux(G.m)).join() === 'like', `Sékou : ${await signaux(G.m)}`);
     assert((await signaux(G.w)).length === 0, `Djénabou : ${await signaux(G.w)}`);
+    // Aucune colonne d'identité de l'auteur ; entity_id (0063, accusés de réception) ne porte qu'un identifiant de
+    // message, jamais rien pour un like.
     const cols = (await db.query(
       `select column_name from information_schema.columns where table_name = 'member_signals' order by 1`,
     )).rows.map((r) => r.column_name);
-    assert(cols.join() === 'created_at,id,kind,user_id', `colonnes : ${cols}`);
+    assert(!cols.some((c) => /from|actor|sender|author|viewer|liker/.test(c)), `colonne d’identité : ${cols}`);
+    if (cols.includes('entity_id')) {
+      const e = await db.query(`select entity_id from member_signals where user_id = $1 and kind = 'like'`, [G.m]);
+      assert(e.rows.length > 0 && e.rows.every((x) => x.entity_id === null), 'information jointe à un like');
+    }
   });
 
   await test('match puis message : « match » pour les deux, « message » pour le destinataire', async () => {
