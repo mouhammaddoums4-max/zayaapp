@@ -1,15 +1,17 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../core/notifications/push_notifications.dart';
 import 'models.dart';
 import 'repository.dart';
 
 /// Backend réel. L'application n'utilise que la clé `anon` : toutes les règles
 /// (quota, match réciproque, blocage, filtre des messages, Premium) sont appliquées par le serveur.
-class SupabaseRepository implements ZayaRepository {
+class SupabaseRepository implements ZayaRepository, QuickDiscoveryRepository {
   SupabaseRepository(this._db);
   final SupabaseClient _db;
 
@@ -56,7 +58,47 @@ class SupabaseRepository implements ZayaRepository {
   }
 
   @override
-  Future<void> signOut() => _db.auth.signOut();
+  Future<String> phoneStatus(String phone) async =>
+      (await _db.rpc('pin_phone_status', params: {'p_phone': phone})) as String;
+
+  @override
+  Future<PinLoginResult> signInWithPin(String phone, String pin) async {
+    final res = await _db.functions.invoke('pin-login', body: {'phone': phone, 'pin': pin});
+    final r = res.data is Map ? Map<String, dynamic>.from(res.data as Map) : const <String, dynamic>{};
+    final status = (r['status'] as String?) ?? 'error';
+    if (status == 'ok') {
+      // Jetons fournis par la fonction « pin-login » : la session est installée comme après une connexion normale.
+      await _db.auth.setSession(r['refresh_token'] as String);
+      return PinLoginResult('ok', mustChange: r['must_change'] == true);
+    }
+    return PinLoginResult(
+      status,
+      remaining: (r['remaining'] as num?)?.toInt(),
+      lockedUntil: r['until'] == null ? null : DateTime.tryParse(r['until'] as String),
+    );
+  }
+
+  @override
+  Future<({bool hasPin, bool mustChange})> myPinStatus() async {
+    final r = Map<String, dynamic>.from(await _db.rpc('my_pin_status') as Map);
+    return (hasPin: r['has_pin'] == true, mustChange: r['must_change'] == true);
+  }
+
+  @override
+  Future<void> setPin(String pin) async => _db.rpc('set_my_pin', params: {'p_pin': pin});
+
+  @override
+  Future<void> changePin(String oldPin, String newPin) async =>
+      _db.rpc('change_my_pin', params: {'p_old': oldPin, 'p_new': newPin});
+
+  @override
+  Future<void> resetPin(String newPin) async => _db.rpc('reset_my_pin', params: {'p_new': newPin});
+
+  @override
+  Future<void> signOut() async {
+    await PushNotifications.instance.unregisterCurrentDevice(_db);
+    await _db.auth.signOut();
+  }
 
   // ── Mon profil
   @override
@@ -85,7 +127,8 @@ class SupabaseRepository implements ZayaRepository {
   Future<List<EducationLevel>> educationLevels() async {
     final rows = await _db.from('education_levels').select('key, label_fr, label_en').order('position');
     return [
-      for (final r in rows) EducationLevel(r['key'] as String, r['label_fr'] as String, labelEn: r['label_en'] as String?),
+      for (final r in rows)
+        EducationLevel(r['key'] as String, r['label_fr'] as String, labelEn: r['label_en'] as String?),
     ];
   }
 
@@ -237,6 +280,60 @@ class SupabaseRepository implements ZayaRepository {
   }
 
   @override
+  Future<List<MyPhoto>> myPhotos() async {
+    final rows = await _db
+        .from('profile_photos')
+        .select('id, storage_path, position, moderation, visibility')
+        .eq('user_id', _uid)
+        .order('position');
+    return [
+      for (final r in rows)
+        MyPhoto(
+          id: r['id'] as String,
+          path: r['storage_path'] as String,
+          position: (r['position'] as num?)?.toInt() ?? 0,
+          moderation: (r['moderation'] as String?) ?? 'pending',
+          visibility: (r['visibility'] as String?) ?? 'public',
+        ),
+    ];
+  }
+
+  /// Réécrit les rangs dans l'ordre donné (RLS photos_update_own ; photos_guard protège le reste de la ligne).
+  Future<void> _reorder(List<MyPhoto> ordered) async {
+    for (var i = 0; i < ordered.length; i++) {
+      if (ordered[i].position != i) {
+        await _db.from('profile_photos').update({'position': i}).eq('id', ordered[i].id);
+      }
+    }
+  }
+
+  @override
+  Future<void> deleteMyPhoto(String photoId) async {
+    final photos = await myPhotos();
+    final photo = photos.where((p) => p.id == photoId).firstOrNull;
+    if (photo == null) return;
+    await _db.from('profile_photos').delete().eq('id', photoId);
+    // Fichier retiré du stockage si la règle de stockage le permet ; sinon le nettoyage serveur s'en charge.
+    unawaited(_db.storage.from('profile-photos').remove([photo.path]).then((_) {}, onError: (Object _) {}));
+    await _reorder([
+      for (final p in photos)
+        if (p.id != photoId) p
+    ]);
+  }
+
+  @override
+  Future<void> setMainPhoto(String photoId) async {
+    final photos = await myPhotos();
+    final main = photos.where((p) => p.id == photoId).firstOrNull;
+    if (main == null) return;
+    await _reorder([
+      main,
+      for (final p in photos)
+        if (p.id != photoId) p
+    ]);
+  }
+
+  @override
   Future<String> requestVerification(Uint8List selfie) async {
     final uid = _uid;
     final path = '$uid/selfie-${DateTime.now().millisecondsSinceEpoch}.jpg';
@@ -316,8 +413,13 @@ class SupabaseRepository implements ZayaRepository {
 
   // ── Découverte, likes, matchs
   @override
-  Future<List<DiscoveryProfile>> discoveryFeed() async {
-    final rows = await _db.rpc('discovery_feed', params: {'p_limit': 30}) as List;
+  Future<List<DiscoveryProfile>> discoveryFeed() => discoveryFeedFiltered(null);
+
+  @override
+  Future<List<DiscoveryProfile>> discoveryFeedFiltered(String? filter) async {
+    final rows = filter == null
+        ? await _db.rpc('discovery_feed', params: {'p_limit': 30}) as List
+        : await _db.rpc('discovery_feed_quick_filter', params: {'p_filter': filter, 'p_limit': 30}) as List;
     return [for (final r in rows) DiscoveryProfile.fromRow(Map<String, dynamic>.from(r as Map))];
   }
 
@@ -329,8 +431,7 @@ class SupabaseRepository implements ZayaRepository {
   }
 
   @override
-  Future<void> recordProfileView(String userId) async =>
-      _fireAndForget('record_profile_view', {'p_target': userId});
+  Future<void> recordProfileView(String userId) async => _fireAndForget('record_profile_view', {'p_target': userId});
 
   @override
   Future<DiscoveryProfile?> rewindLastPass() async {
@@ -452,19 +553,26 @@ class SupabaseRepository implements ZayaRepository {
     late final StreamController<String> controller;
     controller = StreamController<String>.broadcast(
       // Abonnement Realtime filtré sur le membre ; la RLS de member_signals s'applique aussi côté serveur.
-      onListen: () => channel = _db
-          .channel('signaux-$uid')
-          .onPostgresChanges(
-            event: PostgresChangeEvent.insert,
-            schema: 'public',
-            table: 'member_signals',
-            filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'user_id', value: uid),
-            callback: (payload) {
-              final kind = payload.newRecord['kind'];
-              if (kind is String && !controller.isClosed) controller.add(kind);
-            },
-          )
-          .subscribe(),
+      onListen: () {
+        _fireAndForget('mark_pending_messages_received');
+        channel = _db
+            .channel('signaux-$uid')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.insert,
+              schema: 'public',
+              table: 'member_signals',
+              filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'user_id', value: uid),
+              callback: (payload) {
+                final kind = payload.newRecord['kind'];
+                final messageId = payload.newRecord['entity_id'];
+                if (kind == 'message' && messageId is String) {
+                  _fireAndForget('mark_message_received', {'p_message': messageId});
+                }
+                if (kind is String && !controller.isClosed) controller.add(kind);
+              },
+            )
+            .subscribe();
+      },
       onCancel: () {
         final c = channel;
         channel = null;
@@ -487,20 +595,164 @@ class SupabaseRepository implements ZayaRepository {
                 createdAt: DateTime.parse(r['created_at'] as String),
                 edited: r['edited_at'] != null,
                 unsent: r['unsent_at'] != null,
+                kind: (r['message_kind'] as String?) ?? 'text',
+                mediaPath: r['media_path'] as String?,
+                mediaDurationSeconds: (r['media_duration_seconds'] as num?)?.toInt(),
+                stickerId: r['sticker_id'] as String?,
+                readAt: r['read_at'] == null ? null : DateTime.parse(r['read_at'] as String),
+                deliveredAt: r['delivered_at'] == null ? null : DateTime.parse(r['delivered_at'] as String),
+                replyToId: r['reply_to_id'] as String?,
+                scamCategory: r['scam_category'] as String?,
               ),
           ],
         );
   }
 
   @override
-  Future<SendResult> sendMessage(String matchId, String body) async {
-    final r =
-        Map<String, dynamic>.from(await _db.rpc('send_message', params: {'p_match': matchId, 'p_body': body}) as Map);
+  Stream<List<MessageReaction>> watchReactions(String matchId) {
+    return _db.from('message_reactions').stream(primaryKey: ['message_id', 'user_id']).eq('match_id', matchId).map(
+          (rows) => [
+            for (final r in rows)
+              MessageReaction(
+                messageId: r['message_id'] as String,
+                userId: r['user_id'] as String,
+                emoji: r['emoji'] as String,
+              ),
+          ],
+        );
+  }
+
+  @override
+  Future<void> reactToMessage(String messageId, String emoji) async {
+    await _db.rpc('react_to_message', params: {'p_message': messageId, 'p_emoji': emoji});
+  }
+
+  @override
+  Future<SendResult> sendMessage(String matchId, String body, {String? replyToId}) async {
+    final r = Map<String, dynamic>.from(await _db.rpc('send_message',
+        params: {'p_match': matchId, 'p_body': body, if (replyToId != null) 'p_reply_to': replyToId}) as Map);
     return switch (r['status']) {
       'blocked' => SendResult.blocked(r['category'] as String),
       'active_limit' => SendResult.activeLimit((r['limit'] as num).toInt()),
+      _ => SendResult.sent(warning: r['warning'] as String?),
+    };
+  }
+
+  static const _zayaFunctions = {
+    'my_daily_match',
+    'pulse_feed',
+    'set_pulse_optin',
+    'my_referral_code',
+    'revoke_my_referral_code',
+    'my_referral_summary',
+    'redeem_referral',
+    'register_device',
+    'surprise_odds',
+    'open_daily_surprise',
+    'my_challenges',
+    'claim_challenge',
+    'marriage_questions_list',
+    'answer_question',
+    'delete_answer',
+    'answers_of',
+  };
+
+  @override
+  Future<Object?> zayaRpc(String function, [Map<String, Object?> params = const <String, Object?>{}]) async {
+    if (!_zayaFunctions.contains(function)) throw ArgumentError('Fonction non autorisée : $function');
+    return _db.rpc(function, params: params.isEmpty ? null : Map<String, dynamic>.of(params));
+  }
+
+  @override
+  Future<LikeResult> sendFlower(String userId) async {
+    final r = Map<String, dynamic>.from(await _db.rpc('send_flower', params: {'p_target': userId}) as Map);
+    switch (r['status']) {
+      case 'matched':
+        return LikeResult(LikeStatus.matched, matchId: r['match_id'] as String);
+      case 'quota_reached':
+        return LikeResult(LikeStatus.quotaReached, resetsAt: DateTime.parse(r['resets_at'] as String));
+      case 'already_liked':
+      case 'already_sent':
+        return const LikeResult(LikeStatus.alreadyLiked);
+      default:
+        return LikeResult(LikeStatus.liked, remaining: (r['remaining'] as num?)?.toInt());
+    }
+  }
+
+  @override
+  Future<List<DiscoveryProfile>> receivedFlowers() async {
+    final rows = await _db.rpc('received_flowers') as List;
+    return [for (final r in rows) DiscoveryProfile.fromRow(Map<String, dynamic>.from(r as Map))];
+  }
+
+  @override
+  Future<int> hideConversations(List<String> matchIds) async {
+    if (matchIds.isEmpty) return 0;
+    final n = await _db.rpc('hide_conversations', params: {'p_matches': matchIds});
+    return (n as num?)?.toInt() ?? 0;
+  }
+
+  @override
+  Future<Set<String>> onlineMatches() async {
+    final rows = await _db.rpc('my_online_matches') as List;
+    // Fonction « setof uuid » : PostgREST renvoie des valeurs simples (ou des objets à une seule colonne).
+    return {
+      for (final r in rows)
+        if (r is Map) '${r.values.first}' else '$r',
+    };
+  }
+
+  @override
+  Future<void> touchActive() async {
+    try {
+      await _db.rpc('touch_last_active');
+    } catch (_) {
+      // Présence approximative : un échec ponctuel est sans conséquence.
+    }
+  }
+
+  @override
+  Future<SendResult> sendVoiceMessage(String matchId, String localFilePath, int durationSeconds) async {
+    final file = File(localFilePath);
+    final name = '${DateTime.now().microsecondsSinceEpoch}.m4a';
+    final path = '$matchId/$_uid/$name';
+    await _db.storage.from('chat-voice').uploadBinary(
+          path,
+          await file.readAsBytes(),
+          fileOptions: const FileOptions(contentType: 'audio/mp4', upsert: false),
+        );
+    final result = Map<String, dynamic>.from(await _db.rpc('send_voice_message', params: {
+      'p_match': matchId,
+      'p_storage_path': path,
+      'p_duration_seconds': durationSeconds,
+    }) as Map);
+    if (result['status'] != 'sent') {
+      await _db.storage.from('chat-voice').remove([path]);
+    }
+    return switch (result['status']) {
+      'active_limit' => SendResult.activeLimit((result['limit'] as num).toInt()),
       _ => const SendResult.sent(),
     };
+  }
+
+  @override
+  Future<SendResult> sendAnimatedSticker(String matchId, String stickerId) async {
+    final result = Map<String, dynamic>.from(await _db.rpc('send_animated_sticker', params: {
+      'p_match': matchId,
+      'p_sticker_id': stickerId,
+    }) as Map);
+    return result['status'] == 'active_limit'
+        ? SendResult.activeLimit((result['limit'] as num).toInt())
+        : const SendResult.sent();
+  }
+
+  @override
+  Future<String?> voiceMessageUrl(String storagePath) async {
+    try {
+      return await _db.storage.from('chat-voice').createSignedUrl(storagePath, 600);
+    } catch (_) {
+      return null;
+    }
   }
 
   @override
@@ -534,8 +786,7 @@ class SupabaseRepository implements ZayaRepository {
 
   @override
   Future<String> respondRematch(String matchId, {required bool accept}) async => Map<String, dynamic>.from(
-          await _db.rpc('respond_rematch', params: {'p_match': matchId, 'p_accept': accept}) as Map)['status']
-      as String;
+      await _db.rpc('respond_rematch', params: {'p_match': matchId, 'p_accept': accept}) as Map)['status'] as String;
 
   @override
   Future<SendResult> editMessage(String messageId, String body) async {

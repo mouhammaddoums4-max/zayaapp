@@ -53,10 +53,13 @@ class FadeSlideIn extends StatelessWidget {
       tween: Tween<double>(begin: 0, end: 1),
       duration: Duration(milliseconds: total),
       curve: Interval(start, 1, curve: ZMotion.emphasized),
-      builder: (context, t, child) => Opacity(
-        opacity: t.clamp(0.0, 1.0).toDouble(),
-        child: Transform.translate(offset: Offset(0, (1 - t) * distance), child: child),
-      ),
+      builder: (context, t, child) {
+        if (t >= 1) return child!;
+        return Opacity(
+          opacity: t.clamp(0.0, 1.0).toDouble(),
+          child: Transform.translate(offset: Offset(0, (1 - t) * distance), child: child),
+        );
+      },
       child: child,
     );
   }
@@ -143,7 +146,7 @@ class _SkeletonState extends State<Skeleton> with SingleTickerProviderStateMixin
             gradient: LinearGradient(
               begin: Alignment(shift - 1, 0),
               end: Alignment(shift + 1, 0),
-              colors: const [ZColors.line, Color(0xFFFAF5F8), ZColors.line],
+              colors: const [ZColors.line, Color(0xFFF7F7F9), ZColors.line],
             ),
           ),
         );

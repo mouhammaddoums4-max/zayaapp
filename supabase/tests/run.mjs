@@ -20,6 +20,12 @@ import { filtresAvancesTests } from './filtres_avances_tests.mjs';
 import { securiteTests } from './securite_tests.mjs';
 import { etudesEnfantsTests } from './etudes_enfants_tests.mjs';
 import { signauxTests } from './signaux_tests.mjs';
+import { reactionsTests } from './reactions_tests.mjs';
+import { lot0Tests } from './lot0_tests.mjs';
+import { lot1Tests } from './lot1_tests.mjs';
+import { lot2Tests } from './lot2_tests.mjs';
+import { fleurConversationsTests } from './fleur_conversations_tests.mjs';
+import { codeConnexionTests } from './code_connexion_tests.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const db = new PGlite();
@@ -34,10 +40,14 @@ async function emulateSupabase(target) {
     create table auth.users (id uuid primary key, phone text, phone_confirmed_at timestamptz);
     create function auth.uid() returns uuid language sql stable as $$
       select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+    create function auth.jwt() returns jsonb language sql stable as $$
+      select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb $$;
     grant usage on schema auth to anon, authenticated;
+    create schema vault;
+    create table vault.decrypted_secrets (name text, decrypted_secret text);
     create schema storage;
-    create table storage.buckets (id text primary key, name text, public boolean);
-    create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text, name text);
+    create table storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
+    create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text, name text, owner_id text, created_at timestamptz default now(), metadata jsonb);
     alter table storage.objects enable row level security;
     create function storage.foldername(name text) returns text[] language sql immutable as $$
       select (string_to_array(name, '/'))[1:array_length(string_to_array(name, '/'), 1) - 1] $$;
@@ -819,6 +829,12 @@ await filtresAvancesTests({ db, test, assert, as, rpc, fails, U, seedMember });
 await securiteTests({ db, test, assert, as, rpc, fails, seedMember });
 await etudesEnfantsTests({ db, test, assert, as, rpc, fails, U, seedMember });
 await signauxTests({ db, test, assert, as, rpc, fails, U, seedMember });
+await reactionsTests({ db, test, assert, as, rpc, fails, seedMember });
+await lot0Tests({ db, test, assert, as, rpc, fails, U, seedMember });
+await lot1Tests({ db, test, assert, as, rpc, fails, U, seedMember });
+await lot2Tests({ db, test, assert, as, rpc, fails, U, seedMember });
+await fleurConversationsTests({ db, test, assert, as, rpc, fails, U, seedMember });
+await codeConnexionTests({ db, test, assert, as, rpc, fails, seedMember });
 
 console.log('\nFichier d’installation Supabase');
 await test('le fichier d’installation est à jour (régénéré à partir des migrations et du seed)', async () => {

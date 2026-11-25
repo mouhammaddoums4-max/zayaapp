@@ -7,6 +7,7 @@ import '../../app.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
+import '../auth/pin_screens.dart';
 import 'onboarding_flow.dart';
 
 /// Normalise un numéro guinéen saisi localement (« 622 11 22 33 ») en format international.
@@ -174,31 +175,136 @@ class _PhoneOtpFormState extends State<PhoneOtpForm> {
   }
 }
 
-/// Connexion d'un membre existant.
-class PhoneLoginScreen extends StatelessWidget {
+/// Connexion d'un membre existant (0071) : le numéro d'abord ; le serveur dit s'il existe.
+///   • compte avec code → saisie du code à 4 chiffres (aucun SMS) ;
+///   • numéro inconnu → proposition de créer son profil ;
+///   • compte sans code (ou serveur sans la migration 0071) → vérification par SMS comme avant, puis choix du code.
+class PhoneLoginScreen extends StatefulWidget {
   const PhoneLoginScreen({super.key});
 
   @override
+  State<PhoneLoginScreen> createState() => _PhoneLoginScreenState();
+}
+
+class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
+  final _phone = TextEditingController();
+  bool _busy = false;
+  String? _error;
+
+  /// Numéro pour lequel la vérification par SMS est proposée (compte sans code).
+  String? _otpPhone;
+
+  @override
+  void dispose() {
+    _phone.dispose();
+    super.dispose();
+  }
+
+  Future<void> _continue() async {
+    if (_busy) return;
+    if (!isValidGuineaPhone(_phone.text)) {
+      setState(() => _error = 'Numéro invalide : 9 chiffres, par exemple 622 11 22 33.');
+      return;
+    }
+    final phone = normalizeGuineaPhone(_phone.text);
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final nav = Navigator.of(context);
+    String status;
+    try {
+      status = await Session.read(context).repo.phoneStatus(phone);
+    } catch (_) {
+      // Serveur sans la connexion par code : la vérification par SMS reste possible.
+      status = 'no_pin';
+    }
+    if (!mounted) return;
+    setState(() => _busy = false);
+    switch (status) {
+      case 'pin':
+        await nav.push(MaterialPageRoute<void>(builder: (_) => PinLoginScreen(phone: phone)));
+      case 'new':
+        await _proposeSignup();
+      case 'rate_limited':
+        setState(() => _error = 'Trop de tentatives depuis ce réseau. Réessayez dans un moment.');
+      default:
+        setState(() => _otpPhone = phone);
+    }
+  }
+
+  Future<void> _proposeSignup() async {
+    final create = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: const Text('Aucun compte avec ce numéro'),
+        content: const Text('Créez votre profil : votre numéro sera vérifié une seule fois par SMS, '
+            'puis vous choisirez votre code de connexion.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(d).pop(false), child: const Text('Annuler')),
+          TextButton(onPressed: () => Navigator.of(d).pop(true), child: const Text('Créer mon profil')),
+        ],
+      ),
+    );
+    if (create == true && mounted) {
+      await Navigator.of(context).pushReplacement(MaterialPageRoute<void>(builder: (_) => const OnboardingFlow()));
+    }
+  }
+
+  Future<void> _afterOtp() async {
+    final session = Session.read(context);
+    final nav = Navigator.of(context);
+    await session.refresh();
+    if (session.me != null) {
+      // Le choix du code est demandé à l'arrivée dans l'application (compte sans code).
+      nav.popUntil((r) => r.isFirst);
+    } else {
+      // Numéro vérifié mais aucun profil : poursuivre l'inscription.
+      nav.pushReplacement(MaterialPageRoute<void>(builder: (_) => const OnboardingFlow()));
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final otpPhone = _otpPhone;
     return Scaffold(
       appBar: AppBar(title: const Text('Connexion')),
       body: SafeArea(
         child: ListView(padding: const EdgeInsets.all(24), children: [
           Text('Bon retour sur ZAYA', style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 8),
-          Text('Entrez votre numéro pour recevoir un code de connexion.', style: Theme.of(context).textTheme.bodyLarge),
-          const SizedBox(height: 24),
-          PhoneOtpForm(onVerified: (_) async {
-            final session = Session.read(context);
-            final nav = Navigator.of(context);
-            await session.refresh();
-            if (session.me != null) {
-              nav.popUntil((r) => r.isFirst);
-            } else {
-              // Numéro vérifié mais aucun profil : poursuivre l'inscription.
-              nav.pushReplacement(MaterialPageRoute<void>(builder: (_) => const OnboardingFlow()));
-            }
-          }),
+          if (otpPhone == null) ...[
+            Text('Entrez votre numéro de téléphone.', style: Theme.of(context).textTheme.bodyLarge),
+            const SizedBox(height: 24),
+            TextField(
+              controller: _phone,
+              keyboardType: TextInputType.phone,
+              autofillHints: const [AutofillHints.telephoneNumber],
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9 +]'))],
+              onSubmitted: (_) => _continue(),
+              decoration: InputDecoration(
+                prefixText: '+224 ',
+                hintText: '622 11 22 33',
+                errorText: _error,
+              ),
+            ),
+            const SizedBox(height: 20),
+            FilledButton(
+              onPressed: _busy ? null : _continue,
+              child: _busy
+                  ? const SizedBox(
+                      width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
+                  : const Text('Continuer'),
+            ),
+          ] else ...[
+            const InfoBanner(
+              icon: Icons.sms_outlined,
+              text: 'Ce compte n’a pas encore de code de connexion. Confirmez votre numéro par SMS, '
+                  'puis vous choisirez votre code : les prochaines fois, plus besoin de SMS.',
+            ),
+            const SizedBox(height: 20),
+            PhoneOtpForm(initialPhone: otpPhone, onVerified: (_) => _afterOtp()),
+          ],
         ]),
       ),
     );

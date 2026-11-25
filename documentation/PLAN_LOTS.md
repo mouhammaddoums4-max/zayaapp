@@ -5,7 +5,7 @@ l'est pas. Lots et priorités : cahier des charges V6.4 §22.18 (lots A à D), �
 l'ouverture publique). Décisions en attente : [DECISIONS_A_CONFIRMER.md](DECISIONS_A_CONFIRMER.md).
 Écrans : [CARTE_ECRANS.md](design/CARTE_ECRANS.md).
 
-Mis à jour le 17/11/2026.
+Mis à jour le 22/11/2026.
 
 **Statuts.** *Vérifié* : un test automatique a été exécuté et a réussi (cité dans la colonne Preuve).
 *Non vérifié* : réalisé, mais jamais essayé dans la condition indiquée (vrai serveur, vrai téléphone…).
@@ -65,8 +65,8 @@ Critères d'acceptation : cahier des charges §18 (tests fonctionnels), §36 et 
 
 | Lot | Contenu | Quand | État |
 |---|---|---|---|
-| B | Visites de profil, Boost, Premium, quotas, notifications pertinentes, console de gestion | Après un pilote fonctionnel | Écrans Boost, Premium et Notifications présents en mode démo ; rien côté serveur (ni Boost, ni visites, ni notifications push) |
-| C | Messagerie enrichie, photos modérées, vocaux, appels audio et vidéo, rendez-vous, Zaya AI ; Communauté phase 2 | Déploiement progressif | À faire |
+| B | Visites de profil, Boost, Premium, quotas, notifications pertinentes, console de gestion | Après un pilote fonctionnel | Fonction/webhook Supabase déployés, secret FCM configuré et un jeton d'appareil précédemment présent. Le client v3 ajoute les journaux d'erreurs, le compteur non lu et le regroupement des alertes ; migration 0065 et redéploiement à faire. Le projet distant s'appelle `zaya-production` et l'auto-review a bloqué la modification distante, bien qu'il soit désigné comme préproduction dans B5. Essai réel sur téléphone à faire ; iOS/APNs reste à configurer. Historique migrations absent ; `db push` interdit jusqu'à réconciliation. |
+| C | Messagerie enrichie, photos modérées, vocaux, appels audio et vidéo, rendez-vous, Zaya AI ; Communauté phase 2 | Déploiement progressif | En cours : brouillons locaux, recherche, vocaux, animations/GIFs ZAYA prédéfinis, emojis natifs du clavier, suggestions locales selon le dernier message, jeu de questions et statuts Envoyé/Reçu/Lu/Non lu. Les suggestions ne transmettent pas la conversation à un service externe et ne s'envoient jamais seules. Appels audio/vidéo en haut mais inactifs à la demande. Photo dans le champ de saisie ; envoi bloqué jusqu'à la configuration de la modération. Pièces jointes retirées de la barre. Réactions (6 emojis), réponse à un message citée, copie et repère « Messages non lus » livrés (migration 0066, serveur vérifié ; repère non vérifié sur téléphone). Transfert, archivage et statut « en ligne » restent à traiter (vie privée à confirmer). |
 | D | Zaya Shop, packs d'emojis et cadeaux, langues nationales, extension multi-pays | Selon l'adoption et le budget | À faire |
 
 Également prévus après le pilote (§37) : moteur de compatibilité expliqué (§31 ; seuls les points communs, jamais
@@ -87,3 +87,31 @@ statistiques, rendez-vous sécurisés.
    habitudes de vie.
 5. Traduire en anglais tous les écrans existants (environ 800 textes), puis activer l'anglais.
 6. Console de modération minimale (A12), puis protection anti-capture (A14) et intégration continue (A1).
+
+## 5. ZAYA 2.0 et demandes du 25/11/2026 (session zaya-app-0d)
+
+État au 25/11/2026. « Vérifié » = tests exécutés et réussis dans l'arbre de travail ; **rien de cette section n'est
+encore appliqué sur Supabase en ligne** (accès refusé : jeton 401, `npx supabase login` à refaire par le
+propriétaire). Tant que les migrations ne sont pas en ligne, l'application masque ces blocs ou affiche « arrive
+bientôt » au lieu d'une erreur.
+
+| Sujet | Migration | État | Tests |
+|---|---|---|---|
+| Réactions (6 emojis), réponse citée, copie, « Messages non lus », clavier qui ne se ferme plus, « + » et photo masqués pendant la saisie, bulles grises | 0066 | Vérifié (serveur + démo) ; non vérifié sur téléphone | 4 SQL, chat_reactions_test |
+| Lot 0 : interrupteurs par fonction, registre de crédits (relié au portefeuille), anti-arnaque (avertissement aux deux), limite de messages sans réponse, score de confiance, doublons de photos | 0067 | Vérifié côté serveur. Empreintes de photos : fonction Edge à brancher | 8 SQL, zaya2_test |
+| Lot 1 : Match du jour, Pulse (accord explicite), Invitation (anti-fraude, récompense 0 tant que non fixée) | 0068 | Vérifié (serveur + démo) | 9 SQL, zaya2_test |
+| Lot 2 : Questions (visibilité par réponse), Surprise quotidienne, Défis | 0069 | Vérifié (serveur + démo) | 6 SQL, zaya2_test |
+| Fleur Premium réellement envoyée, suppression de conversations (pour moi, sélection multiple), point vert « en ligne » | 0070 | Vérifié (serveur + démo) | 6 SQL, messagerie_fleur_test |
+| Connexion par numéro + code à 4 chiffres, blocage, code oublié par SMS (5 min), changement du code | 0071 + fonction Edge `pin-login` | Serveur vérifié ; fonction Edge non testée (Deno absent) ; parcours vérifiés en démo | 9 SQL, connexion_code_test |
+| Mon profil : mes photos (principale, ajout, suppression), aperçu public | — (RLS existante) | Vérifié en démo | my_profile_test |
+| Fond blanc partout, accueil et démarrage allégés, jeux retirés | — | Vérifié (analyse, tests) ; aperçus à refaire | — |
+
+Mise en ligne (à faire par une personne qui a l'accès, dans cet ordre) :
+1. Appliquer 0066 à 0071 (fichier `supabase/deploy/zaya_installation.sql` régénéré, ou migration par migration).
+2. Coffre Vault : `select vault.create_secret('<64 caractères aléatoires>', 'zaya_pin_pepper');`
+3. Fonction Edge : `supabase secrets set PIN_LOGIN_SECRET=<64 caractères aléatoires>` puis
+   `supabase functions deploy pin-login --no-verify-jwt`.
+4. Réglage Auth : durée du code SMS 300 s (`sms_otp_exp`), pour le « code oublié » en 5 minutes.
+5. Préproduction seulement : `supabase/preproduction/codes_par_defaut.sql` (code 6236 pour les comptes existants,
+   changement imposé) et `node supabase/preproduction/creer_compte_code.mjs 627843030 6236`.
+6. Fixer les montants de récompense (D8, D10, D11) dans `app_config` quand le propriétaire les aura décidés.

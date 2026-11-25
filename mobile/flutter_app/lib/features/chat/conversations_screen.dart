@@ -28,12 +28,13 @@ class ConversationsScreen extends StatefulWidget {
   State<ConversationsScreen> createState() => _ConversationsScreenState();
 }
 
-/// Matchs, places de conversation (« 1/5 ») et demandes de re-match reçues (migration 0040).
+/// Matchs, places de conversation (« 1/5 »), demandes de re-match reçues (migration 0040) et matchs en ligne (0070).
 class _Donnees {
-  const _Donnees(this.matches, this.places, this.demandes);
+  const _Donnees(this.matches, this.places, this.demandes, this.online);
   final List<MatchSummary> matches;
   final ({int active, int limit})? places;
   final List<RematchRequest> demandes;
+  final Set<String> online;
 }
 
 class _ConversationsScreenState extends State<ConversationsScreen> {
@@ -41,18 +42,68 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   final TextEditingController _search = TextEditingController();
   String _query = '';
 
+  /// Conversations sélectionnées (appui long) pour les supprimer de mon côté.
+  final Set<String> _selected = <String>{};
+  bool get _selecting => _selected.isNotEmpty;
+
   Future<_Donnees> _charger() async {
-    final repo = Session.read(context).repo;
+    final session = Session.read(context);
+    final repo = session.repo;
+    // Présence et suppression multiple (0070) : seulement si le serveur les propose.
+    final ready0070 = session.publicConfigCache.containsKey('flowers_enabled');
     final matches = await repo.matches();
     ({int active, int limit})? places;
     var demandes = const <RematchRequest>[];
+    var online = const <String>{};
     try {
       places = await repo.conversationSlots();
       demandes = await repo.rematchRequests();
     } catch (_) {
       // Serveur sans la migration 0040 : la liste des conversations reste utilisable.
     }
-    return _Donnees(matches, places, demandes);
+    try {
+      if (ready0070) online = await repo.onlineMatches();
+    } catch (_) {
+      // Présence indisponible : simplement pas de point vert.
+    }
+    // Une conversation sélectionnée qui a disparu (supprimée, match terminé) n'est plus sélectionnée.
+    final ids = {for (final m in matches) m.matchId};
+    _selected.removeWhere((id) => !ids.contains(id));
+    return _Donnees(matches, places, demandes, online);
+  }
+
+  void _toggle(String matchId) => setState(() {
+        if (!_selected.remove(matchId)) _selected.add(matchId);
+      });
+
+  Future<void> _deleteSelected() async {
+    final n = _selected.length;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: Text(n == 1 ? 'Supprimer cette conversation ?' : 'Supprimer ces $n conversations ?'),
+        content: const Text('Les messages disparaissent de votre côté uniquement : l’autre personne garde '
+            'l’historique et le match reste actif. Si elle vous écrit à nouveau, la conversation réapparaît.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(d).pop(false), child: const Text('Annuler')),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: ZColors.danger),
+            onPressed: () => Navigator.of(d).pop(true),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      final done = await Session.read(context).repo.hideConversations(_selected.toList());
+      if (!mounted) return;
+      setState(_selected.clear);
+      showZayaSnack(context, done <= 1 ? 'Conversation supprimée' : '$done conversations supprimées');
+      _reload();
+    } catch (e) {
+      if (mounted) showZayaSnack(context, friendlyError(e), error: true);
+    }
   }
 
   @override
@@ -131,6 +182,17 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   @override
   Widget build(BuildContext context) {
     final likes = Session.of(context).likesBadge;
+    // Retour arrière pendant une sélection : annule la sélection au lieu de quitter l'onglet.
+    return PopScope(
+      canPop: !_selecting,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _selecting) setState(_selected.clear);
+      },
+      child: _scaffold(context, likes),
+    );
+  }
+
+  Widget _scaffold(BuildContext context, int likes) {
     return Scaffold(
       backgroundColor: ZColors.bg,
       body: SafeArea(
@@ -138,12 +200,29 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
         child: FutureBuilder<_Donnees>(
           future: _future,
           builder: (context, snapshot) {
-            final header = _Header(
-              onSafety: () => Navigator.of(context).push(zRoute<void>(const SafetyTipsScreen())),
-              onEnded: () async {
-                await Navigator.of(context).push(zRoute<void>(const EndedMatchesScreen()));
-                if (mounted) _reload();
-              },
+            final talkIds = [
+              for (final m in snapshot.data?.matches ?? const <MatchSummary>[])
+                if (m.lastAt != null) m.matchId,
+            ];
+            final header = AnimatedSwitcher(
+              duration: ZMotion.of(context, ZMotion.fast),
+              child: _selecting
+                  ? _SelectionBar(
+                      key: const ValueKey<String>('selection'),
+                      count: _selected.length,
+                      allSelected: talkIds.isNotEmpty && talkIds.every(_selected.contains),
+                      onClose: () => setState(_selected.clear),
+                      onSelectAll: () => setState(() => _selected.addAll(talkIds)),
+                      onDelete: _deleteSelected,
+                    )
+                  : _Header(
+                      key: const ValueKey<String>('header'),
+                      onSafety: () => Navigator.of(context).push(zRoute<void>(const SafetyTipsScreen())),
+                      onEnded: () async {
+                        await Navigator.of(context).push(zRoute<void>(const EndedMatchesScreen()));
+                        if (mounted) _reload();
+                      },
+                    ),
             );
             if (snapshot.connectionState != ConnectionState.done) {
               return Column(children: [header, const Expanded(child: _ListSkeleton())]);
@@ -188,7 +267,13 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                   ),
                 ),
                 SliverToBoxAdapter(
-                  child: _NewMatchesRow(likes: likes, fresh: fresh, onLikes: _openLikes, onOpen: _open),
+                  child: _NewMatchesRow(
+                    likes: likes,
+                    fresh: fresh,
+                    online: donnees.online,
+                    onLikes: _openLikes,
+                    onOpen: _open,
+                  ),
                 ),
                 if (!searching && donnees.demandes.isNotEmpty)
                   SliverToBoxAdapter(
@@ -223,7 +308,13 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                             preview: talks[i].lastMessage == null ? 'Message retiré' : _preview(talks[i].lastMessage!),
                             retired: talks[i].lastMessage == null,
                             when: _when(talks[i].lastAt),
-                            onTap: () => _open(talks[i]),
+                            online: donnees.online.contains(talks[i].userId),
+                            selected: _selected.contains(talks[i].matchId),
+                            // Pendant une sélection, un appui coche ou décoche ; sinon il ouvre la conversation.
+                            onTap: () => _selecting ? _toggle(talks[i].matchId) : _open(talks[i]),
+                            onLongPress: Session.read(context).publicConfigCache.containsKey('flowers_enabled')
+                                ? () => _toggle(talks[i].matchId)
+                                : null,
                           ),
                         ),
                       ],
@@ -257,7 +348,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
 
 /// Grand titre de l'onglet, avec les conseils de sécurité et les matchs terminés.
 class _Header extends StatelessWidget {
-  const _Header({required this.onSafety, required this.onEnded});
+  const _Header({super.key, required this.onSafety, required this.onEnded});
   final VoidCallback onSafety;
   final VoidCallback onEnded;
 
@@ -352,9 +443,18 @@ const double _tileHeight = 126;
 /// Nouveaux matchs (sans message encore) en grandes vignettes, précédés des likes reçus ; des emplacements vides
 /// complètent la rangée pour montrer où arriveront les prochains matchs.
 class _NewMatchesRow extends StatelessWidget {
-  const _NewMatchesRow({required this.likes, required this.fresh, required this.onLikes, required this.onOpen});
+  const _NewMatchesRow({
+    required this.likes,
+    required this.fresh,
+    required this.onLikes,
+    required this.onOpen,
+    this.online = const <String>{},
+  });
   final int likes;
   final List<MatchSummary> fresh;
+
+  /// Personnes en ligne (point vert), selon leur réglage et le mien (0070).
+  final Set<String> online;
   final VoidCallback onLikes;
   final ValueChanged<MatchSummary> onOpen;
 
@@ -362,7 +462,7 @@ class _NewMatchesRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final tiles = <Widget>[
       if (likes > 0) _LikesTile(count: likes, onTap: onLikes),
-      for (final m in fresh) _NewMatchTile(match: m, onTap: () => onOpen(m)),
+      for (final m in fresh) _NewMatchTile(match: m, online: online.contains(m.userId), onTap: () => onOpen(m)),
     ];
     final placeholders = math.max(0, 4 - tiles.length);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -409,14 +509,15 @@ class _PopIn extends StatelessWidget {
 }
 
 class _NewMatchTile extends StatelessWidget {
-  const _NewMatchTile({required this.match, required this.onTap});
+  const _NewMatchTile({required this.match, required this.onTap, this.online = false});
   final MatchSummary match;
   final VoidCallback onTap;
+  final bool online;
 
   @override
   Widget build(BuildContext context) => Semantics(
         button: true,
-        label: 'Nouveau match : ${match.displayName}',
+        label: 'Nouveau match : ${match.displayName}${online ? ', en ligne' : ''}',
         excludeSemantics: true,
         child: PressScale(
           onTap: onTap,
@@ -443,6 +544,7 @@ class _NewMatchTile extends StatelessWidget {
                           child: Padding(padding: EdgeInsets.all(1.5), child: VerifiedBadge(size: 18)),
                         ),
                       ),
+                    if (online) const Positioned(left: 7, top: 7, child: OnlineDot(size: 14)),
                   ]),
                 ),
               ),
@@ -719,106 +821,174 @@ class _ConversationTile extends StatelessWidget {
     required this.preview,
     required this.when,
     required this.onTap,
+    this.onLongPress,
     this.retired = false,
+    this.online = false,
+    this.selected = false,
   });
   final MatchSummary match;
   final String preview;
   final String when;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
   final bool retired;
+  final bool online;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
     final unread = match.unread > 0;
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Row(children: [
-          // Avatar : anneau au dégradé de marque et pastille du nombre de messages quand il y a du nouveau.
-          SizedBox(
-            width: 68,
-            height: 68,
-            child: Stack(clipBehavior: Clip.none, children: [
-              Container(
-                padding: const EdgeInsets.all(2.5),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: unread ? ZColors.brandGradient : null,
-                ),
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                  child: RemoteAvatar(name: match.displayName, photoPath: match.photoPath, size: 59),
-                ),
-              ),
-              if (unread)
-                Positioned(
-                  right: -2,
-                  top: -2,
-                  child: Container(
-                    constraints: const BoxConstraints(minWidth: 22),
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+    return Semantics(
+      selected: selected,
+      child: AnimatedContainer(
+        duration: ZMotion.of(context, ZMotion.fast),
+        color: selected ? ZColors.primarySoft.withValues(alpha: 0.6) : Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          onLongPress: onLongPress,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: Row(children: [
+              // Avatar : anneau au dégradé de marque et pastille du nombre de messages quand il y a du nouveau.
+              SizedBox(
+                width: 68,
+                height: 68,
+                child: Stack(clipBehavior: Clip.none, children: [
+                  Container(
+                    padding: const EdgeInsets.all(2.5),
                     decoration: BoxDecoration(
-                      color: ZColors.primary,
-                      borderRadius: BorderRadius.circular(99),
-                      border: Border.all(color: Colors.white, width: 2),
+                      shape: BoxShape.circle,
+                      gradient: unread ? ZColors.brandGradient : null,
                     ),
-                    child: Text(match.unread > 9 ? '9+' : '${match.unread}',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w700)),
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                      child: RemoteAvatar(name: match.displayName, photoPath: match.photoPath, size: 59),
+                    ),
                   ),
-                ),
-            ]),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Flexible(
-                  child: Text(match.displayName,
+                  if (unread)
+                    Positioned(
+                      right: -2,
+                      top: -2,
+                      child: Container(
+                        constraints: const BoxConstraints(minWidth: 22),
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: ZColors.primary,
+                          borderRadius: BorderRadius.circular(99),
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: Text(match.unread > 9 ? '9+' : '${match.unread}',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                  // Point vert : la personne est en ligne (selon son réglage et le mien).
+                  if (online && !selected) const Positioned(right: 2, bottom: 2, child: OnlineDot(size: 16)),
+                  // Coche de sélection, à la place du point vert.
+                  if (selected)
+                    const Positioned(
+                      right: -2,
+                      bottom: -2,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                        child: Icon(Icons.check_circle_rounded, color: ZColors.primary, size: 26),
+                      ),
+                    ),
+                ]),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Flexible(
+                      child: Text(match.displayName,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w700, color: ZColors.ink)),
+                    ),
+                    if (match.isVerified) ...[const SizedBox(width: 5), const VerifiedBadge(size: 18)],
+                  ]),
+                  const SizedBox(height: 4),
+                  Text(preview,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w700, color: ZColors.ink)),
-                ),
-                if (match.isVerified) ...[const SizedBox(width: 5), const VerifiedBadge(size: 18)],
+                      style: GoogleFonts.inter(
+                          fontSize: 15,
+                          fontStyle: retired ? FontStyle.italic : FontStyle.normal,
+                          fontWeight: unread ? FontWeight.w600 : FontWeight.w400,
+                          color: unread ? ZColors.ink : ZColors.muted)),
+                ]),
+              ),
+              const SizedBox(width: 10),
+              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                Text(when,
+                    style: GoogleFonts.inter(
+                        fontSize: 12.5,
+                        fontWeight: unread ? FontWeight.w700 : FontWeight.w500,
+                        color: unread ? ZColors.primaryDark : ZColors.muted)),
+                const SizedBox(height: 6),
+                // Affiche explicitement qu'au moins un message entrant n'a pas encore été lu.
+                if (unread)
+                  Semantics(
+                    label: 'Message non lu',
+                    child: Container(
+                      width: 14,
+                      height: 14,
+                      margin: const EdgeInsets.only(top: 4, right: 2, bottom: 6),
+                      decoration: const BoxDecoration(color: ZColors.primary, shape: BoxShape.circle),
+                    ),
+                  )
+                else
+                  const SizedBox(height: 24),
               ]),
-              const SizedBox(height: 4),
-              Text(preview,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                      fontSize: 15,
-                      fontStyle: retired ? FontStyle.italic : FontStyle.normal,
-                      fontWeight: unread ? FontWeight.w600 : FontWeight.w400,
-                      color: unread ? ZColors.ink : ZColors.muted)),
             ]),
           ),
-          const SizedBox(width: 10),
-          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text(when,
-                style: GoogleFonts.inter(
-                    fontSize: 12.5,
-                    fontWeight: unread ? FontWeight.w700 : FontWeight.w500,
-                    color: unread ? ZColors.primaryDark : ZColors.muted)),
-            const SizedBox(height: 6),
-            // Affiche explicitement qu'au moins un message entrant n'a pas encore été lu.
-            if (unread)
-              Semantics(
-                label: 'Message non lu',
-                child: Container(
-                  width: 14,
-                  height: 14,
-                  margin: const EdgeInsets.only(top: 4, right: 2, bottom: 6),
-                  decoration: const BoxDecoration(color: ZColors.primary, shape: BoxShape.circle),
-                ),
-              )
-            else
-              const SizedBox(height: 24),
-          ]),
-        ]),
+        ),
       ),
     );
   }
+}
+
+/// Barre affichée pendant la sélection de conversations : nombre choisi, tout sélectionner, supprimer.
+class _SelectionBar extends StatelessWidget {
+  const _SelectionBar({
+    super.key,
+    required this.count,
+    required this.allSelected,
+    required this.onClose,
+    required this.onSelectAll,
+    required this.onDelete,
+  });
+  final int count;
+  final bool allSelected;
+  final VoidCallback onClose;
+  final VoidCallback onSelectAll;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(8, 10, 8, 8),
+        child: Row(children: [
+          IconButton(
+            icon: const Icon(Icons.close_rounded, size: 26),
+            color: ZColors.ink,
+            tooltip: 'Annuler la sélection',
+            onPressed: onClose,
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(count == 1 ? '1 sélectionnée' : '$count sélectionnées',
+                style: GoogleFonts.sora(fontSize: 22, fontWeight: FontWeight.w700, color: ZColors.ink)),
+          ),
+          if (!allSelected) TextButton(onPressed: onSelectAll, child: const Text('Tout sélectionner')),
+          IconButton(
+            icon: const Icon(Icons.delete_outline_rounded, size: 27),
+            color: ZColors.danger,
+            tooltip: 'Supprimer pour moi',
+            onPressed: onDelete,
+          ),
+        ]),
+      );
 }
 
 class _ListSkeleton extends StatelessWidget {

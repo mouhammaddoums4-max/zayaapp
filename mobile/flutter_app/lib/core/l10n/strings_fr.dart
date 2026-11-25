@@ -278,7 +278,8 @@ class ZStringsFr extends ZStrings {
   @override
   String get lockForgot => 'Code oublié ?';
   @override
-  String get lockForgotBody => 'Pour protéger votre compte, le verrouillage sera désactivé et vous devrez vous reconnecter avec votre numéro de téléphone.';
+  String get lockForgotBody =>
+      'Pour protéger votre compte, le verrouillage sera désactivé et vous devrez vous reconnecter avec votre numéro de téléphone.';
   @override
   String get lockForgotConfirm => 'Me reconnecter';
   @override
@@ -531,6 +532,101 @@ class ZStringsFr extends ZStrings {
   String get endedChatBanner => 'Ce match est terminé : vous ne pouvez plus envoyer de message.';
   @override
   String get endedChatEmpty => 'Aucun message dans cette conversation.';
+  @override
+  String get chatPhotoAction => 'Envoyer une photo';
+  @override
+  String get chatFileAction => 'Joindre un fichier';
+  @override
+  String get chatPlusAction => 'Plus d’options';
+  @override
+  String get chatAnimatedStickerAction => 'GIF et emojis animés';
+  @override
+  String get chatAnimatedStickerHint => 'Touchez une animation pour l’envoyer';
+  @override
+  String chatAnimatedStickerName(String stickerId) => switch (stickerId) {
+        'heart_bounce' => 'Cœur qui bat',
+        'laugh_shake' => 'Rire',
+        'kiss_pulse' => 'Bisou',
+        'hug_squeeze' => 'Câlin',
+        'party_spin' => 'Fête',
+        'prayer_bounce' => 'Merci',
+        'rose_sway' => 'Rose',
+        'fire_flicker' => 'Feu',
+        _ => 'Animation',
+      };
+  @override
+  String get chatReplySuggestionsTitle => 'Suggestions de réponse';
+  @override
+  List<String> chatReplySuggestions(String incomingMessage) {
+    final text = incomingMessage.toLowerCase();
+    if (RegExp(r'\b(bonjour|bonsoir|salut|coucou)\b').hasMatch(text)) {
+      return const [
+        'Bonjour 😊 Comment se passe votre journée ?',
+        'Bonsoir 😊 Ravi(e) de faire votre connaissance.',
+        'Salut 🙂 Qu’aimez-vous faire pendant votre temps libre ?',
+      ];
+    }
+    if (RegExp(r'\b(comment ça va|comment ca va|ça va|ca va|comment allez-vous)\b').hasMatch(text)) {
+      return const [
+        'Je vais bien, merci 😊 Et vous ?',
+        'Ça va bien, merci. Comment se passe votre journée ?',
+        'Merci de demander 😊 Et votre journée ?',
+      ];
+    }
+    if (RegExp(r'\b(mariage|relation|engagement|sérieux|serieux|projet de vie)\b').hasMatch(text)) {
+      return const [
+        'Je souhaite construire une relation sincère et sérieuse.',
+        'Le respect et la confiance sont essentiels pour moi.',
+        'J’aimerais d’abord apprendre à vous connaître.',
+      ];
+    }
+    if (RegExp(r'\b(famille|parents|enfants)\b').hasMatch(text)) {
+      return const [
+        'La famille est importante pour moi. Et vous ?',
+        'J’aimerais en savoir plus sur votre vision de la famille.',
+        'Je pense qu’il faut en parler avec sincérité.',
+      ];
+    }
+    if (RegExp(r'\b(travail|études|etudes|métier|metier|profession)\b').hasMatch(text)) {
+      return const [
+        'C’est intéressant 😊 Depuis combien de temps ?',
+        'Qu’est-ce qui vous plaît le plus dans votre activité ?',
+        'Vous aimez ce que vous faites ?',
+      ];
+    }
+    if (RegExp(r'\b(merci|remercie)\b').hasMatch(text)) {
+      return const ['Avec plaisir 😊', 'Merci à vous pour cet échange !', 'Ça me fait plaisir 🙂'];
+    }
+    if (text.contains('?')) {
+      return const [
+        'C’est une bonne question 😊 Et vous, qu’en pensez-vous ?',
+        'Je préfère qu’on échange là-dessus tranquillement.',
+        'Pouvez-vous m’en dire un peu plus ?',
+      ];
+    }
+    return const [
+      'Merci pour votre message 😊',
+      'Je suis content(e) d’échanger avec vous.',
+      'Et vous, qu’en pensez-vous ?',
+    ];
+  }
+
+  @override
+  String get chatVoiceAction => 'Enregistrer une note vocale';
+  @override
+  String get chatAudioCallAction => 'Appel audio';
+  @override
+  String get chatVideoCallAction => 'Appel vidéo';
+  @override
+  String get chatMediaUnavailableTitle => 'Pièces jointes indisponibles';
+  @override
+  String get chatMediaUnavailableBody =>
+      'L’envoi de photos et de fichiers sera activé après la configuration de leur contrôle de sécurité et de leur '
+      'modération. Vous pouvez déjà envoyer des messages, des emojis et des notes vocales.';
+  @override
+  String get chatCallsInactiveTitle => 'Appels désactivés';
+  @override
+  String get chatCallsInactiveBody => 'Les appels audio et vidéo sont désactivés pour le moment.';
 
   // ── Documents légaux
   @override

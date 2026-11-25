@@ -1,4 +1,3 @@
-import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -9,113 +8,94 @@ import '../../core/widgets.dart';
 import 'onboarding_flow.dart';
 import 'phone_login_screen.dart';
 
-/// Écran d'accueil : présentation de ZAYA et de sa promesse.
+/// Écran d'accueil : fond blanc, la photo de marque, une phrase et deux boutons (demande du propriétaire :
+/// peu de texte au démarrage). Les engagements de ZAYA sont expliqués plus loin, dans l'inscription.
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final isDemo = Session.of(context).repo.isDemo;
-    // Plein écran : le dégradé passe sous les barres du téléphone, avec des icônes claires.
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: zSystemUiOnBrand,
-      child: _page(context, isDemo),
-    );
-  }
-
-  Widget _page(BuildContext context, bool isDemo) {
     return Scaffold(
-      body: DecoratedBox(
-        decoration: const BoxDecoration(gradient: ZColors.brandGradient),
-        child: SafeArea(
-          child: FillOrScroll(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
-            child: Column(children: [
-              SizedBox(
-                height: 28,
-                child: isDemo
-                    ? Align(
-                        alignment: Alignment.centerRight,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(99)),
-                          child: Text('Mode démo',
-                              style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
-                        ),
-                      )
-                    : null,
-              ),
-              const Spacer(),
-              const FadeSlideIn(child: ZayaLogo(size: 128)),
-              const SizedBox(height: 26),
-              FadeSlideIn(
-                index: 1,
-                child: Text('Des rencontres sérieuses,\npour construire à deux',
-                    textAlign: TextAlign.center,
-                    style:
-                        GoogleFonts.sora(fontSize: 26, fontWeight: FontWeight.w700, color: Colors.white, height: 1.25)),
-              ),
-              const SizedBox(height: 12),
-              FadeSlideIn(
-                index: 2,
-                child: Text(
-                  'ZAYA réunit des adultes qui souhaitent une relation sincère pouvant conduire au mariage, '
-                  'dans le respect de chacun.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(fontSize: 15, color: Colors.white.withValues(alpha: 0.95), height: 1.45),
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: FillOrScroll(
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
+          child: Column(children: [
+            SizedBox(
+              height: 28,
+              child: isDemo
+                  ? Align(
+                      alignment: Alignment.centerRight,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(color: ZColors.primarySoft, borderRadius: BorderRadius.circular(99)),
+                        child: Text('Mode démo',
+                            style: GoogleFonts.inter(
+                                fontSize: 12, fontWeight: FontWeight.w600, color: ZColors.primaryDark)),
+                      ),
+                    )
+                  : null,
+            ),
+            const SizedBox(height: 8),
+            // Photo de marque, dans un cadre arrondi : un peu plus de 40 % de la hauteur de l'écran.
+            SizedBox(
+              height: MediaQuery.sizeOf(context).height * 0.44,
+              child: FadeSlideIn(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: Image.asset(
+                    _photo,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    alignment: const Alignment(0.1, -0.35),
+                    gaplessPlayback: true,
+                    excludeFromSemantics: true,
+                    frameBuilder: (context, child, frame, synchrone) => synchrone
+                        ? child
+                        : AnimatedOpacity(
+                            opacity: frame == null ? 0 : 1,
+                            duration: ZMotion.of(context, ZMotion.medium),
+                            child: child,
+                          ),
+                  ),
                 ),
               ),
-              const Spacer(),
-              const FadeSlideIn(
-                index: 3,
-                child: Column(children: [
-                  _Promise(icon: Icons.verified_user_outlined, text: 'Profils vérifiés avant publication'),
-                  _Promise(icon: Icons.favorite_border, text: 'Aucun match sans intérêt réciproque'),
-                  _Promise(icon: Icons.lock_outline, text: 'Votre numéro reste toujours privé'),
-                ]),
-              ),
-              const SizedBox(height: 22),
-              FadeSlideIn(
-                index: 4,
-                child: Column(children: [
-                  FilledButton(
-                    style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: ZColors.primaryDark),
-                    onPressed: () => Navigator.of(context).push(zRoute<void>(const OnboardingFlow())),
-                    child: const Text('Créer mon profil'),
-                  ),
-                  const SizedBox(height: 6),
-                  TextButton(
-                    style: TextButton.styleFrom(foregroundColor: Colors.white, minimumSize: const Size.fromHeight(48)),
-                    onPressed: () => Navigator.of(context).push(zRoute<void>(const PhoneLoginScreen())),
-                    child: const Text('J’ai déjà un compte'),
-                  ),
-                  Text('Réservé aux personnes de 18 ans et plus.',
-                      style: GoogleFonts.inter(fontSize: 12, color: Colors.white.withValues(alpha: 0.9))),
-                ]),
-              ),
-            ]),
-          ),
+            ),
+            const SizedBox(height: 22),
+            const FadeSlideIn(index: 1, child: ZayaLogo(size: 52)),
+            const SizedBox(height: 14),
+            FadeSlideIn(
+              index: 2,
+              child: Text('Des rencontres sérieuses,\npour construire à deux',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.sora(fontSize: 22, fontWeight: FontWeight.w700, color: ZColors.ink, height: 1.25)),
+            ),
+            const Spacer(),
+            const SizedBox(height: 20),
+            FadeSlideIn(
+              index: 3,
+              child: Column(children: [
+                FilledButton(
+                  onPressed: () => Navigator.of(context).push(zRoute<void>(const OnboardingFlow())),
+                  child: const Text('Créer mon profil'),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton(
+                  onPressed: () => Navigator.of(context).push(zRoute<void>(const PhoneLoginScreen())),
+                  child: const Text('J’ai déjà un compte'),
+                ),
+                const SizedBox(height: 10),
+                Text('Réservé aux personnes de 18 ans et plus.',
+                    style: GoogleFonts.inter(fontSize: 12, color: ZColors.muted)),
+              ]),
+            ),
+          ]),
         ),
       ),
     );
   }
 }
 
-class _Promise extends StatelessWidget {
-  const _Promise({required this.icon, required this.text});
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 5),
-        child: Row(children: [
-          Icon(icon, color: Colors.white, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(text, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white)),
-          ),
-        ]),
-      );
-}
+/// Photo de l'écran d'accueil (assets/brand/demarrage.webp, 1024 × 1536, allégée de 3,3 Mo à 520 Ko).
+const _photo = 'assets/brand/demarrage.webp';

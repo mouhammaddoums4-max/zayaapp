@@ -223,6 +223,47 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
     if (result != null) await applyLikeResult(context, profile, result);
   }
 
+  /// Fleur Premium (0070) : un « J'aime » mis en avant, envoyé par le serveur (Premium et limite du jour vérifiés
+  /// là-bas). Sans Premium, l'offre s'ouvre. Pas d'interstitiel après une fleur.
+  Future<void> _flower(DiscoveryProfile profile) async {
+    final session = Session.read(context);
+    if (!(session.me?.isPremium ?? false)) {
+      _openPremium();
+      return;
+    }
+    // Serveur sans la fleur (migration 0070 pas encore appliquée en ligne) ou fonction coupée : message clair.
+    if (session.publicConfigCache['flowers_enabled'] != true) {
+      showZayaSnack(context, 'La fleur arrive très bientôt : elle n’est pas encore activée sur le serveur.');
+      return;
+    }
+    if (_acting) return;
+    setState(() => _acting = true);
+    HapticFeedback.mediumImpact();
+    final flight = _animateTo(_exit(1));
+    LikeResult? result;
+    try {
+      result = await session.repo.sendFlower(profile.id);
+    } catch (e) {
+      if (mounted) showZayaSnack(context, friendlyError(e), error: true);
+    }
+    await flight;
+    if (!mounted) return;
+    final refused = result == null || result.status == LikeStatus.quotaReached;
+    if (refused) {
+      await _animateTo(Offset.zero);
+      if (!mounted) return;
+    } else {
+      _drag.value = Offset.zero;
+      _readingId.value = null;
+    }
+    setState(() => _acting = false);
+    if (result == null) return;
+    if (result.status == LikeStatus.liked || result.status == LikeStatus.alreadyLiked) {
+      showZayaSnack(context, 'Fleur envoyée à ${profile.displayName}');
+    }
+    await applyLikeResult(context, profile, result);
+  }
+
   void _onDragEnd(DiscoveryProfile profile, DragEndDetails details) {
     final width = MediaQuery.of(context).size.width;
     final dx = _drag.value.dx;
@@ -402,7 +443,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
             const SizedBox(width: 10),
             Expanded(
               child: Text(text,
-                  style: GoogleFonts.inter(fontSize: 12.5, height: 1.35, fontWeight: FontWeight.w600, color: Colors.white)),
+                  style: GoogleFonts.inter(
+                      fontSize: 12.5, height: 1.35, fontWeight: FontWeight.w600, color: Colors.white)),
             ),
             if (!pending) ...[
               const SizedBox(width: 8),
@@ -634,9 +676,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> with SingleTickerProv
                 const SizedBox(width: 16),
                 SwipeActionButton(
                   action: SwipeAction.flower,
-                  label: 'Fleur Premium — bientôt disponible',
+                  label: 'Envoyer une fleur (Premium)',
                   dim: swipe.abs(),
-                  onTap: _openPremium,
+                  onTap: () => _flower(top),
                 ),
               ]);
             },
@@ -1145,7 +1187,8 @@ class _RoundArrow extends StatelessWidget {
                 border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
                 boxShadow: const [BoxShadow(color: Color(0x40000000), blurRadius: 10, offset: Offset(0, 4))],
               ),
-              child: Icon(up ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, color: Colors.white, size: 24),
+              child:
+                  Icon(up ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, color: Colors.white, size: 24),
             ),
           ),
         ),

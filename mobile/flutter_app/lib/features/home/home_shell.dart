@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,6 +11,7 @@ import '../../core/theme.dart';
 import '../../core/zaya_icons.dart';
 import '../app/app_update.dart';
 import '../app/rating_prompt.dart';
+import '../auth/pin_screens.dart';
 import '../chat/conversations_screen.dart';
 import '../community/community_screen.dart';
 import '../discovery/discovery_screen.dart';
@@ -28,14 +31,14 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMixin {
+class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMixin, RouteAware {
   static const _exploreTab = 1;
   static const _messagesTab = 2;
   static const _communityTab = 3;
 
-  late final AnimationController _switch = AnimationController(vsync: this, duration: ZMotion.medium, value: 1);
+  late final AnimationController _switch =
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 180), value: 1);
   int _index = 0;
-  int _direction = 1;
   // Un onglet n'est construit (et ne charge ses données) qu'à sa première visite.
   final Set<int> _visited = <int>{0};
   int _messagesReload = 0;
@@ -50,10 +53,56 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       Session.read(context).refreshBadges();
-      _offerUpdate().whenComplete(() {
-        if (mounted) _offerMysteryBox();
+      // D'abord le code de connexion (compte sans code), puis la mise à jour et la boîte mystère.
+      _ensurePin().whenComplete(() {
+        if (!mounted) return;
+        _offerUpdate().whenComplete(() {
+          if (mounted) _offerMysteryBox();
+        });
       });
     });
+  }
+
+  /// Connexion par code (0071) : un compte sans code (inscription, ancien compte connecté par SMS) choisit son
+  /// code tout de suite ; l'écran ne peut pas être fermé sans l'avoir fait. Sans la migration côté serveur,
+  /// rien n'est demandé.
+  Future<void> _ensurePin() async {
+    try {
+      final status = await Session.read(context).repo.myPinStatus();
+      if (!mounted || status.hasPin) return;
+      // Un autre écran est au-dessus (fin d'inscription…) : le choix du code attend qu'il se referme (didPopNext).
+      if (!(ModalRoute.of(context)?.isCurrent ?? true)) {
+        _pinPending = true;
+        return;
+      }
+      await Navigator.of(context)
+          .push(MaterialPageRoute<void>(builder: (_) => const PinSetupScreen(mode: PinSetupMode.create, forced: true)));
+    } catch (_) {
+      // Serveur sans la connexion par code, ou réseau indisponible : redemandé au prochain lancement.
+    }
+  }
+
+  /// Choix du code en attente : un écran couvrait l'accueil au moment de la vérification.
+  bool _pinPending = false;
+  ModalRoute<Object?>? _route;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route != null && !identical(route, _route)) {
+      if (_route != null) zRouteObserver.unsubscribe(this);
+      _route = route;
+      zRouteObserver.subscribe(this, route);
+    }
+  }
+
+  /// L'écran du dessus vient de se refermer : la page d'accueil est de nouveau visible.
+  @override
+  void didPopNext() {
+    if (!_pinPending) return;
+    _pinPending = false;
+    unawaited(_ensurePin());
   }
 
   /// Boîte mystère de bienvenue (0033) : présentée automatiquement une seule fois, si le serveur la déclare disponible.
@@ -94,6 +143,7 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
 
   @override
   void dispose() {
+    zRouteObserver.unsubscribe(this);
     _switch.dispose();
     super.dispose();
   }
@@ -102,7 +152,6 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
     if (index == _index) return;
     HapticFeedback.selectionClick();
     setState(() {
-      _direction = index > _index ? 1 : -1;
       _index = index;
       _visited.add(index);
       // Messages se recharge à chaque visite pour rester à jour.
@@ -119,29 +168,26 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
     _rating.maybeAsk(session.ratingRules);
   }
 
-  Widget _lazy(int index, Widget child) => _visited.contains(index) ? child : const SizedBox.shrink();
+  // Un onglet caché ne fait plus tourner ses animations (squelettes, rebonds…) : moins de travail, batterie préservée.
+  Widget _lazy(int index, Widget child) =>
+      _visited.contains(index) ? TickerMode(enabled: index == _index, child: child) : const SizedBox.shrink();
 
   @override
   Widget build(BuildContext context) {
     final session = Session.of(context);
-    final slide = Tween<Offset>(begin: Offset(0.035 * _direction, 0), end: Offset.zero)
-        .chain(CurveTween(curve: ZMotion.emphasized));
     return Scaffold(
       body: FadeTransition(
         opacity: _switch.drive(CurveTween(curve: Curves.easeOut)),
-        child: SlideTransition(
-          position: _switch.drive(slide),
-          child: IndexedStack(index: _index, children: [
-            _lazy(0, const DiscoveryScreen()),
-            _lazy(_exploreTab, ExploreScreen(onDiscover: () => _select(0))),
-            _lazy(
-              _messagesTab,
-              ConversationsScreen(key: ValueKey<String>('messages-$_messagesReload'), onDiscover: () => _select(0)),
-            ),
-            _lazy(_communityTab, const CommunityScreen()),
-            _lazy(4, const ProfileScreen()),
-          ]),
-        ),
+        child: IndexedStack(index: _index, children: [
+          _lazy(0, const DiscoveryScreen()),
+          _lazy(_exploreTab, ExploreScreen(onDiscover: () => _select(0))),
+          _lazy(
+            _messagesTab,
+            ConversationsScreen(key: ValueKey<String>('messages-$_messagesReload'), onDiscover: () => _select(0)),
+          ),
+          _lazy(_communityTab, const CommunityScreen()),
+          _lazy(4, const ProfileScreen()),
+        ]),
       ),
       bottomNavigationBar: ZayaTabBar(
         index: _index,

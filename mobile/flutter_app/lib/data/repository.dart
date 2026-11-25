@@ -19,6 +19,26 @@ abstract class ZayaRepository {
   // ── Authentification par téléphone + OTP
   Future<void> requestOtp(String phone);
   Future<void> verifyOtp(String phone, String code);
+
+  // ── Connexion par numéro + code à 4 chiffres (0071) : plus de SMS à chaque connexion.
+  /// État d'un numéro avant connexion : 'pin' (code défini), 'no_pin' (compte sans code), 'new' (aucun compte),
+  /// 'disabled' ou 'rate_limited'.
+  Future<String> phoneStatus(String phone);
+
+  /// Connexion par numéro + code ; ouvre la session quand le code est bon.
+  Future<PinLoginResult> signInWithPin(String phone, String pin);
+
+  /// Mon code : défini ou non, et s'il doit être changé (code imposé).
+  Future<({bool hasPin, bool mustChange})> myPinStatus();
+
+  /// Premier code, après l'inscription vérifiée par SMS.
+  Future<void> setPin(String pin);
+
+  /// Changement : l'ancien code est exigé (PIN_WRONG sinon).
+  Future<void> changePin(String oldPin, String newPin);
+
+  /// Code oublié : permis seulement juste après une vérification par SMS (OTP_REQUIRED sinon).
+  Future<void> resetPin(String newPin);
   Future<void> signOut();
 
   // ── Mon profil
@@ -43,6 +63,15 @@ abstract class ZayaRepository {
   Future<void> updatePrivacy({bool? incognito, bool? discreetBrowsing, bool? showOnline});
   Future<void> addPhoto(Uint8List bytes);
 
+  /// Mes photos, dans l'ordre (la première est la principale), avec leur état de modération.
+  Future<List<MyPhoto>> myPhotos();
+
+  /// Supprime une de mes photos ; les suivantes remontent d'un rang (la RLS limite à mes propres photos).
+  Future<void> deleteMyPhoto(String photoId);
+
+  /// Fait de cette photo ma photo principale (premier rang).
+  Future<void> setMainPhoto(String photoId);
+
   /// Retourne `pending` si la demande est enregistrée, `not_enough_photos` sinon.
   Future<String> requestVerification(Uint8List selfie);
 
@@ -59,6 +88,7 @@ abstract class ZayaRepository {
 
   // ── Découverte, likes, matchs
   Future<List<DiscoveryProfile>> discoveryFeed();
+
   /// Fiche d'un profil. [recordView] à `false` pour un préchargement (carte suivante de Découvrir) : la visite
   /// n'est alors comptée qu'avec [recordProfileView], si le membre regarde vraiment la fiche.
   Future<ProfileDetail> profileDetail(String userId, {bool recordView = true});
@@ -91,7 +121,36 @@ abstract class ZayaRepository {
 
   // ── Messagerie
   Stream<List<ChatMessage>> watchMessages(String matchId);
-  Future<SendResult> sendMessage(String matchId, String body);
+  Future<SendResult> sendMessage(String matchId, String body, {String? replyToId});
+
+  /// ZAYA 2.0 (migrations 0067 à 0069) : Match du jour, Pulse, Invitation, Surprise, Défis, Questions.
+  /// Seules les fonctions serveur connues sont appelables ; chaque règle est vérifiée côté serveur.
+  Future<Object?> zayaRpc(String function, [Map<String, Object?> params = const <String, Object?>{}]);
+
+  /// Fleur Premium (0070) : un « J'aime » mis en avant. Refusée sans Premium (PREMIUM_REQUIRED) ou au-delà de la
+  /// limite du jour (FLOWER_LIMIT) ; un match se crée comme pour un « J'aime ».
+  Future<LikeResult> sendFlower(String userId);
+
+  /// Fleurs reçues : l'expéditeur s'est fait connaître en l'envoyant, elles sont visibles même sans Premium.
+  Future<List<DiscoveryProfile>> receivedFlowers();
+
+  /// Supprime des conversations pour moi seulement (0070) ; renvoie le nombre réellement supprimé.
+  Future<int> hideConversations(List<String> matchIds);
+
+  /// Matchs en ligne (0070), selon le réglage « en ligne » des deux personnes.
+  Future<Set<String>> onlineMatches();
+
+  /// Signale que je suis actif (présence « en ligne »), appelé régulièrement tant que l'application est ouverte.
+  Future<void> touchActive();
+
+  /// Réactions de la conversation (temps réel). Une seule par membre et par message.
+  Stream<List<MessageReaction>> watchReactions(String matchId);
+
+  /// Pose ou remplace ma réaction ; le même emoji une seconde fois la retire.
+  Future<void> reactToMessage(String messageId, String emoji);
+  Future<SendResult> sendVoiceMessage(String matchId, String localFilePath, int durationSeconds);
+  Future<SendResult> sendAnimatedSticker(String matchId, String stickerId);
+  Future<String?> voiceMessageUrl(String storagePath);
 
   /// Places de conversation : conversations actives et limite (« 3/5 », migration 0040).
   Future<({int active, int limit})> conversationSlots();
@@ -168,4 +227,9 @@ abstract class ZayaRepository {
   /// Le contenu signalé disparaît aussitôt pour la personne qui signale.
   Future<void> reportPost(String postId, {required String reason, String? details});
   Future<void> reportComment(String commentId, {required String reason, String? details});
+}
+
+/// Filtre rapide du fil, appliqué par le serveur en mode connecté.
+abstract interface class QuickDiscoveryRepository {
+  Future<List<DiscoveryProfile>> discoveryFeedFiltered(String? filter);
 }

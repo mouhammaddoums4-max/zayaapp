@@ -21,6 +21,7 @@ class PremiumScreen extends StatelessWidget {
     ('Exporter et supprimer ses données', true, true),
     ('Voir qui a aimé votre profil', false, true),
     ('Davantage de likes par jour', false, true),
+    ('Envoyer des fleurs pour vous faire remarquer', false, true),
     ('Filtres de recherche avancés', false, true),
     ('Statistiques détaillées du profil', false, true),
   ];

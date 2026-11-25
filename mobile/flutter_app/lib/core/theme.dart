@@ -38,14 +38,19 @@ class ZColors {
   static const gradientEnd = Color(0xFFEC0677);
   static const ink = Color(0xFF1B1020);
   static const muted = Color(0xFF6E6475);
-  static const line = Color(0xFFF0E9EE);
-  static const bg = Color(0xFFFFF8FA);
+  static const line = Color(0xFFEDEDF0);
+
+  /// Fond de toutes les pages : blanc pur (demande du propriétaire), sans teinte rose.
+  static const bg = Colors.white;
   static const surface = Colors.white;
   static const verified = Color(0xFF1D7FE0);
   static const premium = Color(0xFFC8962E);
   static const danger = Color(0xFFB42318);
   static const dangerSoft = Color(0xFFFEE4E2);
   static const success = Color(0xFF12805C);
+
+  /// Point « en ligne ».
+  static const online = Color(0xFF22C55E);
 
   static const brandGradient = LinearGradient(
     begin: Alignment.topLeft,
@@ -61,11 +66,19 @@ class ZSpace {
 ThemeData buildZayaTheme() {
   final base = ThemeData(
     useMaterial3: true,
+    // Surfaces neutres : Material 3 teinte sinon feuilles, dialogues et menus avec la couleur de marque (rosé).
+    // Le propriétaire veut un blanc franc partout, comme Facebook.
     colorScheme: ColorScheme.fromSeed(
       seedColor: ZColors.primary,
       primary: ZColors.primary,
       onPrimary: Colors.white,
       surface: ZColors.surface,
+      surfaceTint: Colors.transparent,
+      surfaceContainerLowest: Colors.white,
+      surfaceContainerLow: Colors.white,
+      surfaceContainer: const Color(0xFFF7F7F8),
+      surfaceContainerHigh: Colors.white,
+      surfaceContainerHighest: const Color(0xFFF0F0F2),
       error: ZColors.danger,
     ),
     scaffoldBackgroundColor: ZColors.bg,
@@ -173,5 +186,12 @@ ThemeData buildZayaTheme() {
       ),
     ),
     dividerTheme: const DividerThemeData(color: ZColors.line, space: 1),
+    bottomSheetTheme: const BottomSheetThemeData(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      modalBackgroundColor: Colors.white,
+    ),
+    dialogTheme: const DialogThemeData(backgroundColor: Colors.white, surfaceTintColor: Colors.transparent),
+    popupMenuTheme: const PopupMenuThemeData(color: Colors.white, surfaceTintColor: Colors.transparent),
   );
 }

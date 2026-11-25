@@ -13,7 +13,10 @@ import '../premium/premium_screens.dart';
 import '../safety/safety_sheets.dart';
 import '../settings/help_screen.dart';
 import '../settings/settings_screen.dart';
+import '../zaya2/invitation_screen.dart';
+import '../zaya2/zaya_hub_screen.dart';
 import 'edit_profile_screen.dart';
+import 'my_profile_screen.dart';
 import 'preferences_screen.dart';
 import 'privacy_center_screen.dart';
 import 'profile_menu_widgets.dart';
@@ -57,7 +60,8 @@ class ProfileScreen extends StatelessWidget {
         ],
       ),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 28), children: [
-        FadeSlideIn(child: _Header(me: me, onEdit: () => _push(context, const EditProfileScreen()))),
+        // « Mon profil » : mes photos (toutes, y compris en vérification), la complétude et l'aperçu public.
+        FadeSlideIn(child: _Header(me: me, onEdit: () => _push(context, const MyProfileScreen()))),
         const SizedBox(height: 12),
         ProfileShortcuts(items: [
           (
@@ -65,10 +69,20 @@ class ProfileScreen extends StatelessWidget {
             s.chipSubscription,
             () => _push(context, me.isPremium ? const SubscriptionsScreen() : const PremiumScreen()),
           ),
-          (Icons.person_add_alt, s.chipInvite, () => inviteToZaya(context)),
+          // Invitation avec code personnel (ZAYA 2.0) quand le serveur la propose ; sinon partage simple du lien.
+          (
+            Icons.person_add_alt,
+            s.chipInvite,
+            () => session.featureOn('invitation') ? _push(context, const InvitationScreen()) : inviteToZaya(context),
+          ),
           (Icons.health_and_safety_outlined, s.chipSafety, () => _push(context, const SafetyTipsScreen())),
           (Icons.help_outline, s.chipHelp, () => _push(context, const HelpScreen())),
         ]),
+        // ZAYA+ seulement quand le serveur propose ces fonctions (migrations 0067 à 0069 appliquées).
+        if (session.zaya2Ready) ...[
+          const SizedBox(height: 12),
+          const FadeSlideIn(index: 1, child: Zaya2EntryCard()),
+        ],
         const SizedBox(height: 14),
         if (deletion != null) ...[
           InfoBanner(
@@ -111,10 +125,6 @@ class ProfileScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        FadeSlideIn(
-          index: 3,
-          child: LikesLeftCard(premium: me.isPremium, onMore: () => _push(context, const PremiumScreen())),
-        ),
         // Emplacement « Sponsorisé » de la régie : invisible tant qu'aucune campagne n'est active.
         const SponsoredSlot(placement: 'profile', padding: EdgeInsets.only(top: 12)),
         const SizedBox(height: 18),

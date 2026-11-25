@@ -95,7 +95,23 @@ class EducationLevel {
   final String? labelEn;
 
   /// Libellé dans la langue de l'interface ; français si la traduction manque encore.
-  String label(String lang) => lang == 'en' && (labelEn ?? '').isNotEmpty ? labelEn! : labelFr;
+  String label(String lang) {
+    if (lang == 'en' && (labelEn ?? '').isNotEmpty) return labelEn!;
+    final corrupted = labelFr.contains('\uFFFD') || labelFr.contains('Ã') || labelFr.contains('?');
+    if (!corrupted) return labelFr;
+    return const <String, String>{
+          'none': 'Sans dipl\u00F4me',
+          'primary': 'Primaire (CEPE)',
+          'middle': 'Coll\u00E8ge (BEPC)',
+          'bac': 'Baccalaur\u00E9at',
+          'vocational': 'Formation professionnelle',
+          'bac2': 'Bac +2 (BTS, DUT)',
+          'licence': 'Licence (Bac +3)',
+          'master': 'Master (Bac +5)',
+          'doctorate': 'Doctorat',
+        }[key] ??
+        labelFr;
+  }
 }
 
 /// Brouillon d'inscription, sauvegardé localement pour reprendre après interruption.
@@ -625,28 +641,136 @@ class ChatMessage {
     required this.createdAt,
     this.edited = false,
     this.unsent = false,
+    this.kind = 'text',
+    this.mediaPath,
+    this.mediaDurationSeconds,
+    this.stickerId,
+    this.readAt,
+    this.deliveredAt,
+    this.replyToId,
+    this.scamCategory,
   });
+
+  /// Détection anti-arnaque faite par le serveur (demande d'argent, Mobile Money…) : avertit les deux personnes.
+  final String? scamCategory;
   final String id;
   final String senderId;
   final String body;
+
+  /// Message cité (réponse) ; la citation est relue dans la même conversation.
+  final String? replyToId;
   final DateTime createdAt;
   final bool edited;
   final bool unsent;
+  final String kind;
+  final String? mediaPath;
+  final int? mediaDurationSeconds;
+  final String? stickerId;
+  final DateTime? readAt;
+  final DateTime? deliveredAt;
+  bool get isVoice => kind == 'voice' && mediaPath != null;
+  bool get isAnimatedSticker => kind == 'sticker' && stickerId != null;
+}
+
+/// Résultat d'une connexion par numéro + code (0071). `status` : ok, wrong, locked, unknown, no_pin, disabled,
+/// rate_limited ou error.
+class PinLoginResult {
+  const PinLoginResult(this.status, {this.remaining, this.lockedUntil, this.mustChange = false});
+  final String status;
+
+  /// Essais restants avant blocage (code faux).
+  final int? remaining;
+
+  /// Fin du blocage (trop d'erreurs).
+  final DateTime? lockedUntil;
+
+  /// Code imposé (6236) : à remplacer tout de suite par un code personnel.
+  final bool mustChange;
+  bool get ok => status == 'ok';
+}
+
+/// Une de mes photos de profil (je vois toutes les miennes, y compris celles encore en vérification).
+class MyPhoto {
+  const MyPhoto({
+    required this.id,
+    required this.path,
+    required this.position,
+    this.moderation = 'approved',
+    this.visibility = 'public',
+  });
+  final String id;
+  final String path;
+  final int position;
+
+  /// pending | approved | rejected — décidé par le serveur (modération).
+  final String moderation;
+  final String visibility;
+  bool get pending => moderation == 'pending';
+  bool get rejected => moderation == 'rejected';
+}
+
+/// Avertissements affichés sous un message signalé par le contrôle anti-arnaque.
+const Map<String, String> scamWarnings = {
+  'mobile_money': 'Attention : n’envoyez jamais d’argent par Mobile Money à une personne rencontrée ici.',
+  'bank_details': 'Attention : ne partagez jamais vos coordonnées bancaires ni vos codes.',
+  'investment': 'Attention : méfiez-vous des propositions d’investissement ou de cartes cadeaux.',
+  'money_request': 'Attention : une demande d’argent est un signe classique d’arnaque.',
+};
+
+/// Même détection que le serveur (0067), utilisée seulement par le mode démo.
+String? demoScamCategory(String body) {
+  final t = body.toLowerCase();
+  if (RegExp(r'orange\s*money|mtn\s*(money|momo)|mobile\s*money|\bmomo\b|western\s*union|moneygram|paypal|moov\s*money')
+      .hasMatch(t)) {
+    return 'mobile_money';
+  }
+  if (RegExp(
+          r'\b(iban|rib)\b|num[ée]ro\s+de\s+compte|compte\s+bancaire|bank\s+account|carte\s+bancaire|code\s+(pin|secret)')
+      .hasMatch(t)) {
+    return 'bank_details';
+  }
+  if (RegExp(r'carte\s+cadeau|gift\s*card|bitcoin|crypto|investissement|investir').hasMatch(t)) {
+    return 'investment';
+  }
+  if (RegExp(r'(envoie|envoyer|envoi|transf[èe]re|transf[ée]rer|donne|donner|pr[êe]te|pr[êe]ter|besoin|send|lend)\s'
+          r'.{0,40}\b(argent|sous|fric|cfa|gnf|fcfa|francs?|dollars?|euros?|money|cash)\b')
+      .hasMatch(t)) {
+    return 'money_request';
+  }
+  if (RegExp(r"\bargent\b.{0,30}(urgent|svp|stp|s'il|s’il)").hasMatch(t)) {
+    return 'money_request';
+  }
+  return null;
+}
+
+/// Réactions autorisées (liste fermée, identique à celle du serveur — migration 0066).
+const List<String> messageReactionEmojis = ['❤️', '😂', '😮', '😢', '🙏', '👍'];
+
+/// Réaction d'un membre à un message : une seule par membre et par message.
+class MessageReaction {
+  const MessageReaction({required this.messageId, required this.userId, required this.emoji});
+  final String messageId;
+  final String userId;
+  final String emoji;
 }
 
 /// Résultat d'un envoi : `blockedCategory` non nul = message refusé par le filtre avant transmission.
 class SendResult {
-  const SendResult.sent()
+  /// [warning] : catégorie d'arnaque détectée (le message est envoyé, mais les deux personnes sont prévenues).
+  const SendResult.sent({this.warning})
       : blockedCategory = null,
         activeLimit = null;
   const SendResult.blocked(String category)
       : blockedCategory = category,
-        activeLimit = null;
+        activeLimit = null,
+        warning = null;
 
   /// Premier message refusé : toutes les places de conversation sont prises (migration 0040).
   const SendResult.activeLimit(int limit)
       : blockedCategory = null,
-        activeLimit = limit;
+        activeLimit = limit,
+        warning = null;
+  final String? warning;
   final String? blockedCategory;
   final int? activeLimit;
   bool get isBlocked => blockedCategory != null;

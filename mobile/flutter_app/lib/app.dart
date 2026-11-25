@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 
 import 'core/l10n/l10n.dart';
+import 'core/motion.dart';
 import 'core/theme.dart';
+import 'features/discovery/profile_widgets.dart' show zayaPhoto;
 import 'core/widgets.dart';
 import 'data/models.dart';
 import 'data/repository.dart';
@@ -21,6 +23,7 @@ class FeedStore extends ChangeNotifier {
 
   List<DiscoveryProfile> profiles = const <DiscoveryProfile>[];
   LikeQuota? quota;
+  String? quickFilter;
   bool loading = false;
   bool loaded = false;
   String? error;
@@ -30,7 +33,11 @@ class FeedStore extends ChangeNotifier {
     error = null;
     notifyListeners();
     try {
-      final feed = await _repo.discoveryFeed();
+      final repository = _repo;
+      final filter = quickFilter;
+      final feed = repository is QuickDiscoveryRepository
+          ? await (repository as QuickDiscoveryRepository).discoveryFeedFiltered(filter)
+          : await repository.discoveryFeed();
       final likeQuota = await _repo.likeQuota();
       profiles = feed;
       quota = likeQuota;
@@ -40,6 +47,12 @@ class FeedStore extends ChangeNotifier {
     }
     loading = false;
     notifyListeners();
+  }
+
+  Future<void> setQuickFilter(String? filter) async {
+    if (quickFilter == filter) return;
+    quickFilter = filter;
+    await load();
   }
 
   void remove(String userId) {
@@ -63,6 +76,7 @@ class FeedStore extends ChangeNotifier {
   void reset() {
     profiles = const <DiscoveryProfile>[];
     quota = null;
+    quickFilter = null;
     loaded = false;
     loading = false;
     error = null;
@@ -87,9 +101,22 @@ class Session extends ChangeNotifier {
   /// Durée d'une période de swipes (app_config.swipe_window_hours, 0016).
   int swipeWindowHours = 8;
 
+  /// Réglages publics (`app_config`, lisibles par l'application), gardés pour les interrupteurs de fonctions.
+  /// Le serveur reste juge : une fonction coupée y est refusée même si l'application l'ignore encore.
+  Map<String, Object?> publicConfigCache = const <String, Object?>{};
+
+  /// Le serveur propose-t-il ZAYA 2.0 (migrations 0066 à 0070) ? Tant que ces migrations ne sont pas appliquées en
+  /// ligne, leurs interrupteurs sont absents de la configuration publique : l'application masque alors ces blocs
+  /// au lieu d'appeler des fonctions qui n'existent pas encore.
+  bool get zaya2Ready => publicConfigCache['feature_challenge_enabled'] != null;
+
+  /// Fonction ZAYA 2.0 déclarée active par le serveur (`feature_<nom>_enabled`).
+  bool featureOn(String name) => publicConfigCache['feature_${name}_enabled'] == true;
+
   Future<void> loadAppConfig() async {
     try {
       final config = await repo.publicConfig();
+      publicConfigCache = config;
       update = evaluateUpdate(config);
       ratingRules = RatingRules.fromConfig(config);
       final hours = config['swipe_window_hours'];
@@ -104,18 +131,28 @@ class Session extends ChangeNotifier {
   /// fil, les pastilles et les premières photos, afin que l'application s'ouvre déjà remplie. Plafonné à
   /// [maxWait] : sur un réseau lent, l'application s'ouvre quand même et les écrans finissent de charger.
   Future<void> start({Duration maxWait = const Duration(seconds: 3)}) async {
+    // Tout part en même temps : profil, réglages, fil et pastilles ne s'attendent plus les uns les autres.
+    // Le fil est lancé sans attendre le profil ; il est jeté si le compte n'est pas actif (voir plus bas).
+    final signedIn = repo.isSignedIn;
+    final prefetch =
+        signedIn ? Future.wait([feed.load(), refreshBadges()]).then((_) => _warmPhotos()).timeout(maxWait) : null;
+    // Le délai ne doit pas laisser une erreur non gérée si le chargement échoue après l'ouverture.
+    unawaited(prefetch?.then((_) {}, onError: (Object _) {}));
     await Future.wait([_loadMe(), loadAppConfig()]);
     final m = me;
     if (m != null && m.status == 'active') {
       try {
-        await Future.wait([feed.load(), refreshBadges()]).then((_) => _warmPhotos()).timeout(maxWait);
+        await prefetch;
       } catch (_) {
         // Délai dépassé ou réseau indisponible : rien de bloquant.
       }
+    } else {
+      feed.reset();
     }
     loading = false;
     notifyListeners();
     _listenSignals();
+    _startPresence();
   }
 
   Future<void> refresh() async {
@@ -123,6 +160,7 @@ class Session extends ChangeNotifier {
     loading = false;
     notifyListeners();
     _listenSignals();
+    _startPresence();
   }
 
   Future<void> _loadMe() async {
@@ -145,7 +183,7 @@ class Session extends ChangeNotifier {
     final url = await repo.photoUrl(path);
     if (url == null) return;
     final done = Completer<void>();
-    final stream = NetworkImage(url).resolve(ImageConfiguration.empty);
+    final stream = zayaPhoto(url, path).resolve(ImageConfiguration.empty);
     late final ImageStreamListener listener;
     void finish() {
       if (!done.isCompleted) done.complete();
@@ -206,10 +244,26 @@ class Session extends ChangeNotifier {
     notifyListeners();
     await refreshBadges();
     _listenSignals();
+    _startPresence();
+  }
+
+  // ── Présence « en ligne » (0070) : un signal d'activité par minute tant que l'application est au premier plan.
+  Timer? _presence;
+
+  void _startPresence() {
+    if (_presence != null || me == null || !repo.isSignedIn) return;
+    _presence = Timer.periodic(const Duration(minutes: 1), (_) => unawaited(repo.touchActive()));
+  }
+
+  /// Application en arrière-plan : plus de signal d'activité, le point vert disparaît au bout de quelques minutes.
+  void pausePresence() {
+    _presence?.cancel();
+    _presence = null;
   }
 
   @override
   void dispose() {
+    pausePresence();
     _stopSignals();
     _signalEvents.close();
     super.dispose();
@@ -217,7 +271,7 @@ class Session extends ChangeNotifier {
 
   /// Met à jour les pastilles des onglets Likes et Messages. Silencieux en cas d'échec réseau.
   Future<void> refreshBadges() async {
-    if (me == null) return;
+    if (!repo.isSignedIn) return;
     try {
       final likes = await repo.receivedInterestsCount();
       final matches = await repo.matches();
@@ -230,6 +284,7 @@ class Session extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    pausePresence();
     _stopSignals();
     await repo.signOut();
     me = null;
@@ -250,6 +305,9 @@ class _SessionScope extends InheritedNotifier<Session> {
   const _SessionScope({required Session session, required super.child}) : super(notifier: session);
 }
 
+/// Observateur de navigation de l'application (RouteAware : un écran apprend que celui du dessus s'est refermé).
+final RouteObserver<ModalRoute<Object?>> zRouteObserver = RouteObserver<ModalRoute<Object?>>();
+
 class ZayaApp extends StatefulWidget {
   const ZayaApp({super.key, required this.repository});
   final ZayaRepository repository;
@@ -260,6 +318,8 @@ class ZayaApp extends StatefulWidget {
 
 class _ZayaAppState extends State<ZayaApp> with WidgetsBindingObserver {
   late final Session _session = Session(widget.repository);
+  // Thème construit une seule fois : le reconstruire à chaque changement de langue recalculait toutes les polices.
+  late final ThemeData _theme = buildZayaTheme();
   final LanguageController _language = LanguageController();
 
   @override
@@ -274,6 +334,7 @@ class _ZayaAppState extends State<ZayaApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) _session.resume();
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) _session.pausePresence();
   }
 
   @override
@@ -296,10 +357,12 @@ class _ZayaAppState extends State<ZayaApp> with WidgetsBindingObserver {
           builder: (context, _) => MaterialApp(
             title: 'ZAYA',
             debugShowCheckedModeBanner: false,
-            theme: buildZayaTheme(),
+            theme: _theme,
             locale: _language.locale,
             supportedLocales: const [Locale('fr'), Locale('en')],
             localizationsDelegates: GlobalMaterialLocalizations.delegates,
+            // Permet à un écran de savoir quand celui du dessus se referme (ex. choix du code après l'inscription).
+            navigatorObservers: [zRouteObserver],
             home: const _RootGate(),
             // Verrouillage par code PIN, empreinte ou Face ID (CDC V6.4 §22.9), au-dessus de tous les écrans.
             builder: (context, child) => ListenableBuilder(
@@ -327,26 +390,37 @@ class _RootGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final session = Session.of(context);
-    if (session.loading) return const _Splash();
-    if (session.update.level == UpdateLevel.required) return RequiredUpdateScreen(status: session.update);
-    final me = session.me;
-    if (me == null || me.status == 'draft') return const WelcomeScreen();
-    if (me.status == 'suspended' || me.status == 'banned' || me.status == 'deleted') {
-      return _RestrictedAccount(status: me.status);
+    final Widget page;
+    if (session.loading) {
+      page = const _Splash(key: ValueKey<String>('splash'));
+    } else if (session.update.level == UpdateLevel.required) {
+      page = RequiredUpdateScreen(status: session.update);
+    } else {
+      final me = session.me;
+      if (me == null || me.status == 'draft') {
+        page = const WelcomeScreen();
+      } else if (me.status == 'suspended' || me.status == 'banned' || me.status == 'deleted') {
+        page = _RestrictedAccount(status: me.status);
+      } else {
+        page = const HomeShell();
+      }
     }
-    return const HomeShell();
+    // Fondu court entre le démarrage et l'écran suivant, au lieu d'un changement sec.
+    return AnimatedSwitcher(
+      duration: ZMotion.of(context, const Duration(milliseconds: 220)),
+      child: KeyedSubtree(key: ValueKey<Type>(page.runtimeType), child: page),
+    );
   }
 }
 
 class _Splash extends StatelessWidget {
-  const _Splash();
+  const _Splash({super.key});
 
   @override
+  // Fond blanc, comme l'écran de lancement Android : pas d'éclair rose entre les deux, et aucun texte.
   Widget build(BuildContext context) => const Scaffold(
-        body: DecoratedBox(
-          decoration: BoxDecoration(gradient: ZColors.brandGradient),
-          child: Center(child: ZayaLogo(size: 120)),
-        ),
+        backgroundColor: Colors.white,
+        body: Center(child: ZayaLogo(size: 104)),
       );
 }
 

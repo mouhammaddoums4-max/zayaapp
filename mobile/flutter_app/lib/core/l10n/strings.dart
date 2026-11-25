@@ -266,6 +266,21 @@ abstract class ZStrings {
   String get accountClosed;
   String get endedChatBanner;
   String get endedChatEmpty;
+  String get chatPhotoAction;
+  String get chatFileAction;
+  String get chatPlusAction;
+  String get chatAnimatedStickerAction;
+  String get chatAnimatedStickerHint;
+  String chatAnimatedStickerName(String stickerId);
+  String get chatReplySuggestionsTitle;
+  List<String> chatReplySuggestions(String incomingMessage);
+  String get chatVoiceAction;
+  String get chatAudioCallAction;
+  String get chatVideoCallAction;
+  String get chatMediaUnavailableTitle;
+  String get chatMediaUnavailableBody;
+  String get chatCallsInactiveTitle;
+  String get chatCallsInactiveBody;
 
   // ── Documents légaux
   String get legalTitle;

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import '../core/content_rules.dart';
 import 'demo_community.dart';
+import 'demo_zaya2.dart';
 import 'models.dart';
 import 'repository.dart';
 
@@ -19,8 +20,10 @@ class _DemoPerson {
 
 /// Données fictives en mémoire — uniquement pour le développement et la démonstration.
 /// Aucune personne réelle : prénoms et textes inventés, aucune photo.
-class DemoRepository implements ZayaRepository {
-  DemoRepository();
+class DemoRepository implements ZayaRepository, QuickDiscoveryRepository {
+  /// [initialPin] : code de connexion du compte démo (6236 par défaut, choix du propriétaire) ; `null` = compte sans
+  /// code, pour montrer la création du code à l'arrivée dans l'application.
+  DemoRepository({String? initialPin = demoPin}) : _pin = initialPin;
 
   static const _me = 'demo-me';
   static const freeDailyLikes = 20;
@@ -51,6 +54,10 @@ class DemoRepository implements ZayaRepository {
   final List<MatchSummary> _matches = <MatchSummary>[];
   final Map<String, List<ChatMessage>> _messages = <String, List<ChatMessage>>{};
   final Map<String, StreamController<List<ChatMessage>>> _streams = <String, StreamController<List<ChatMessage>>>{};
+  final DemoZaya2 _zaya2 = DemoZaya2();
+  final Map<String, List<MessageReaction>> _reactions = <String, List<MessageReaction>>{};
+  final Map<String, StreamController<List<MessageReaction>>> _reactionStreams =
+      <String, StreamController<List<MessageReaction>>>{};
   late final DemoCommunityStore _community = DemoCommunityStore(
     meId: _me,
     myName: () => _profile?.displayName ?? 'Moi',
@@ -295,6 +302,18 @@ class DemoRepository implements ZayaRepository {
   Future<Map<String, Object?>> publicConfig() async => const <String, Object?>{
         'active_languages': ['fr', 'en'],
         'support_whatsapp': '',
+        // ZAYA 2.0 et demandes du 25/11/2026 (migrations 0067 à 0071) : tout est actif en démo.
+        'feature_match_of_day_enabled': true,
+        'feature_pulse_enabled': true,
+        'feature_invitation_enabled': true,
+        'feature_surprise_enabled': true,
+        'feature_challenge_enabled': true,
+        'feature_questions_enabled': true,
+        'flowers_enabled': true,
+        'flowers_per_day': 3,
+        'pin_login_enabled': true,
+        'max_profile_photos': 6,
+        'min_profile_photos': 3,
       };
 
   @override
@@ -305,10 +324,119 @@ class DemoRepository implements ZayaRepository {
     if (code != demoOtp) throw Exception('Code incorrect. En mode démo, le code est $demoOtp.');
     _signedIn = true;
     _phone = phone;
+    _otpVerifiedAt = DateTime.now();
+    // Comme sur le serveur, un SMS vérifié reconnecte le compte existant de ce numéro (code oublié).
+    final saved = _savedPhone;
+    if (saved != null && _digits(saved) == _digits(phone)) _profile ??= _savedProfile;
+  }
+
+  // ── Connexion par code (démo) : mêmes règles que le serveur (0071), en mémoire.
+  /// Code par défaut des comptes démo (choix du propriétaire) ; une valeur nulle = compte sans code.
+  static const demoPin = '6236';
+  String? _pin;
+  int _pinErrors = 0;
+  DateTime? _pinLockedUntil;
+  DateTime? _otpVerifiedAt;
+
+  static String _digits(String phone) {
+    final d = phone.replaceAll(RegExp(r'\D'), '');
+    return d.length == 9 ? '224$d' : d;
+  }
+
+  static bool _weakPin(String p) =>
+      RegExp(r'^(.)\1{3}$').hasMatch(p) ||
+      const {
+        '0123',
+        '1234',
+        '2345',
+        '3456',
+        '4567',
+        '5678',
+        '6789',
+        '9876',
+        '8765',
+        '7654',
+        '6543',
+        '5432',
+        '4321',
+        '3210'
+      }.contains(p);
+
+  /// Dernier compte démo, gardé après une déconnexion pour pouvoir s'y reconnecter par code.
+  MyProfile? _savedProfile;
+  String? _savedPhone;
+
+  /// Le compte démo existe dès qu'un profil a été créé dans cette session (inscription vérifiée).
+  bool _isDemoAccount(String phone) {
+    final known = _phone ?? _savedPhone;
+    return (_profile ?? _savedProfile) != null && known != null && _digits(known) == _digits(phone);
+  }
+
+  @override
+  Future<String> phoneStatus(String phone) async {
+    if (!_isDemoAccount(phone)) return 'new';
+    return _pin == null ? 'no_pin' : 'pin';
+  }
+
+  @override
+  Future<PinLoginResult> signInWithPin(String phone, String pin) async {
+    if (!_isDemoAccount(phone)) return const PinLoginResult('unknown');
+    if (_pin == null) return const PinLoginResult('no_pin');
+    final until = _pinLockedUntil;
+    if (until != null && until.isAfter(DateTime.now())) return PinLoginResult('locked', lockedUntil: until);
+    if (pin != _pin) {
+      _pinErrors++;
+      if (_pinErrors >= 5) {
+        _pinErrors = 0;
+        _pinLockedUntil = DateTime.now().add(const Duration(minutes: 15));
+        return PinLoginResult('locked', lockedUntil: _pinLockedUntil);
+      }
+      return PinLoginResult('wrong', remaining: 5 - _pinErrors);
+    }
+    _pinErrors = 0;
+    _profile ??= _savedProfile;
+    _phone ??= _savedPhone;
+    _signedIn = true;
+    return const PinLoginResult('ok');
+  }
+
+  @override
+  Future<({bool hasPin, bool mustChange})> myPinStatus() async => (hasPin: _pin != null, mustChange: false);
+
+  @override
+  Future<void> setPin(String pin) async {
+    if (_pin != null) throw Exception('PIN_ALREADY_SET');
+    if (!RegExp(r'^\d{4}$').hasMatch(pin)) throw Exception('PIN_FORMAT');
+    if (_weakPin(pin)) throw Exception('PIN_TOO_WEAK');
+    _pin = pin;
+  }
+
+  @override
+  Future<void> changePin(String oldPin, String newPin) async {
+    if (oldPin != _pin) throw Exception('PIN_WRONG');
+    if (!RegExp(r'^\d{4}$').hasMatch(newPin)) throw Exception('PIN_FORMAT');
+    if (_weakPin(newPin) || newPin == oldPin) throw Exception('PIN_TOO_WEAK');
+    _pin = newPin;
+  }
+
+  @override
+  Future<void> resetPin(String newPin) async {
+    final at = _otpVerifiedAt;
+    if (at == null || DateTime.now().difference(at) > const Duration(minutes: 5)) throw Exception('OTP_REQUIRED');
+    if (!RegExp(r'^\d{4}$').hasMatch(newPin)) throw Exception('PIN_FORMAT');
+    if (_weakPin(newPin)) throw Exception('PIN_TOO_WEAK');
+    _pin = newPin;
+    _pinErrors = 0;
+    _pinLockedUntil = null;
   }
 
   @override
   Future<void> signOut() async {
+    // Le compte démo reste connu : on peut s'y reconnecter avec son numéro et son code (connexion par code).
+    if (_profile != null) {
+      _savedProfile = _profile;
+      _savedPhone = _phone;
+    }
     _signedIn = false;
     _phone = null;
     _profile = null;
@@ -332,6 +460,14 @@ class DemoRepository implements ZayaRepository {
         City(3, 'Conakry — Matam'),
         City(4, 'Conakry — Ratoma'),
         City(5, 'Conakry — Matoto'),
+        City(11, 'Conakry — Gbessia'),
+        City(12, 'Conakry — Kagb\u00E9len'),
+        City(13, 'Conakry — Lambanyi'),
+        City(14, 'Conakry — Man\u00E9ah'),
+        City(15, 'Conakry — Sanoyah'),
+        City(16, 'Conakry — Sonfonia'),
+        City(17, 'Conakry — Tombolia'),
+        City(18, 'Conakry — Kassa'),
         City(6, 'Kindia'),
         City(7, 'Labé'),
         City(8, 'Kankan'),
@@ -510,10 +646,46 @@ class DemoRepository implements ZayaRepository {
     p.showOnline = showOnline ?? p.showOnline;
   }
 
+  /// Photos ajoutées en démo (aucun fichier envoyé : l'emplacement montre l'initiale).
+  final List<MyPhoto> _demoPhotos = <MyPhoto>[];
+
   @override
   Future<void> addPhoto(Uint8List bytes) async {
     final p = _profile;
-    if (p != null) p.photoCount++;
+    if (_demoPhotos.length >= 6) throw Exception('MAX_PHOTOS');
+    final n = _seq++;
+    _demoPhotos.add(MyPhoto(id: 'demo-photo-$n', path: 'demo/$_me/$n.jpg', position: _demoPhotos.length));
+    if (p != null) {
+      p.photoCount = _demoPhotos.length;
+      p.mainPhotoPath = _demoPhotos.first.path;
+    }
+  }
+
+  @override
+  Future<List<MyPhoto>> myPhotos() async => [
+        for (var i = 0; i < _demoPhotos.length; i++)
+          MyPhoto(id: _demoPhotos[i].id, path: _demoPhotos[i].path, position: i),
+      ];
+
+  void _syncDemoPhotos() {
+    final p = _profile;
+    if (p == null) return;
+    p.photoCount = _demoPhotos.length;
+    p.mainPhotoPath = _demoPhotos.isEmpty ? null : _demoPhotos.first.path;
+  }
+
+  @override
+  Future<void> deleteMyPhoto(String photoId) async {
+    _demoPhotos.removeWhere((x) => x.id == photoId);
+    _syncDemoPhotos();
+  }
+
+  @override
+  Future<void> setMainPhoto(String photoId) async {
+    final i = _demoPhotos.indexWhere((x) => x.id == photoId);
+    if (i <= 0) return;
+    _demoPhotos.insert(0, _demoPhotos.removeAt(i));
+    _syncDemoPhotos();
   }
 
   @override
@@ -572,7 +744,14 @@ class DemoRepository implements ZayaRepository {
   }
 
   @override
-  Future<List<DiscoveryProfile>> discoveryFeed() async {
+  Future<List<DiscoveryProfile>> discoveryFeed() => discoveryFeedFiltered(null);
+
+  @override
+  Future<List<DiscoveryProfile>> discoveryFeedFiltered(String? quickFilter) async {
+    if (quickFilter != null && quickFilter != 'verified' && quickFilter != 'soon') {
+      throw Exception('INVALID_DISCOVERY_FILTER');
+    }
+    if (quickFilter == 'soon' && !(_profile?.isPremium ?? false)) throw Exception('PREMIUM_REQUIRED');
     if (_profile?.status != 'active') return const <DiscoveryProfile>[];
     // Filtre par ville ou commune (même règle que le serveur, 0012) : liste vide = toutes les villes.
     final villes = {
@@ -595,6 +774,8 @@ class DemoRepository implements ZayaRepository {
             (villes.isEmpty || villes.contains(p.profile.city)) &&
             (langues.isEmpty || p.profile.languages.any(langues.contains)) &&
             (projets.isEmpty || projets.contains(p.profile.horizon)) &&
+            (quickFilter != 'verified' || p.profile.isVerified) &&
+            (quickFilter != 'soon' || p.profile.horizon == 'soon') &&
             (situations.isEmpty || situations.contains(p.maritalStatus)) &&
             (etudes.isEmpty || etudes.contains(_educationKey(p.education))) &&
             (enfantsMax == null || p.childrenCount <= enfantsMax))
@@ -708,7 +889,11 @@ class DemoRepository implements ZayaRepository {
       userId: m.userId,
       displayName: m.displayName,
       isVerified: m.isVerified,
-      lastMessage: last?.body,
+      lastMessage: last?.isAnimatedSticker == true
+          ? 'GIF animé'
+          : last?.isVoice == true
+              ? 'Note vocale'
+              : last?.body,
       lastAt: last?.createdAt,
     );
   }
@@ -753,8 +938,7 @@ class DemoRepository implements ZayaRepository {
   }
 
   @override
-  Future<String> respondRematch(String matchId, {required bool accept}) async =>
-      throw Exception('REQUEST_NOT_FOUND');
+  Future<String> respondRematch(String matchId, {required bool accept}) async => throw Exception('REQUEST_NOT_FOUND');
 
   @override
   Future<List<EndedMatch>> endedMatches() async => [
@@ -777,7 +961,71 @@ class DemoRepository implements ZayaRepository {
   }
 
   @override
-  Future<SendResult> sendMessage(String matchId, String body) async {
+  Stream<List<MessageReaction>> watchReactions(String matchId) {
+    final controller = _reactionStreams.putIfAbsent(matchId, () => StreamController<List<MessageReaction>>.broadcast());
+    Future<void>.microtask(() => controller.add(List.of(_reactions[matchId] ?? const <MessageReaction>[])));
+    return controller.stream;
+  }
+
+  @override
+  Future<Object?> zayaRpc(String function, [Map<String, Object?> params = const <String, Object?>{}]) async =>
+      _zaya2.call(function, params, [for (final p in _pool) p.profile]);
+
+  /// Fleurs envoyées aujourd'hui (démo) : même limite provisoire que le serveur (app_config.flowers_per_day = 3).
+  final Set<String> _flowersSent = <String>{};
+
+  @override
+  Future<LikeResult> sendFlower(String userId) async {
+    if (!(_profile?.isPremium ?? false)) throw Exception('PREMIUM_REQUIRED');
+    if (_flowersSent.contains(userId)) return const LikeResult(LikeStatus.alreadyLiked);
+    if (_flowersSent.length >= 3) throw Exception('FLOWER_LIMIT');
+    final result = await like(userId);
+    if (result.status != LikeStatus.quotaReached) _flowersSent.add(userId);
+    return result;
+  }
+
+  /// Une fleur reçue fictive, pour montrer l'emplacement en démo.
+  @override
+  Future<List<DiscoveryProfile>> receivedFlowers() async {
+    final pool = _pool;
+    return pool.length > 3 ? [pool[3].profile] : const <DiscoveryProfile>[];
+  }
+
+  @override
+  Future<int> hideConversations(List<String> matchIds) async {
+    var n = 0;
+    for (final id in matchIds) {
+      final removed = _messages.remove(id) != null;
+      final before = _matches.length;
+      _matches.removeWhere((m) => m.matchId == id);
+      if (removed || _matches.length != before) n++;
+      _emit(id);
+    }
+    return n;
+  }
+
+  /// En démo, la première personne de la liste des matchs est « en ligne ».
+  @override
+  Future<Set<String>> onlineMatches() async => {if (_matches.isNotEmpty) _matches.first.userId};
+
+  @override
+  Future<void> touchActive() async {}
+
+  @override
+  Future<void> reactToMessage(String messageId, String emoji) async {
+    for (final e in _messages.entries) {
+      if (!e.value.any((m) => m.id == messageId && !m.unsent)) continue;
+      final list = _reactions.putIfAbsent(e.key, () => <MessageReaction>[]);
+      final i = list.indexWhere((r) => r.messageId == messageId && r.userId == _me);
+      final same = i >= 0 && list[i].emoji == emoji;
+      if (i >= 0) list.removeAt(i);
+      if (!same) list.add(MessageReaction(messageId: messageId, userId: _me, emoji: emoji));
+      _reactionStreams[e.key]?.add(List.of(list));
+    }
+  }
+
+  @override
+  Future<SendResult> sendMessage(String matchId, String body, {String? replyToId}) async {
     if (!_matches.any((m) => m.matchId == matchId)) throw Exception('Cette conversation est terminée.');
     // Même règle que le serveur (0040) : le premier message d'un match exige une place de conversation libre.
     final slots = await conversationSlots();
@@ -788,12 +1036,70 @@ class DemoRepository implements ZayaRepository {
     for (final e in _blockedTerms.entries) {
       if (lower.contains(e.key)) return SendResult.blocked(e.value);
     }
-    _messages
-        .putIfAbsent(matchId, () => <ChatMessage>[])
-        .add(ChatMessage(id: 'local-${_seq++}', senderId: _me, body: body.trim(), createdAt: DateTime.now()));
+    final scam = demoScamCategory(body);
+    _messages.putIfAbsent(matchId, () => <ChatMessage>[]).add(ChatMessage(
+        id: 'local-${_seq++}',
+        senderId: _me,
+        body: body.trim(),
+        createdAt: DateTime.now(),
+        replyToId: replyToId,
+        scamCategory: scam));
+    _emit(matchId);
+    return SendResult.sent(warning: scam);
+  }
+
+  @override
+  Future<SendResult> sendVoiceMessage(String matchId, String localFilePath, int durationSeconds) async {
+    if (!_matches.any((m) => m.matchId == matchId)) throw Exception('Cette conversation est terminée.');
+    final slots = await conversationSlots();
+    if ((_messages[matchId] ?? const <ChatMessage>[]).isEmpty && slots.active >= slots.limit) {
+      return SendResult.activeLimit(slots.limit);
+    }
+    _messages.putIfAbsent(matchId, () => <ChatMessage>[]).add(ChatMessage(
+          id: 'local-${_seq++}',
+          senderId: _me,
+          body: 'Note vocale',
+          createdAt: DateTime.now(),
+          kind: 'voice',
+          mediaPath: localFilePath,
+          mediaDurationSeconds: durationSeconds,
+        ));
     _emit(matchId);
     return const SendResult.sent();
   }
+
+  @override
+  Future<SendResult> sendAnimatedSticker(String matchId, String stickerId) async {
+    const allowed = {
+      'heart_bounce',
+      'laugh_shake',
+      'kiss_pulse',
+      'hug_squeeze',
+      'party_spin',
+      'prayer_bounce',
+      'rose_sway',
+      'fire_flicker',
+    };
+    if (!allowed.contains(stickerId)) throw Exception('Animation indisponible.');
+    if (!_matches.any((m) => m.matchId == matchId)) throw Exception('Cette conversation est terminée.');
+    final slots = await conversationSlots();
+    if ((_messages[matchId] ?? const <ChatMessage>[]).isEmpty && slots.active >= slots.limit) {
+      return SendResult.activeLimit(slots.limit);
+    }
+    _messages.putIfAbsent(matchId, () => <ChatMessage>[]).add(ChatMessage(
+          id: 'local-${_seq++}',
+          senderId: _me,
+          body: 'Animation',
+          createdAt: DateTime.now(),
+          kind: 'sticker',
+          stickerId: stickerId,
+        ));
+    _emit(matchId);
+    return const SendResult.sent();
+  }
+
+  @override
+  Future<String?> voiceMessageUrl(String storagePath) async => storagePath;
 
   @override
   Future<SendResult> editMessage(String messageId, String body) async {
@@ -805,8 +1111,13 @@ class DemoRepository implements ZayaRepository {
       final i = e.value.indexWhere((m) => m.id == messageId && m.senderId == _me && !m.unsent);
       if (i >= 0) {
         final m = e.value[i];
-        e.value[i] =
-            ChatMessage(id: m.id, senderId: m.senderId, body: body.trim(), createdAt: m.createdAt, edited: true);
+        e.value[i] = ChatMessage(
+            id: m.id,
+            senderId: m.senderId,
+            body: body.trim(),
+            createdAt: m.createdAt,
+            edited: true,
+            replyToId: m.replyToId);
         _emit(e.key);
       }
     }

@@ -24,6 +24,26 @@ class ZayaLogo extends StatelessWidget {
       );
 }
 
+/// Point vert « en ligne » (0070) : affiché seulement si la personne l'autorise, et moi aussi.
+class OnlineDot extends StatelessWidget {
+  const OnlineDot({super.key, this.size = 14});
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        label: 'En ligne',
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: ZColors.online,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: size * 0.18),
+          ),
+        ),
+      );
+}
+
 /// Badge bleu « Profil vérifié » — distinct du badge Premium (V6.4 §41).
 class VerifiedBadge extends StatelessWidget {
   const VerifiedBadge({super.key, this.size = 20});
@@ -407,6 +427,30 @@ const _knownErrors = <String, String>{
   'PREMIUM_REQUIRED': 'Cette fonction fait partie de ZAYA Premium.',
   'STATUS_CHANGE_NOT_ALLOWED': 'Ce changement n’est pas possible pour votre compte. Contactez l’assistance.',
   'NO_DELETION_REQUEST': 'Aucune demande de suppression en cours.',
+  'UNANSWERED_LIMIT': 'Vous avez déjà envoyé plusieurs messages sans réponse. Attendez que la personne réponde.',
+  'FEATURE_DISABLED': 'Cette fonction est momentanément indisponible.',
+  'SELF_REFERRAL': 'Vous ne pouvez pas utiliser votre propre code d’invitation.',
+  'ALREADY_REFERRED': 'Un code d’invitation a déjà été utilisé pour ce compte.',
+  'INVALID_CODE': 'Ce code d’invitation n’est pas valide.',
+  'NOT_COMPLETED': 'Ce défi n’est pas encore terminé.',
+  'ALREADY_CLAIMED': 'Ce défi est déjà validé pour aujourd’hui.',
+  'REWARD_CAP_REACHED': 'Limite de récompenses atteinte pour le moment. Revenez plus tard.',
+  'DEVICE_LIMIT': 'Limite de récompenses atteinte sur cet appareil. Revenez plus tard.',
+  'NOT_ELIGIBLE': 'Votre profil doit être vérifié pour utiliser cette fonction.',
+  'FLOWER_LIMIT': 'Vous avez envoyé toutes vos fleurs du jour. Revenez demain.',
+  // Fonction ou table pas encore créée sur le serveur (migration non appliquée en ligne) : message clair.
+  'PGRST202': 'Cette fonction arrive bientôt : elle n’est pas encore activée sur le serveur.',
+  'PGRST205': 'Cette fonction arrive bientôt : elle n’est pas encore activée sur le serveur.',
+  'Could not find the function': 'Cette fonction arrive bientôt : elle n’est pas encore activée sur le serveur.',
+  'PIN_WRONG': 'Code actuel incorrect.',
+  'PIN_TOO_WEAK': 'Ce code est trop facile à deviner. Choisissez-en un autre.',
+  'PIN_FORMAT': 'Le code doit compter exactement 4 chiffres.',
+  'PIN_ALREADY_SET': 'Vous avez déjà un code. Utilisez « Changer mon code ».',
+  'PIN_LOCKED': 'Trop d’erreurs : réessayez dans un moment ou réinitialisez votre code.',
+  'OTP_REQUIRED': 'Pour des raisons de sécurité, vérifiez d’abord votre numéro par SMS.',
+  'PIN_NOT_CONFIGURED': 'La connexion par code n’est pas encore activée sur le serveur.',
+  'INVALID_PHONE': 'Numéro invalide.',
+  'TOO_MANY_CONVERSATIONS': 'Sélectionnez moins de conversations à la fois.',
   'otp_expired': 'Code incorrect ou expiré. Demandez un nouveau code.',
   'Token has expired or is invalid': 'Code incorrect ou expiré. Demandez un nouveau code.',
   'over_sms_send_rate_limit': 'Trop de demandes de code. Réessayez dans quelques minutes.',

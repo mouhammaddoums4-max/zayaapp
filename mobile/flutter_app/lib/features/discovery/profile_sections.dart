@@ -83,7 +83,9 @@ class ProfilePhotoPagerState extends State<ProfilePhotoPager> {
       final path = p.isBlurred ? p.blurPath : p.path;
       if (path == null || !_precached.add(path)) continue;
       repo.photoUrl(path, blurred: p.isBlurred).then((url) {
-        if (url != null && mounted) precacheImage(zayaPhoto(url, path, blurred: p.isBlurred), context, onError: (_, __) {});
+        if (url != null && mounted) {
+          precacheImage(zayaPhoto(url, path, blurred: p.isBlurred), context, onError: (_, __) {});
+        }
       }, onError: (_) {});
     }
   }
@@ -120,7 +122,9 @@ class ProfilePhotoPagerState extends State<ProfilePhotoPager> {
     final tag = widget.heroTag;
     if (i == 0 && tag != null) image = Hero(tag: tag, flightShuttleBuilder: widget.heroShuttle, child: image);
     if (p == null || !p.isBlurred) return image;
-    return Stack(fit: StackFit.expand, children: [image, _BlurredNotice(name: widget.name, photo: p, onUnlock: widget.onUnlock)]);
+    return Stack(
+        fit: StackFit.expand,
+        children: [image, _BlurredNotice(name: widget.name, photo: p, onUnlock: widget.onUnlock)]);
   }
 
   @override
@@ -243,7 +247,6 @@ class _BlurredNotice extends StatelessWidget {
   }
 }
 
-
 /// Prénom en gras et âge plus léger, comme une signature : « Awa 27 ». Lu « Awa, 27 ans » par le lecteur d'écran.
 class ProfileNameAge extends StatelessWidget {
   const ProfileNameAge({super.key, required this.name, this.age, this.size = 32, this.color = Colors.white});
@@ -261,7 +264,8 @@ class ProfileNameAge extends StatelessWidget {
           if (age != null)
             TextSpan(
                 text: ' $age',
-                style: GoogleFonts.inter(fontSize: size * 0.92, fontWeight: FontWeight.w400, color: color, height: 1.1)),
+                style:
+                    GoogleFonts.inter(fontSize: size * 0.92, fontWeight: FontWeight.w400, color: color, height: 1.1)),
         ]),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
@@ -357,8 +361,7 @@ class ProfileInfoSections extends StatelessWidget {
   Widget build(BuildContext context) {
     final detail = this.detail;
     final sections = <Widget>[];
-    void add(Widget section) =>
-        sections.add(animate ? FadeSlideIn(index: sections.length, child: section) : section);
+    void add(Widget section) => sections.add(animate ? FadeSlideIn(index: sections.length, child: section) : section);
 
     if (base.horizon != null && horizonLabels[base.horizon] != null) {
       add(_InfoBox(
@@ -378,11 +381,11 @@ class ProfileInfoSections extends StatelessWidget {
       ));
     }
 
-
     final facts = <(IconData, String)>[
       if (base.city != null) (Icons.place_outlined, base.city!),
       if (base.profession != null) (Icons.work_outline_rounded, base.profession!),
-      if (detail?.maritalStatus != null) (Icons.people_outline, maritalLabels[detail!.maritalStatus] ?? detail.maritalStatus!),
+      if (detail?.maritalStatus != null)
+        (Icons.people_outline, maritalLabels[detail!.maritalStatus] ?? detail.maritalStatus!),
       if (detail?.childrenCount != null) (Icons.child_care_outlined, _children(detail!.childrenCount!)),
       if (detail?.education != null) (Icons.school_outlined, detail!.education!),
       if (detail?.heightCm != null) (Icons.height_rounded, '${detail!.heightCm} cm'),
@@ -521,7 +524,8 @@ class _FactLine extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(text,
-                style: GoogleFonts.inter(fontSize: 16.5, fontWeight: FontWeight.w500, color: ZColors.ink, height: 1.35)),
+                style:
+                    GoogleFonts.inter(fontSize: 16.5, fontWeight: FontWeight.w500, color: ZColors.ink, height: 1.35)),
           ),
         ]),
       );

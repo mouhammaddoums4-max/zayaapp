@@ -10,6 +10,7 @@ import '../../core/widgets.dart';
 import '../../data/models.dart';
 import '../ads/feed_ads.dart';
 import '../likes/likes_screen.dart';
+import '../zaya2/daily_match_banner.dart';
 import 'like_actions.dart';
 import 'profile_widgets.dart';
 
@@ -233,6 +234,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
             color: ZColors.primary,
             onRefresh: _refresh,
             child: CustomScrollView(slivers: [
+              // ZAYA 2.0 : suggestion du jour choisie par le serveur (se masque d'elle-même si rien à proposer).
+              const SliverToBoxAdapter(child: DailyMatchBanner()),
               likes,
               if (collections.isNotEmpty) ...[
                 const SliverToBoxAdapter(

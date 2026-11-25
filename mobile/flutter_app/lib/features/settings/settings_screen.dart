@@ -8,6 +8,7 @@ import '../../core/motion.dart';
 import '../../core/theme.dart';
 import '../../data/models.dart';
 import '../app/app_update.dart';
+import '../auth/pin_screens.dart';
 import '../premium/premium_screens.dart';
 import '../profile/edit_profile_screen.dart';
 import '../profile/privacy_center_screen.dart';
@@ -171,6 +172,13 @@ class SettingsScreen extends StatelessWidget {
             title: s.settingsPrivacy,
             subtitle: s.settingsPrivacySubtitle,
             onTap: () => _push(context, const PrivacyCenterScreen()),
+          ),
+          // Code de connexion à 4 chiffres (0071) : le même code sert au verrou de l'application.
+          SettingsTile(
+            icon: Icons.password_rounded,
+            title: 'Code de connexion',
+            subtitle: 'Changer votre code à 4 chiffres',
+            onTap: () => _push(context, const PinSetupScreen(mode: PinSetupMode.change)),
           ),
           SettingsTile(
             icon: Icons.pin_outlined,

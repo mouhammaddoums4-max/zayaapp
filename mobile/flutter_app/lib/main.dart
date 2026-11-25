@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
@@ -5,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
 import 'core/theme.dart';
+import 'core/notifications/push_notifications.dart';
 import 'data/demo_repository.dart';
 import 'data/repository.dart';
 import 'data/supabase_repository.dart';
@@ -35,6 +38,11 @@ Future<void> main() async {
     repository = SupabaseRepository(Supabase.instance.client);
   }
   runApp(ZayaApp(repository: repository));
+  if (!repository.isDemo) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(PushNotifications.instance.attach(Supabase.instance.client));
+    });
+  }
 }
 
 /// Les polices Inter et Sora sont embarquées (assets/google_fonts) sous licence SIL Open Font License.

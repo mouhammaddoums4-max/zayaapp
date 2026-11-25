@@ -275,7 +275,8 @@ class ZStringsEn extends ZStrings {
   @override
   String get lockForgot => 'Forgot your code?';
   @override
-  String get lockForgotBody => 'To protect your account, the lock will be turned off and you will need to sign in again with your phone number.';
+  String get lockForgotBody =>
+      'To protect your account, the lock will be turned off and you will need to sign in again with your phone number.';
   @override
   String get lockForgotConfirm => 'Sign in again';
   @override
@@ -528,6 +529,97 @@ class ZStringsEn extends ZStrings {
   String get endedChatBanner => 'This match has ended: you can no longer send messages.';
   @override
   String get endedChatEmpty => 'No messages in this conversation.';
+  @override
+  String get chatPhotoAction => 'Send a photo';
+  @override
+  String get chatFileAction => 'Attach a file';
+  @override
+  String get chatPlusAction => 'More options';
+  @override
+  String get chatAnimatedStickerAction => 'GIFs and animated emojis';
+  @override
+  String get chatAnimatedStickerHint => 'Tap an animation to send it';
+  @override
+  String chatAnimatedStickerName(String stickerId) => switch (stickerId) {
+        'heart_bounce' => 'Beating heart',
+        'laugh_shake' => 'Laughing',
+        'kiss_pulse' => 'Kiss',
+        'hug_squeeze' => 'Hug',
+        'party_spin' => 'Party',
+        'prayer_bounce' => 'Thanks',
+        'rose_sway' => 'Rose',
+        'fire_flicker' => 'Fire',
+        _ => 'Animation',
+      };
+  @override
+  String get chatReplySuggestionsTitle => 'Suggested replies';
+  @override
+  List<String> chatReplySuggestions(String incomingMessage) {
+    final text = incomingMessage.toLowerCase();
+    if (RegExp(r'\b(hello|hi|good morning|good evening)\b').hasMatch(text)) {
+      return const [
+        'Hello 😊 How is your day going?',
+        'Hi 🙂 What do you enjoy doing in your free time?',
+        'Good evening 😊 It’s nice to meet you.',
+      ];
+    }
+    if (RegExp(r'\b(how are you|how is your day)\b').hasMatch(text)) {
+      return const [
+        'I’m doing well, thank you 😊 And you?',
+        'My day is going well. How about yours?',
+        'Thanks for asking 🙂'
+      ];
+    }
+    if (RegExp(r'\b(marriage|relationship|commitment|serious|future)\b').hasMatch(text)) {
+      return const [
+        'I’m looking for a sincere and serious relationship.',
+        'Respect and trust matter a lot to me.',
+        'I’d like to get to know you better first.',
+      ];
+    }
+    if (RegExp(r'\b(family|parents|children)\b').hasMatch(text)) {
+      return const [
+        'Family is important to me. What about you?',
+        'I’d like to hear more about your view of family.',
+        'I think it’s something to discuss openly.',
+      ];
+    }
+    if (RegExp(r'\b(work|study|studies|job|career)\b').hasMatch(text)) {
+      return const [
+        'That sounds interesting 😊 How long have you been doing it?',
+        'What do you enjoy most about your work?',
+        'Do you enjoy what you do?',
+      ];
+    }
+    if (RegExp(r'\b(thank you|thanks)\b').hasMatch(text)) {
+      return const ['You’re welcome 😊', 'Thank you for the conversation!', 'That makes me happy 🙂'];
+    }
+    if (text.contains('?')) {
+      return const [
+        'That’s a good question 😊 What do you think?',
+        'I’d be happy to talk about that.',
+        'Could you tell me a little more?',
+      ];
+    }
+    return const ['Thanks for your message 😊', 'I’m glad we’re talking.', 'What do you think?'];
+  }
+
+  @override
+  String get chatVoiceAction => 'Record a voice note';
+  @override
+  String get chatAudioCallAction => 'Audio call';
+  @override
+  String get chatVideoCallAction => 'Video call';
+  @override
+  String get chatMediaUnavailableTitle => 'Attachments unavailable';
+  @override
+  String get chatMediaUnavailableBody =>
+      'Sending photos and files will be enabled after safety checks and moderation are configured. You can already send '
+      'messages, emojis and voice notes.';
+  @override
+  String get chatCallsInactiveTitle => 'Calls are disabled';
+  @override
+  String get chatCallsInactiveBody => 'Audio and video calls are disabled for now.';
 
   // ── Legal documents
   @override

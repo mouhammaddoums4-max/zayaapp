@@ -149,7 +149,8 @@ class _TabButton extends StatelessWidget {
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               color: color,
             ),
-            child: Text(item.label, maxLines: 1, overflow: TextOverflow.ellipsis),
+            // Le libellé rétrécit au lieu d'être coupé (« Communauté » sur un petit écran).
+            child: FittedBox(fit: BoxFit.scaleDown, child: Text(item.label, maxLines: 1)),
           ),
         ]),
       ),
