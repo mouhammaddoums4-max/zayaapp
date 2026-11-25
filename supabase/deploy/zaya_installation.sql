@@ -4045,6 +4045,24 @@ revoke execute on function public.shop_catalog(), public.send_shop_item(uuid, uu
 grant execute on function public.shop_catalog(), public.send_shop_item(uuid, uuid),
   public.my_shop_history(text, int), public.admin_save_shop_item(uuid, jsonb) to authenticated;
 
+-- ════════════════════════ 0036_prix_boutique_par_defaut.sql
+-- 0036 : prix par défaut de la boutique, demandés par le propriétaire le 25/11/2026 (décision C21).
+-- Prix en pièces, provisoires et modifiables à tout moment par l'équipe (admin_save_shop_item). Un prix déjà fixé
+-- par l'équipe n'est jamais écrasé. La valeur d'une pièce en GNF sera fixée avec l'ouverture des paiements (C7, C8).
+
+update public.shop_items as i set price_coins = d.price, updated_at = now()
+from (values
+  ('rose', 10),
+  ('the_menthe', 15),
+  ('bouquet', 30),
+  ('parfum', 60),
+  ('bague', 150),
+  ('sourire', 5),
+  ('valeurs', 5),
+  ('serieux', 5)
+) as d (code, price)
+where i.code = d.code and i.price_coins is null;
+
 -- ════════════════════════ 0040_conversations_actives.sql
 -- ZAYA — Messagerie : conversations actives limitées et demande de re-match (décisions du propriétaire, 18/11/2026).
 --

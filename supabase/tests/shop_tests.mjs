@@ -10,12 +10,15 @@ export async function shopTests({ db, test, assert, as, rpc, fails, U }) {
     `insert into wallet_transactions (user_id, category, asset, amount, reason, ref)
      values ($1, 'coins', 'coins', $2, 'Achat de pièces (test)', $3)`, [user, n, ref]);
 
-  await test('catalogue visible, sans aucun prix inventé ; envoi impossible tant que l’équipe n’a pas fixé le prix', async () => {
+  await test('catalogue visible avec les prix par défaut (0036) ; un article sans prix ne peut pas être envoyé', async () => {
     const c = await rpc(U.aicha, 'shop_catalog');
     assert(c.enabled === true && c.coins === 0, JSON.stringify({ enabled: c.enabled, coins: c.coins }));
-    assert(c.items.length === 8 && c.items.every((i) => i.price_coins === null), 'prix vides au départ');
+    const price = Object.fromEntries(c.items.map((i) => [i.code, i.price_coins]));
+    assert(c.items.length === 8 && price.rose === 10 && price.bague === 150 && price.sourire === 5, JSON.stringify(price));
     assert(c.items.some((i) => i.kind === 'compliment' && i.message_fr), 'compliments écrits par l’équipe');
-    await fails(rpc(U.aicha, 'send_shop_item', [await item('rose'), U.moussa]), /PRICE_NOT_SET/);
+    await rpc(U.admin, 'admin_save_shop_item', [await item('parfum'), JSON.stringify({ price_coins: null })]);
+    await fails(rpc(U.aicha, 'send_shop_item', [await item('parfum'), U.moussa]), /PRICE_NOT_SET/);
+    await rpc(U.admin, 'admin_save_shop_item', [await item('parfum'), JSON.stringify({ price_coins: 60 })]);
     await fails(as(null, `select shop_catalog()`), /permission denied/i);
   });
 
@@ -26,7 +29,7 @@ export async function shopTests({ db, test, assert, as, rpc, fails, U }) {
     const touched = await as(U.aicha, `update shop_items set price_coins = 1 returning id`).catch(() => ({ rows: [] }));
     assert(touched.rows.length === 0, 'aucun article modifié par un membre');
     const audit = await db.query(`select count(*)::int as n from audit_log where action = 'shop_item.saved'`);
-    assert(audit.rows[0].n === 2, `modifications tracées : ${audit.rows[0].n}`);
+    assert(audit.rows[0].n === 4, `modifications tracées : ${audit.rows[0].n}`);
   });
 
   await test('pièces achetées seulement : crédits publicitaires et cadeaux ZAYA ne paient rien', async () => {
