@@ -91,7 +91,8 @@ class _CommunitiesScreenState extends State<CommunitiesScreen> {
       }
       await _load();
       if (mounted) {
-        showZayaSnack(context, community.joined ? 'Vous avez quitté « ${community.name} ».' : 'Bienvenue dans « ${community.name} » !');
+        showZayaSnack(context,
+            community.joined ? 'Vous avez quitté « ${community.name} ».' : 'Bienvenue dans « ${community.name} » !');
       }
     } catch (e) {
       if (mounted) showZayaSnack(context, friendlyError(e), error: true);

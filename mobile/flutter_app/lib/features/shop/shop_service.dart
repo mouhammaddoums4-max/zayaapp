@@ -61,8 +61,14 @@ class ShopCatalog {
   final bool paymentsOpen;
   final List<ShopItem> items;
 
-  List<ShopItem> get gifts => [for (final i in items) if (i.isGift) i];
-  List<ShopItem> get compliments => [for (final i in items) if (!i.isGift) i];
+  List<ShopItem> get gifts => [
+        for (final i in items)
+          if (i.isGift) i
+      ];
+  List<ShopItem> get compliments => [
+        for (final i in items)
+          if (!i.isGift) i
+      ];
 }
 
 /// Cadeau ou compliment reçu ou envoyé.
@@ -129,8 +135,8 @@ class SupabaseShop implements ShopService {
 
   @override
   Future<List<ShopHistoryEntry>> history({bool sent = false}) async {
-    final rows = await _db.rpc('my_shop_history', params: {'p_direction': sent ? 'sent' : 'received', 'p_limit': 100})
-        as List;
+    final rows =
+        await _db.rpc('my_shop_history', params: {'p_direction': sent ? 'sent' : 'received', 'p_limit': 100}) as List;
     return [
       for (final raw in rows)
         () {

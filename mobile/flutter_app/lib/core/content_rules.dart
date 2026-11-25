@@ -18,7 +18,8 @@ final List<RegExp> _links = [
       '$_start[a-z0-9-]+(\\.[a-z0-9-]+)*\\.(com|net|org|info|biz|app|dev|link|site|online|shop|store|xyz|top|live|click|io)\\b',
       caseSensitive: false),
   RegExp('$_start[a-z0-9-]+\\s+\\.\\s*(com|net|org)\\b', caseSensitive: false),
-  RegExp('$_start(bit\\.ly|goo\\.gl|tinyurl|t\\.co|cutt\\.ly|rb\\.gy|is\\.gd|ow\\.ly|shorturl\\.at|wa\\.me|t\\.me|m\\.me)\\b',
+  RegExp(
+      '$_start(bit\\.ly|goo\\.gl|tinyurl|t\\.co|cutt\\.ly|rb\\.gy|is\\.gd|ow\\.ly|shorturl\\.at|wa\\.me|t\\.me|m\\.me)\\b',
       caseSensitive: false),
   RegExp('$_start[a-z0-9-]+(\\.[a-z0-9-]+)*\\.[a-z]{2,}/\\S', caseSensitive: false),
   RegExp(r'\b(point|dot)\s*(com|net|org)\b', caseSensitive: false),

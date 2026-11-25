@@ -127,11 +127,10 @@ class _GlyphPainter extends CustomPainter {
 
   void _hearts(Canvas canvas) {
     final big = _heart(const Rect.fromLTWH(1.4, 7.2, 15.2, 14.6));
-    final small = _heart(const Rect.fromLTWH(-4.6, -4.4, 9.2, 8.8))
-        .transform((Matrix4.identity()
-              ..translateByDouble(17.6, 7.4, 0, 1)
-              ..rotateZ(math.pi / 9))
-            .storage);
+    final small = _heart(const Rect.fromLTWH(-4.6, -4.4, 9.2, 8.8)).transform((Matrix4.identity()
+          ..translateByDouble(17.6, 7.4, 0, 1)
+          ..rotateZ(math.pi / 9))
+        .storage);
     if (filled) {
       canvas.drawPath(big, _fill);
     } else {

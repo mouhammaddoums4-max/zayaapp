@@ -151,8 +151,10 @@ class _MysteryBoxScreenState extends State<MysteryBoxScreen> with TickerProvider
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                              s.mysteryChance(p.label(lang), (p.probabilityPercent ?? 0).toStringAsFixed(
-                                  (p.probabilityPercent ?? 0) % 1 == 0 ? 0 : 1)),
+                              s.mysteryChance(
+                                  p.label(lang),
+                                  (p.probabilityPercent ?? 0)
+                                      .toStringAsFixed((p.probabilityPercent ?? 0) % 1 == 0 ? 0 : 1)),
                               style: Theme.of(context).textTheme.bodyMedium),
                         ),
                       ]),
@@ -206,7 +208,8 @@ class _AnimatedBox extends StatelessWidget {
                 gradient: ZColors.brandGradient,
                 borderRadius: BorderRadius.circular(36),
                 boxShadow: [
-                  BoxShadow(color: ZColors.primary.withValues(alpha: 0.35), blurRadius: 28, offset: const Offset(0, 14)),
+                  BoxShadow(
+                      color: ZColors.primary.withValues(alpha: 0.35), blurRadius: 28, offset: const Offset(0, 14)),
                 ],
               ),
               child: const Icon(Icons.card_giftcard, color: Colors.white, size: 92),

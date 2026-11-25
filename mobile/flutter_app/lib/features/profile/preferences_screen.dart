@@ -150,8 +150,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
           _advancedChips(
             context.s.prefsEducation,
             {
-              for (final l in _educationLevels)
-                l.key: l.label(LanguageScope.maybeOf(context)?.language.code ?? 'fr'),
+              for (final l in _educationLevels) l.key: l.label(LanguageScope.maybeOf(context)?.language.code ?? 'fr'),
             },
             prefs.educationKeys,
             premium,

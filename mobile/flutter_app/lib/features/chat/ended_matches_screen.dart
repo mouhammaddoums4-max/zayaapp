@@ -56,28 +56,30 @@ class _EndedMatchesScreenState extends State<EndedMatchesScreen> {
             );
           }
           final ended = snapshot.data ?? const <EndedMatch>[];
-          return ListView(padding: EdgeInsets.fromLTRB(16, 8, 16, 28 + MediaQuery.paddingOf(context).bottom), children: [
-            InfoBanner(icon: Icons.info_outline, text: s.endedMatchesExplain),
-            const SizedBox(height: 14),
-            if (ended.isEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 40),
-                child: Column(children: [
-                  const Icon(Icons.heart_broken_outlined, size: 44, color: ZColors.muted),
-                  const SizedBox(height: 12),
-                  Text(s.endedMatchesEmptyTitle, style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 6),
-                  Text(s.endedMatchesEmptyBody,
-                      textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium),
-                ]),
-              )
-            else
-              for (var i = 0; i < ended.length; i++)
-                FadeSlideIn(
-                  index: i,
-                  child: _EndedTile(match: ended[i], onTap: () => _open(ended[i])),
-                ),
-          ]);
+          return ListView(
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 28 + MediaQuery.paddingOf(context).bottom),
+              children: [
+                InfoBanner(icon: Icons.info_outline, text: s.endedMatchesExplain),
+                const SizedBox(height: 14),
+                if (ended.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 40),
+                    child: Column(children: [
+                      const Icon(Icons.heart_broken_outlined, size: 44, color: ZColors.muted),
+                      const SizedBox(height: 12),
+                      Text(s.endedMatchesEmptyTitle, style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 6),
+                      Text(s.endedMatchesEmptyBody,
+                          textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium),
+                    ]),
+                  )
+                else
+                  for (var i = 0; i < ended.length; i++)
+                    FadeSlideIn(
+                      index: i,
+                      child: _EndedTile(match: ended[i], onTap: () => _open(ended[i])),
+                    ),
+              ]);
         },
       ),
     );

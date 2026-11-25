@@ -161,7 +161,8 @@ class ReactionButton extends StatelessWidget {
             AnimatedSwitcher(
               duration: duration,
               transitionBuilder: (child, animation) => ScaleTransition(
-                scale: Tween<double>(begin: 0.5, end: 1).chain(CurveTween(curve: Curves.easeOutBack)).animate(animation),
+                scale:
+                    Tween<double>(begin: 0.5, end: 1).chain(CurveTween(curve: Curves.easeOutBack)).animate(animation),
                 child: child,
               ),
               child: Icon(reacted ? Icons.favorite : Icons.favorite_border,
@@ -244,7 +245,8 @@ class PostTile extends StatelessWidget {
     final commentLabel = post.commentCount == 0 ? 'Commenter' : '${post.commentCount}';
     return Material(
       color: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: ZColors.line)),
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: ZColors.line)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onOpen,

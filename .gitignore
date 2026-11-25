@@ -33,3 +33,8 @@ Thumbs.db
 # Configuration locale (clé publique Supabase, jamais de secret)
 mobile/flutter_app/env.*.json
 !mobile/flutter_app/env.*.example.json
+
+# APK copiées à la racine pour les essais sur téléphone (construites par la session dédiée, jamais versionnées)
+/*.apk
+# Captures d'aperçu des écrans (tests « golden » locaux, montrées au propriétaire, non versionnées)
+mobile/flutter_app/test/_apercu*/

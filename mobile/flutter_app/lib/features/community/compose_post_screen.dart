@@ -87,8 +87,8 @@ class _ComposePostScreenState extends State<ComposePostScreen> {
     final editing = widget.editing;
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-            icon: const Icon(Icons.close), tooltip: 'Fermer', onPressed: () => Navigator.of(context).pop()),
+        leading:
+            IconButton(icon: const Icon(Icons.close), tooltip: 'Fermer', onPressed: () => Navigator.of(context).pop()),
         title: Text(_isEditing ? 'Modifier la publication' : 'Nouvelle publication'),
       ),
       body: SafeArea(

@@ -249,14 +249,10 @@ class DemoCommunityStore {
   }
 
   bool _visible(_Post p) =>
-      p.status == 'published' &&
-      !_hiddenPosts.contains(p.id) &&
-      (p.authorId == meId || !isBlocked(p.authorId));
+      p.status == 'published' && !_hiddenPosts.contains(p.id) && (p.authorId == meId || !isBlocked(p.authorId));
 
   bool _commentVisible(_Comment c) =>
-      c.status == 'published' &&
-      !_hiddenComments.contains(c.id) &&
-      (c.authorId == meId || !isBlocked(c.authorId));
+      c.status == 'published' && !_hiddenComments.contains(c.id) && (c.authorId == meId || !isBlocked(c.authorId));
 
   _Post _visiblePost(String postId) {
     for (final p in _posts) {
@@ -368,7 +364,8 @@ class DemoCommunityStore {
     if (category != null) return PublishResult.blocked(category);
     join(communityId);
     final id = 'my-post-${_seq++}';
-    _posts.add(_Post(id: id, communityId: communityId, authorId: meId, kind: kind, body: text, createdAt: DateTime.now()));
+    _posts.add(
+        _Post(id: id, communityId: communityId, authorId: meId, kind: kind, body: text, createdAt: DateTime.now()));
     return PublishResult.published(id);
   }
 

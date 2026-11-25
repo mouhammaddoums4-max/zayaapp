@@ -91,8 +91,7 @@ class _RadarSearchState extends State<RadarSearch> with SingleTickerProviderStat
                   child: CustomPaint(painter: _RadarPainter(_spin, inner: center / radius)),
                 ),
               ),
-              for (var i = 0; i < found.length; i++)
-                _orbit(found[i], i, radius, side),
+              for (var i = 0; i < found.length; i++) _orbit(found[i], i, radius, side),
               _CenterPhoto(name: widget.name, photoPath: widget.photoPath, size: center * 2),
             ]),
           ),
@@ -121,7 +120,9 @@ class _RadarSearchState extends State<RadarSearch> with SingleTickerProviderStat
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: Colors.white,
-            boxShadow: [BoxShadow(color: ZColors.primary.withValues(alpha: 0.18), blurRadius: 14, offset: const Offset(0, 5))],
+            boxShadow: [
+              BoxShadow(color: ZColors.primary.withValues(alpha: 0.18), blurRadius: 14, offset: const Offset(0, 5))
+            ],
           ),
           child: ClipOval(
             child: ProfilePhotoView(name: p.name, photoPath: p.photoPath, avatar: true, initialSize: size * 0.4),
@@ -147,7 +148,9 @@ class _CenterPhoto extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: ZColors.brandGradient,
-          boxShadow: [BoxShadow(color: ZColors.primary.withValues(alpha: 0.35), blurRadius: 26, offset: const Offset(0, 10))],
+          boxShadow: [
+            BoxShadow(color: ZColors.primary.withValues(alpha: 0.35), blurRadius: 26, offset: const Offset(0, 10))
+          ],
         ),
         child: Container(
           padding: const EdgeInsets.all(3),
@@ -211,7 +214,9 @@ class _StatusPill extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(99),
-          boxShadow: [BoxShadow(color: ZColors.primary.withValues(alpha: 0.12), blurRadius: 18, offset: const Offset(0, 6))],
+          boxShadow: [
+            BoxShadow(color: ZColors.primary.withValues(alpha: 0.12), blurRadius: 18, offset: const Offset(0, 6))
+          ],
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Container(
@@ -303,7 +308,11 @@ class _RadarPainter extends CustomPainter {
           color.withValues(alpha: 0.10),
           color.withValues(alpha: 0.03),
           color.withValues(alpha: 0),
-        ], stops: const [0, 0.6, 1]).createShader(Rect.fromCircle(center: c, radius: r)),
+        ], stops: const [
+          0,
+          0.6,
+          1
+        ]).createShader(Rect.fromCircle(center: c, radius: r)),
     );
 
     // Anneaux fixes.

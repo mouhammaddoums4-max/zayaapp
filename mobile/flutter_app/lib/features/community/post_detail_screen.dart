@@ -94,8 +94,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       _sendError = null;
     });
     try {
-      final result =
-          editing == null ? await repo.addComment(_post.id, text) : await repo.editComment(editing.id, text);
+      final result = editing == null ? await repo.addComment(_post.id, text) : await repo.editComment(editing.id, text);
       if (!mounted) return;
       if (result.isBlocked) {
         setState(() => _blockedCategory = result.blockedCategory);

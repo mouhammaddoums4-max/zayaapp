@@ -144,8 +144,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   Future<void> _compose() async {
-    final published = await Navigator.of(context).push<bool>(
-        zRoute<bool>(ComposePostScreen(communities: _communities, initialCommunityId: _selected)));
+    final published = await Navigator.of(context)
+        .push<bool>(zRoute<bool>(ComposePostScreen(communities: _communities, initialCommunityId: _selected)));
     if (published == true && mounted) {
       showZayaSnack(context, 'Publication en ligne.');
       await _load();
@@ -475,8 +475,7 @@ class _CommunityHeader extends StatelessWidget {
               const Spacer(),
               if (c.joined)
                 IconButton(
-                  icon: Icon(
-                      c.notifLevel == 'none' ? Icons.notifications_off_outlined : Icons.notifications_outlined,
+                  icon: Icon(c.notifLevel == 'none' ? Icons.notifications_off_outlined : Icons.notifications_outlined,
                       color: Colors.white),
                   tooltip: 'Notifications de cette communauté',
                   onPressed: onNotifications,

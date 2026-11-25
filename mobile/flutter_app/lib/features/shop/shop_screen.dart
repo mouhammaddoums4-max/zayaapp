@@ -9,8 +9,8 @@ import '../../data/models.dart';
 import 'shop_service.dart';
 
 /// Ouvre la boutique pour offrir un cadeau ou un compliment à ce membre (depuis son profil ou une conversation).
-Future<void> openGiftShop(BuildContext context, {required String userId, required String name}) =>
-    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ShopScreen(recipientId: userId, recipientName: name)));
+Future<void> openGiftShop(BuildContext context, {required String userId, required String name}) => Navigator.of(context)
+    .push(MaterialPageRoute<void>(builder: (_) => ShopScreen(recipientId: userId, recipientName: name)));
 
 /// Boutique (régie v1 §6–7) : cadeaux virtuels et compliments, payés en pièces achetées. Prix, solde, limite et
 /// blocages sont décidés par le serveur. Sans destinataire, la boutique se consulte seulement.
@@ -144,8 +144,8 @@ class _ShopScreenState extends State<ShopScreen> {
                     padding: const EdgeInsets.all(16),
                     itemCount: c.compliments.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (context, i) => _ComplimentTile(
-                        item: c.compliments[i], lang: lang, onTap: () => _tap(c.compliments[i], lang)),
+                    itemBuilder: (context, i) =>
+                        _ComplimentTile(item: c.compliments[i], lang: lang, onTap: () => _tap(c.compliments[i], lang)),
                   ),
                 ]),
               ),
@@ -345,8 +345,8 @@ class _HistoryList extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16), side: const BorderSide(color: ZColors.line)),
               leading: _Visual(item: e.item, size: 34),
               title: Text(e.item.name(lang)),
-              subtitle: Text([sent ? s.shopTo(e.otherName) : s.shopFrom(e.otherName), if (message != null) message]
-                  .join('\n')),
+              subtitle: Text(
+                  [sent ? s.shopTo(e.otherName) : s.shopFrom(e.otherName), if (message != null) message].join('\n')),
               trailing: Text(formatDate(e.at), style: Theme.of(context).textTheme.bodySmall),
             );
           },

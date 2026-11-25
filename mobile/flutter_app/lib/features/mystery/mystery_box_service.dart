@@ -48,7 +48,8 @@ class MysteryBoxState {
         opened: j['opened'] == true,
         prize: j['prize'] is Map ? MysteryPrize.fromJson(Map<String, dynamic>.from(j['prize'] as Map)) : null,
         prizes: [
-          for (final p in (j['prizes'] as List? ?? const [])) MysteryPrize.fromJson(Map<String, dynamic>.from(p as Map)),
+          for (final p in (j['prizes'] as List? ?? const []))
+            MysteryPrize.fromJson(Map<String, dynamic>.from(p as Map)),
         ],
       );
 
