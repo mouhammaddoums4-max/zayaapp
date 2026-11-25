@@ -27,6 +27,9 @@ abstract class ZayaRepository {
   /// Référentiels publics (lisibles avant la connexion) : pays et catalogue des professions.
   Future<List<Country>> countries();
   Future<List<Profession>> professions();
+
+  /// Niveaux d'études proposés (liste tenue par l'administration, migration 0052), dans l'ordre d'affichage.
+  Future<List<EducationLevel>> educationLevels();
   Future<MyProfile?> loadMyProfile();
   Future<void> saveOnboarding(OnboardingDraft draft);
   Future<void> updateProfile({
@@ -80,6 +83,11 @@ abstract class ZayaRepository {
 
   /// Matchs terminés, des deux côtés (rien après un blocage).
   Future<List<EndedMatch>> endedMatches();
+
+  /// Signaux instantanés du membre connecté (migration 0055) : nature d'un événement qui change ce qu'il voit
+  /// ('like', 'match', 'message', 'photo', 'premium', 'profile', 'visit', 'wallet'), jamais l'identité de
+  /// l'auteur. Flux vide hors connexion.
+  Stream<String> watchSignals();
 
   // ── Messagerie
   Stream<List<ChatMessage>> watchMessages(String matchId);

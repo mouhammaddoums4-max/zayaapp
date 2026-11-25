@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../app.dart';
+import '../../core/l10n/l10n.dart';
 import '../../core/motion.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
@@ -19,6 +20,7 @@ class PreferencesScreen extends StatefulWidget {
 class _PreferencesScreenState extends State<PreferencesScreen> {
   DiscoveryPrefs? _prefs;
   List<City> _cities = const <City>[];
+  List<EducationLevel> _educationLevels = const <EducationLevel>[];
   String? _error;
   bool _saving = false;
 
@@ -36,10 +38,13 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
     try {
       final prefs = await repo.loadPreferences();
       final cities = await repo.cities();
+      // Liste administrable (0052) : sans elle, le groupe « Niveau d'études » n'est simplement pas affiché.
+      final levels = await repo.educationLevels().catchError((Object _) => const <EducationLevel>[]);
       if (mounted) {
         setState(() {
           _prefs = prefs;
           _cities = cities;
+          _educationLevels = levels;
         });
       }
     } catch (e) {
@@ -91,14 +96,34 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
     ]);
   }
 
+  /// Nombre d'enfants au plus (Premium, migration 0052) : un seul choix ; « Peu importe » = pas de filtre.
+  Widget _childrenChips(DiscoveryPrefs prefs, bool premium) {
+    final s = context.s;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const SizedBox(height: 10),
+      Text(s.prefsChildren, style: Theme.of(context).textTheme.labelLarge),
+      const SizedBox(height: 4),
+      Wrap(spacing: 8, runSpacing: 4, children: [
+        for (final max in const <int?>[null, 0, 1, 2, 3])
+          ChoiceChip(
+            label: Text(max == null ? s.prefsChildrenAny : s.prefsChildrenAtMost(max)),
+            avatar: premium || max == null ? null : const Icon(Icons.lock_outline, size: 16, color: ZColors.muted),
+            selected: prefs.childrenMax == max,
+            selectedColor: ZColors.primarySoft,
+            onSelected: premium ? (_) => setState(() => prefs.childrenMax = max) : (_) => _offerPremium(),
+          ),
+      ]),
+    ]);
+  }
+
   List<Widget> _advancedSection(DiscoveryPrefs prefs, bool premium) => [
         const SizedBox(height: 16),
         SectionTitle('Filtres avancés', trailing: premium ? null : const PremiumBadge()),
         Text(
           premium
               ? 'Ils s’ajoutent à vos préférences. Sans choix dans un groupe, tous les profils sont proposés.'
-              : 'Avec ZAYA Premium, affinez les profils proposés par langue parlée, projet de mariage et situation '
-                  'matrimoniale.',
+              : 'Avec ZAYA Premium, affinez les profils proposés par langue parlée, projet de mariage, situation '
+                  'matrimoniale, niveau d’études et nombre d’enfants.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         if (!premium && prefs.hasAdvancedFilters) ...[
@@ -111,6 +136,8 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                 prefs.languages.clear();
                 prefs.horizons.clear();
                 prefs.maritalStatuses.clear();
+                prefs.educationKeys.clear();
+                prefs.childrenMax = null;
               }),
               child: const Text('Les retirer'),
             ),
@@ -119,6 +146,17 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
         _advancedChips('Langues parlées', {for (final l in languageOptions) l: l}, prefs.languages, premium),
         _advancedChips('Projet de mariage', horizonLabels, prefs.horizons, premium),
         _advancedChips('Situation matrimoniale', maritalLabels, prefs.maritalStatuses, premium),
+        if (_educationLevels.isNotEmpty)
+          _advancedChips(
+            context.s.prefsEducation,
+            {
+              for (final l in _educationLevels)
+                l.key: l.label(LanguageScope.maybeOf(context)?.language.code ?? 'fr'),
+            },
+            prefs.educationKeys,
+            premium,
+          ),
+        _childrenChips(prefs, premium),
         if (!premium) ...[
           const SizedBox(height: 12),
           OutlinedButton.icon(

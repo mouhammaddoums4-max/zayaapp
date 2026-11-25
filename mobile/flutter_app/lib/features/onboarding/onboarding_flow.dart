@@ -24,6 +24,8 @@ enum _Step {
   marital,
   nationality,
   profession,
+  education,
+  children,
   confession,
   discovery,
   bio,
@@ -45,6 +47,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   List<City> _cities = const <City>[];
   List<Country> _countries = const <Country>[];
   List<Profession> _professions = const <Profession>[];
+  List<EducationLevel> _educationLevels = const <EducationLevel>[];
   String _professionQuery = '';
   bool _loaded = false;
   bool _forward = true;
@@ -98,6 +101,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     } catch (_) {
       _professions = const <Profession>[];
     }
+    // Niveaux d'études tenus par l'administration (0052) ; sans eux, l'étape peut être passée.
+    try {
+      _educationLevels = await repo.educationLevels();
+    } catch (_) {
+      _educationLevels = const <EducationLevel>[];
+    }
     _phoneVerified = repo.isSignedIn;
     _name.text = _d.displayName;
     _bio.text = _d.bio;
@@ -126,6 +135,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         _Step.marital => true,
         _Step.nationality => true,
         _Step.profession => true,
+        _Step.education => true,
+        _Step.children => true,
         _Step.confession => !_hasConfession || _d.confessionConsent,
         _Step.discovery => _d.confessionMode != 'selected' || _d.selectedConfessions.isNotEmpty,
         _Step.bio => true,
@@ -140,6 +151,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       _Step.marital => _d.maritalStatus == null,
       _Step.nationality => _d.nationalityCode == null,
       _Step.profession => _d.professionId == null && _d.professionOther.trim().isEmpty,
+      _Step.education => _d.educationKey == null,
+      _Step.children => _d.childrenCount == null,
       _Step.confession => _d.confession == null,
       _Step.bio => _d.bio.trim().isEmpty,
       _ => false,
@@ -477,6 +490,59 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               if (v.trim().isNotEmpty) _d.professionId = null;
             }),
           ),
+        ];
+
+      case _Step.education:
+        final s = context.s;
+        final lang = LanguageScope.maybeOf(context)?.language.code ?? 'fr';
+        return [
+          ..._title(context, s.onbEducationTitle, s.onbEducationSubtitle),
+          if (_educationLevels.isEmpty)
+            InfoBanner(tone: BannerTone.warning, icon: Icons.wifi_off, text: s.onbListUnavailable),
+          for (final level in _educationLevels)
+            ChoiceTile(
+              label: level.label(lang),
+              selected: _d.educationKey == level.key,
+              onTap: () => setState(() => _d.educationKey = _d.educationKey == level.key ? null : level.key),
+            ),
+        ];
+
+      case _Step.children:
+        final s = context.s;
+        final count = _d.childrenCount;
+        final many = count != null && count >= 5;
+        return [
+          ..._title(context, s.onbChildrenTitle, s.onbChildrenSubtitle),
+          for (var n = 0; n <= 4; n++)
+            ChoiceTile(
+              label: n == 0 ? s.childrenNone : s.childrenCount(n),
+              selected: count == n,
+              onTap: () => setState(() => _d.childrenCount = count == n ? null : n),
+            ),
+          ChoiceTile(
+            label: s.childrenFiveOrMore,
+            selected: many,
+            onTap: () => setState(() => _d.childrenCount = many ? null : 5),
+          ),
+          // « 5 ou plus » : le nombre exact se règle ici (5 à 20), pour que la fiche affiche le bon chiffre.
+          if (many)
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              IconButton.outlined(
+                icon: const Icon(Icons.remove),
+                tooltip: '−1',
+                onPressed: count > 5 ? () => setState(() => _d.childrenCount = count - 1) : null,
+              ),
+              SizedBox(
+                width: 120,
+                child: Text(s.childrenCount(count),
+                    textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleMedium),
+              ),
+              IconButton.outlined(
+                icon: const Icon(Icons.add),
+                tooltip: '+1',
+                onPressed: count < 20 ? () => setState(() => _d.childrenCount = count + 1) : null,
+              ),
+            ]),
         ];
 
       case _Step.confession:

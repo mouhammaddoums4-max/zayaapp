@@ -87,6 +87,17 @@ class Profession {
   String label(String lang) => lang == 'en' && (labelEn ?? '').isNotEmpty ? labelEn! : labelFr;
 }
 
+/// Niveau d'études : liste fermée tenue par l'administration (table education_levels, migration 0052).
+class EducationLevel {
+  const EducationLevel(this.key, this.labelFr, {this.labelEn});
+  final String key;
+  final String labelFr;
+  final String? labelEn;
+
+  /// Libellé dans la langue de l'interface ; français si la traduction manque encore.
+  String label(String lang) => lang == 'en' && (labelEn ?? '').isNotEmpty ? labelEn! : labelFr;
+}
+
 /// Brouillon d'inscription, sauvegardé localement pour reprendre après interruption.
 class OnboardingDraft {
   bool adultConfirmed = false;
@@ -99,6 +110,8 @@ class OnboardingDraft {
   String? nationalityCode; // facultatif (B07)
   int? professionId; // facultatif (B08)
   String professionOther = ''; // « Autre », 60 caractères au plus
+  String? educationKey; // facultatif : clé de education_levels (0052)
+  int? childrenCount; // facultatif : 0 à 20 (0052)
   String? confession; // facultatif
   bool confessionConsent = false;
   String confessionMode = 'no_filter';
@@ -122,6 +135,8 @@ class OnboardingDraft {
         'nationalityCode': nationalityCode,
         'professionId': professionId,
         'professionOther': professionOther,
+        'educationKey': educationKey,
+        'childrenCount': childrenCount,
         'confession': confession,
         'confessionConsent': confessionConsent,
         'confessionMode': confessionMode,
@@ -144,6 +159,8 @@ class OnboardingDraft {
     ..nationalityCode = j['nationalityCode'] as String?
     ..professionId = (j['professionId'] as num?)?.toInt()
     ..professionOther = (j['professionOther'] as String?) ?? ''
+    ..educationKey = j['educationKey'] as String?
+    ..childrenCount = (j['childrenCount'] as num?)?.toInt()
     ..confession = j['confession'] as String?
     ..confessionConsent = j['confessionConsent'] == true
     ..confessionMode = (j['confessionMode'] as String?) ?? 'no_filter'
@@ -409,11 +426,14 @@ class DiscoveryPrefs {
     List<String>? languages,
     List<String>? horizons,
     List<String>? maritalStatuses,
+    List<String>? educationKeys,
+    this.childrenMax,
   })  : confessions = confessions ?? <String>[],
         cityIds = cityIds ?? <int>[],
         languages = languages ?? <String>[],
         horizons = horizons ?? <String>[],
-        maritalStatuses = maritalStatuses ?? <String>[];
+        maritalStatuses = maritalStatuses ?? <String>[],
+        educationKeys = educationKeys ?? <String>[];
 
   int ageMin;
   int ageMax;
@@ -435,7 +455,18 @@ class DiscoveryPrefs {
   /// Situations matrimoniales acceptées (clés de [maritalLabels]).
   List<String> maritalStatuses;
 
-  bool get hasAdvancedFilters => languages.isNotEmpty || horizons.isNotEmpty || maritalStatuses.isNotEmpty;
+  /// Niveaux d'études acceptés (clés de education_levels, migration 0052).
+  List<String> educationKeys;
+
+  /// Nombre d'enfants au plus (null = peu importe ; 0 = sans enfant), migration 0052.
+  int? childrenMax;
+
+  bool get hasAdvancedFilters =>
+      languages.isNotEmpty ||
+      horizons.isNotEmpty ||
+      maritalStatuses.isNotEmpty ||
+      educationKeys.isNotEmpty ||
+      childrenMax != null;
 
   /// Un réglage s'écarte des valeurs par défaut (point sur l'icône des filtres).
   bool get isFiltered {

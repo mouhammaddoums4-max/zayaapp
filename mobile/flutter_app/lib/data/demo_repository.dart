@@ -354,6 +354,20 @@ class DemoRepository implements ZayaRepository {
       ];
 
   @override
+  Future<List<EducationLevel>> educationLevels() async => const <EducationLevel>[
+        // Mêmes valeurs de départ que le serveur (0052).
+        EducationLevel('none', 'Sans diplôme', labelEn: 'No diploma'),
+        EducationLevel('primary', 'Primaire (CEPE)', labelEn: 'Primary school'),
+        EducationLevel('middle', 'Collège (BEPC)', labelEn: 'Middle school'),
+        EducationLevel('bac', 'Baccalauréat', labelEn: 'High school diploma'),
+        EducationLevel('vocational', 'Formation professionnelle', labelEn: 'Vocational training'),
+        EducationLevel('bac2', 'Bac +2 (BTS, DUT)', labelEn: 'Two-year degree'),
+        EducationLevel('licence', 'Licence (Bac +3)', labelEn: 'Bachelor’s degree'),
+        EducationLevel('master', 'Master (Bac +5)', labelEn: 'Master’s degree'),
+        EducationLevel('doctorate', 'Doctorat', labelEn: 'Doctorate'),
+      ];
+
+  @override
   Future<List<Profession>> professions() async => const <Profession>[
         Profession(1, 'Administration publique'),
         Profession(2, 'Agriculture / élevage'),
@@ -526,20 +540,35 @@ class DemoRepository implements ZayaRepository {
       cityIds: [..._prefs.cityIds],
       languages: [..._prefs.languages],
       horizons: [..._prefs.horizons],
-      maritalStatuses: [..._prefs.maritalStatuses]);
+      maritalStatuses: [..._prefs.maritalStatuses],
+      educationKeys: [..._prefs.educationKeys],
+      childrenMax: _prefs.childrenMax);
 
   @override
   Future<void> savePreferences(DiscoveryPrefs prefs) async {
-    // Même règle que le serveur (0025) : un compte Gratuit ne peut pas définir ni changer de filtre avancé.
+    // Même règle que le serveur (0025, 0052) : un compte Gratuit ne peut pas définir ni changer de filtre avancé.
     bool change(List<String> avant, List<String> apres) =>
         apres.isNotEmpty && (avant.length != apres.length || avant.any((v) => !apres.contains(v)));
     if (!(_profile?.isPremium ?? false) &&
         (change(_prefs.languages, prefs.languages) ||
             change(_prefs.horizons, prefs.horizons) ||
-            change(_prefs.maritalStatuses, prefs.maritalStatuses))) {
+            change(_prefs.maritalStatuses, prefs.maritalStatuses) ||
+            change(_prefs.educationKeys, prefs.educationKeys) ||
+            (prefs.childrenMax != null && prefs.childrenMax != _prefs.childrenMax))) {
       throw Exception('PREMIUM_REQUIRED');
     }
     _prefs = prefs;
+  }
+
+  /// Clé de niveau d'études d'un profil fictif, d'après son texte (même correspondance que la reprise de 0052).
+  static String? _educationKey(String? texte) {
+    final t = (texte ?? '').toLowerCase();
+    if (t.startsWith('doctorat')) return 'doctorate';
+    if (t.startsWith('master')) return 'master';
+    if (t.startsWith('licence')) return 'licence';
+    if (t.startsWith('bts') || t.startsWith('dut')) return 'bac2';
+    if (t.startsWith('bac')) return 'bac';
+    return null;
   }
 
   @override
@@ -555,6 +584,8 @@ class DemoRepository implements ZayaRepository {
     final langues = avances ? _prefs.languages : const <String>[];
     final projets = avances ? _prefs.horizons : const <String>[];
     final situations = avances ? _prefs.maritalStatuses : const <String>[];
+    final etudes = avances ? _prefs.educationKeys : const <String>[];
+    final enfantsMax = avances ? _prefs.childrenMax : null;
     return [
       for (final p in _pool)
         if (!_seen.contains(p.profile.id) &&
@@ -564,7 +595,9 @@ class DemoRepository implements ZayaRepository {
             (villes.isEmpty || villes.contains(p.profile.city)) &&
             (langues.isEmpty || p.profile.languages.any(langues.contains)) &&
             (projets.isEmpty || projets.contains(p.profile.horizon)) &&
-            (situations.isEmpty || situations.contains(p.maritalStatus)))
+            (situations.isEmpty || situations.contains(p.maritalStatus)) &&
+            (etudes.isEmpty || etudes.contains(_educationKey(p.education))) &&
+            (enfantsMax == null || p.childrenCount <= enfantsMax))
           p.profile,
     ];
   }
@@ -731,6 +764,10 @@ class DemoRepository implements ZayaRepository {
 
   void _emit(String matchId) =>
       _streams[matchId]?.add(List<ChatMessage>.unmodifiable(_messages[matchId] ?? const <ChatMessage>[]));
+
+  /// Mode démo : tout est déjà en mémoire, aucun signal à attendre.
+  @override
+  Stream<String> watchSignals() => const Stream<String>.empty();
 
   @override
   Stream<List<ChatMessage>> watchMessages(String matchId) {

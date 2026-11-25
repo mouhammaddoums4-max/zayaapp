@@ -227,4 +227,17 @@ abstract class ZStrings {
   // ── Mariage : recherche animée avant l'affichage des profils
   String get radarSearchTitle;
   String get radarSearchSubtitle;
+
+  // ── Niveau d'études et enfants : inscription et filtres Premium (0052)
+  String get onbEducationTitle;
+  String get onbEducationSubtitle;
+  String get onbChildrenTitle;
+  String get onbChildrenSubtitle;
+  String get childrenNone;
+  String childrenCount(int count);
+  String get childrenFiveOrMore;
+  String get prefsEducation;
+  String get prefsChildren;
+  String get prefsChildrenAny;
+  String prefsChildrenAtMost(int count);
 }

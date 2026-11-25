@@ -18,6 +18,7 @@ import { endedMatchesTests } from './ended_matches_tests.mjs';
 import { filtresAvancesTests } from './filtres_avances_tests.mjs';
 import { securiteTests } from './securite_tests.mjs';
 import { etudesEnfantsTests } from './etudes_enfants_tests.mjs';
+import { signauxTests } from './signaux_tests.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const db = new PGlite();
@@ -815,6 +816,7 @@ await conversationsTests({ db, test, assert, as, rpc, fails, seedMember });
 await filtresAvancesTests({ db, test, assert, as, rpc, fails, U, seedMember });
 await securiteTests({ db, test, assert, as, rpc, fails, seedMember });
 await etudesEnfantsTests({ db, test, assert, as, rpc, fails, U, seedMember });
+await signauxTests({ db, test, assert, as, rpc, fails, U, seedMember });
 
 console.log('\nFichier d’installation Supabase');
 await test('le fichier d’installation est à jour (régénéré à partir des migrations et du seed)', async () => {

@@ -56,6 +56,41 @@ void main() {
     expect(parSituation.length, lessThan(tous.length));
   });
 
+  test('niveau d’études et enfants (0052) : liste du serveur, filtres Premium, refus en Gratuit', () async {
+    final repo = await inscrit();
+    final niveaux = await repo.educationLevels();
+    expect(niveaux.first.key, 'none');
+    expect(niveaux.map((l) => l.key), containsAll(<String>['bac', 'licence', 'master', 'doctorate']));
+    expect(niveaux.firstWhere((l) => l.key == 'licence').label('en'), 'Bachelor’s degree');
+
+    await expectLater(repo.savePreferences((await repo.loadPreferences())..childrenMax = 0), throwsA(isA<Exception>()));
+    await expectLater(
+        repo.savePreferences((await repo.loadPreferences())..educationKeys = ['master']), throwsA(isA<Exception>()));
+
+    await premium(repo, true);
+    final tous = await repo.discoveryFeed();
+    await repo.savePreferences((await repo.loadPreferences())..educationKeys = ['master']);
+    final parEtudes = await repo.discoveryFeed();
+    expect(parEtudes, isNotEmpty);
+    expect(parEtudes.length, lessThan(tous.length));
+    expect((await repo.loadPreferences()).hasAdvancedFilters, isTrue);
+    await repo.savePreferences((await repo.loadPreferences())
+      ..educationKeys = []
+      ..childrenMax = 0);
+    expect((await repo.discoveryFeed()), isNotEmpty);
+    await repo.savePreferences((await repo.loadPreferences())..childrenMax = null);
+    expect((await repo.discoveryFeed()).length, tous.length);
+  });
+
+  test('brouillon d’inscription : niveau d’études et enfants conservés', () {
+    final d = OnboardingDraft()
+      ..educationKey = 'licence'
+      ..childrenCount = 7;
+    final r = OnboardingDraft.fromJson(d.toJson());
+    expect(r.educationKey, 'licence');
+    expect(r.childrenCount, 7);
+  });
+
   test('Premium terminé : filtres conservés mais sans effet ; on peut seulement les retirer', () async {
     final repo = await inscrit();
     await premium(repo, true);

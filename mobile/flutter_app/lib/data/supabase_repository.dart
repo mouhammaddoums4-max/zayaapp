@@ -82,6 +82,14 @@ class SupabaseRepository implements ZayaRepository {
   }
 
   @override
+  Future<List<EducationLevel>> educationLevels() async {
+    final rows = await _db.from('education_levels').select('key, label_fr, label_en').order('position');
+    return [
+      for (final r in rows) EducationLevel(r['key'] as String, r['label_fr'] as String, labelEn: r['label_en'] as String?),
+    ];
+  }
+
+  @override
   Future<MyProfile?> loadMyProfile() async {
     final uid = userId;
     if (uid == null) return null;
@@ -143,6 +151,9 @@ class SupabaseRepository implements ZayaRepository {
       'profession_other':
           d.professionId == null && d.professionOther.trim().isNotEmpty ? d.professionOther.trim() : null,
       'marriage_horizon': d.horizon,
+      // Facultatifs (0052) : le serveur recopie le libellé du niveau d'études pour l'affichage.
+      'education_key': d.educationKey,
+      'children_count': d.childrenCount,
       'bio': bio.isEmpty ? null : bio,
     });
 
@@ -280,6 +291,8 @@ class SupabaseRepository implements ZayaRepository {
       languages: _strings(row['languages']),
       horizons: _strings(row['marriage_horizons']),
       maritalStatuses: _strings(row['marital_statuses']),
+      educationKeys: _strings(row['education_keys']),
+      childrenMax: (row['children_max'] as num?)?.toInt(),
     );
   }
 
@@ -296,6 +309,8 @@ class SupabaseRepository implements ZayaRepository {
       'languages': prefs.languages,
       'marriage_horizons': prefs.horizons,
       'marital_statuses': prefs.maritalStatuses,
+      'education_keys': prefs.educationKeys,
+      'children_max': prefs.childrenMax,
     });
   }
 
@@ -429,6 +444,36 @@ class SupabaseRepository implements ZayaRepository {
   }
 
   // ── Messagerie
+  @override
+  Stream<String> watchSignals() {
+    final uid = _db.auth.currentUser?.id;
+    if (uid == null) return const Stream<String>.empty();
+    RealtimeChannel? channel;
+    late final StreamController<String> controller;
+    controller = StreamController<String>.broadcast(
+      // Abonnement Realtime filtré sur le membre ; la RLS de member_signals s'applique aussi côté serveur.
+      onListen: () => channel = _db
+          .channel('signaux-$uid')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.insert,
+            schema: 'public',
+            table: 'member_signals',
+            filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'user_id', value: uid),
+            callback: (payload) {
+              final kind = payload.newRecord['kind'];
+              if (kind is String && !controller.isClosed) controller.add(kind);
+            },
+          )
+          .subscribe(),
+      onCancel: () {
+        final c = channel;
+        channel = null;
+        if (c != null) _db.removeChannel(c);
+      },
+    );
+    return controller.stream;
+  }
+
   @override
   Stream<List<ChatMessage>> watchMessages(String matchId) {
     _fireAndForget('mark_conversation_read', {'p_match': matchId});

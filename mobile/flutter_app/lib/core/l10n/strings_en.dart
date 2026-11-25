@@ -450,4 +450,28 @@ class ZStringsEn extends ZStrings {
   String get radarSearchTitle => 'Looking for profiles';
   @override
   String get radarSearchSubtitle => 'matching your preferences';
+
+  // ── Niveau d'études et enfants : inscription et filtres Premium (0052)
+  @override
+  String get onbEducationTitle => 'Your education';
+  @override
+  String get onbEducationSubtitle => 'Optional. It will be shown on your profile.';
+  @override
+  String get onbChildrenTitle => 'Do you have children?';
+  @override
+  String get onbChildrenSubtitle => 'Optional. The number will be shown on your profile.';
+  @override
+  String get childrenNone => 'No children';
+  @override
+  String childrenCount(int count) => count == 1 ? '1 child' : '$count children';
+  @override
+  String get childrenFiveOrMore => '5 children or more';
+  @override
+  String get prefsEducation => 'Education';
+  @override
+  String get prefsChildren => 'Children';
+  @override
+  String get prefsChildrenAny => 'Any';
+  @override
+  String prefsChildrenAtMost(int count) => count == 0 ? 'No children' : 'At most $count';
 }

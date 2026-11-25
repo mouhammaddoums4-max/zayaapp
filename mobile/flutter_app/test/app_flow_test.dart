@@ -54,7 +54,7 @@ Map<String, Object> draftAtHorizonStep({String gender = 'femme'}) => {
 /// Termine l'inscription à partir de l'étape « Projet de mariage » et arrive sur l'application.
 Future<void> finishOnboarding(WidgetTester tester) async {
   await tapText(tester, 'Créer mon profil');
-  expect(find.text('Étape 6 sur 14'), findsOneWidget, reason: 'Le brouillon doit reprendre à l’étape enregistrée');
+  expect(find.text('Étape 6 sur 16'), findsOneWidget, reason: 'Le brouillon doit reprendre à l’étape enregistrée');
   await tapText(tester, 'Bientôt');
   await tapText(tester, 'Continuer');
   expect(find.text('Votre situation matrimoniale'), findsOneWidget);
@@ -69,6 +69,12 @@ Future<void> finishOnboarding(WidgetTester tester) async {
   await tapText(tester, 'Santé');
   expect(find.text('Continuer'), findsOneWidget);
   await tapText(tester, 'Continuer');
+  // Niveau d'études et enfants (facultatifs, 0052) : liste lue depuis le serveur, puis nombre d'enfants.
+  expect(find.text('Votre niveau d’études'), findsOneWidget);
+  expect(find.text('Licence (Bac +3)'), findsOneWidget);
+  await tapText(tester, 'Passer cette étape');
+  expect(find.text('Avez-vous des enfants ?'), findsOneWidget);
+  await tapText(tester, 'Passer cette étape');
   expect(find.text('Votre confession'), findsOneWidget);
   await tapText(tester, 'Passer cette étape');
   expect(find.text('Qui souhaitez-vous découvrir ?'), findsOneWidget);
@@ -134,12 +140,12 @@ void main() {
     expect(find.textContaining('18 ans et plus'), findsOneWidget);
 
     await tapText(tester, 'Créer mon profil');
-    expect(find.text('Étape 1 sur 14'), findsOneWidget);
+    expect(find.text('Étape 1 sur 16'), findsOneWidget);
 
     // Le bouton reste inactif tant que la majorité n'est pas confirmée.
     await tester.tap(find.text('Continuer'));
     await settle(tester);
-    expect(find.text('Étape 1 sur 14'), findsOneWidget);
+    expect(find.text('Étape 1 sur 16'), findsOneWidget);
 
     await tapText(tester, 'J’ai 18 ans ou plus');
     await tapText(tester, 'Continuer');
@@ -153,7 +159,7 @@ void main() {
     // Sans date de naissance, on ne peut pas continuer.
     await tester.tap(find.text('Continuer'));
     await settle(tester);
-    expect(find.text('Étape 3 sur 14'), findsOneWidget);
+    expect(find.text('Étape 3 sur 16'), findsOneWidget);
 
     // Retour arrière : l'étape précédente garde la saisie.
     await tester.tap(find.byTooltip('Retour'));

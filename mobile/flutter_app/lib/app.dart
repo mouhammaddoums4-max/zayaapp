@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 
 import 'core/l10n/l10n.dart';
@@ -96,14 +98,119 @@ class Session extends ChangeNotifier {
     }
   }
 
+  /// Chargement initial, pendant l'écran de démarrage : profil et réglages publics, puis, pour un membre actif, le
+  /// fil, les pastilles et les premières photos, afin que l'application s'ouvre déjà remplie. Plafonné à
+  /// [maxWait] : sur un réseau lent, l'application s'ouvre quand même et les écrans finissent de charger.
+  Future<void> start({Duration maxWait = const Duration(seconds: 3)}) async {
+    await Future.wait([_loadMe(), loadAppConfig()]);
+    final m = me;
+    if (m != null && m.status == 'active') {
+      try {
+        await Future.wait([feed.load(), refreshBadges()]).then((_) => _warmPhotos()).timeout(maxWait);
+      } catch (_) {
+        // Délai dépassé ou réseau indisponible : rien de bloquant.
+      }
+    }
+    loading = false;
+    notifyListeners();
+    _listenSignals();
+  }
+
   Future<void> refresh() async {
+    await _loadMe();
+    loading = false;
+    notifyListeners();
+    _listenSignals();
+  }
+
+  Future<void> _loadMe() async {
     try {
       me = repo.isSignedIn ? await repo.loadMyProfile() : null;
     } catch (_) {
       me = null;
     }
-    loading = false;
+  }
+
+  /// Photo du membre et des deux premiers profils du fil, déjà téléchargées et décodées à l'ouverture.
+  Future<void> _warmPhotos() async {
+    final paths = <String?>[me?.mainPhotoPath, for (final p in feed.profiles.take(2)) p.photoPath];
+    await Future.wait([
+      for (final path in paths.whereType<String>()) _warmPhoto(path),
+    ]);
+  }
+
+  Future<void> _warmPhoto(String path) async {
+    final url = await repo.photoUrl(path);
+    if (url == null) return;
+    final done = Completer<void>();
+    final stream = NetworkImage(url).resolve(ImageConfiguration.empty);
+    late final ImageStreamListener listener;
+    void finish() {
+      if (!done.isCompleted) done.complete();
+      stream.removeListener(listener);
+    }
+
+    listener = ImageStreamListener((_, __) => finish(), onError: (_, __) => finish());
+    stream.addListener(listener);
+    return done.future;
+  }
+
+  // ── Mises à jour instantanées (migration 0055)
+  StreamSubscription<String>? _signalSubscription;
+  final StreamController<String> _signalEvents = StreamController<String>.broadcast();
+  final Set<String> _pendingSignals = <String>{};
+  Timer? _signalDebounce;
+
+  /// Signaux reçus en temps réel ('like', 'match', 'message', 'photo', 'premium', 'profile', 'visit', 'wallet') :
+  /// les écrans de listes (likes, conversations, portefeuille…) peuvent s'y abonner pour se rafraîchir aussitôt.
+  Stream<String> get signals => _signalEvents.stream;
+
+  void _listenSignals() {
+    if (_signalSubscription != null || me == null || !repo.isSignedIn) return;
+    _signalSubscription = repo.watchSignals().listen(_onSignal, onError: (Object _) {});
+  }
+
+  void _stopSignals() {
+    _signalSubscription?.cancel();
+    _signalSubscription = null;
+    _signalDebounce?.cancel();
+    _pendingSignals.clear();
+  }
+
+  void _onSignal(String kind) {
+    if (!_signalEvents.isClosed) _signalEvents.add(kind);
+    _pendingSignals.add(kind);
+    // Plusieurs signaux rapprochés (un match envoie aussi un message…) : un seul rafraîchissement.
+    _signalDebounce?.cancel();
+    _signalDebounce = Timer(const Duration(milliseconds: 300), _applySignals);
+  }
+
+  Future<void> _applySignals() async {
+    final kinds = {..._pendingSignals};
+    _pendingSignals.clear();
+    if (kinds.any(const {'photo', 'premium', 'profile'}.contains)) {
+      await _loadMe();
+      notifyListeners();
+    }
+    if (kinds.any(const {'like', 'match', 'message'}.contains)) await refreshBadges();
+    // Premium active ou retire les filtres avancés : le fil est recalculé.
+    if (kinds.contains('premium') && feed.loaded) unawaited(feed.load());
+  }
+
+  /// Retour dans l'application : tout ce qui a pu changer pendant l'absence est relu, sans écran de chargement.
+  Future<void> resume() async {
+    if (me == null || !repo.isSignedIn) return;
+    await _loadMe();
     notifyListeners();
+    await refreshBadges();
+    _listenSignals();
+  }
+
+  @override
+  void dispose() {
+    _stopSignals();
+    _signalEvents.close();
+    super.dispose();
   }
 
   /// Met à jour les pastilles des onglets Likes et Messages. Silencieux en cas d'échec réseau.
@@ -121,6 +228,7 @@ class Session extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    _stopSignals();
     await repo.signOut();
     me = null;
     likesBadge = 0;
@@ -148,20 +256,27 @@ class ZayaApp extends StatefulWidget {
   State<ZayaApp> createState() => _ZayaAppState();
 }
 
-class _ZayaAppState extends State<ZayaApp> {
+class _ZayaAppState extends State<ZayaApp> with WidgetsBindingObserver {
   late final Session _session = Session(widget.repository);
   final LanguageController _language = LanguageController();
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _language.restore();
-    _session.refresh();
-    _session.loadAppConfig();
+    // Profil, réglages publics, fil, pastilles et premières photos, pendant l'écran de démarrage.
+    _session.start();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _session.resume();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _session.feed.dispose();
     _session.dispose();
     _language.dispose();
