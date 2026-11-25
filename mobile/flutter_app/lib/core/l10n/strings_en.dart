@@ -313,6 +313,56 @@ class ZStringsEn extends ZStrings {
           ? 'After 1 minute'
           : 'After ${seconds ~/ 60} minutes';
 
+  // ── Shop
+  @override
+  String get shopTitle => 'Shop';
+  @override
+  String get shopSubtitle => 'Gifts and compliments';
+  @override
+  String get shopGifts => 'Gifts';
+  @override
+  String get shopCompliments => 'Compliments';
+  @override
+  String get shopBuyCoins => 'Buy coins';
+  @override
+  String get shopNotOnSale => 'Soon';
+  @override
+  String get shopSend => 'Give';
+  @override
+  String get shopSent => 'Sent!';
+  @override
+  String get shopInsufficient => 'Not enough coins.';
+  @override
+  String get shopLimit => 'Daily limit reached. Try again tomorrow.';
+  @override
+  String get shopUnavailable => 'This member cannot receive gifts.';
+  @override
+  String get shopDisabled => 'The shop is not open yet.';
+  @override
+  String get shopBrowseHint => 'Open a member’s profile to give them a gift or a compliment.';
+  @override
+  String get shopHistoryTitle => 'My gifts';
+  @override
+  String get shopReceived => 'Received';
+  @override
+  String get shopSentTab => 'Sent';
+  @override
+  String get shopHistoryEmpty => 'No gifts yet.';
+  @override
+  String get shopGiveGift => 'Give a gift';
+  @override
+  String shopPrice(int n) => '$n coins';
+  @override
+  String shopSendTo(String name) => 'Give to $name';
+  @override
+  String shopConfirm(String item, String name) => 'Give "$item" to $name?';
+  @override
+  String shopConfirmBody(int price) => '$price coins will be taken from your balance. This cannot be undone.';
+  @override
+  String shopFrom(String name) => 'From $name';
+  @override
+  String shopTo(String name) => 'To $name';
+
   // ── Language
   @override
   String get languageTitle => 'App language';

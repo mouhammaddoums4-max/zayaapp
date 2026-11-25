@@ -58,8 +58,9 @@ Explorer, achats, publicité ».
 | Partage de profil | S2 | à faire | CDC 17 : lien opaque, durée limitée, révocable |
 | Proches (cercle de confiance) | S2 | à faire | CDC §8 |
 | Explorer : onglets Pour toi / Événements / Historique, filtre, membres à proximité | S2 | à faire | Consentement de géolocalisation, position approximative |
-| Boutique : cadeaux, compliments, emojis | S2 | à faire | Régie publicitaire §6–7 |
+| Boutique : cadeaux, compliments, emojis | S2 | en cours | 0035 : catalogue administrable (prix fixés par l'équipe), envoi payé en pièces achetées, historique reçus et envoyés ; Réglages > Boutique. Reste : bouton « Offrir un cadeau » sur le profil (écran de zaya-app-f9), achat de pièces (paiements fermés), console d'administration |
 | Boîte mystère de bienvenue pour les premiers inscrits, tout côté serveur | S2 | fait | 0033 (serveur), f650320 (application) ; décision C19 |
+| Verrouillage de l’application : code PIN, empreinte digitale, Face ID | S2 | fait | 1fe169e ; un seul code avec la connexion par code (zaya-app-0d, en cours) ; décision C22 |
 | Publicité : AdMob, publicités directes, « Sponsorisé » dans la Communauté, récompenses, portefeuille | S2 | en cours | 0015, 0031, 0034. Fait : portefeuille, publicités récompensées vérifiées par Google (SSV), carte « Sponsorisé » (profil, Communauté) avec bannière Google en repli, réglages décidés par le serveur (`my_ad_settings`), interstitiel prêt (désactivé). Reste : identifiants AdMob du propriétaire, Explorer et Découvrir (après les sessions qui modifient ces écrans), console d'administration de la régie |
 | Sauvegarde des données, pause, suppression du compte | S2 | à faire | Fonctions serveur déjà présentes |
 | Tous les prix (achats, Premium, cadeaux) fixés par l'administration | S2 | à faire | `app_config` / catalogue administrable |

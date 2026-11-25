@@ -316,6 +316,56 @@ class ZStringsFr extends ZStrings {
           ? 'Après 1 minute'
           : 'Après ${seconds ~/ 60} minutes';
 
+  // ── Boutique
+  @override
+  String get shopTitle => 'Boutique';
+  @override
+  String get shopSubtitle => 'Cadeaux et compliments';
+  @override
+  String get shopGifts => 'Cadeaux';
+  @override
+  String get shopCompliments => 'Compliments';
+  @override
+  String get shopBuyCoins => 'Acheter des pièces';
+  @override
+  String get shopNotOnSale => 'Bientôt';
+  @override
+  String get shopSend => 'Offrir';
+  @override
+  String get shopSent => 'Envoyé !';
+  @override
+  String get shopInsufficient => 'Solde de pièces insuffisant.';
+  @override
+  String get shopLimit => 'Limite du jour atteinte. Réessayez demain.';
+  @override
+  String get shopUnavailable => 'Ce membre ne peut pas recevoir de cadeau.';
+  @override
+  String get shopDisabled => 'La boutique n’est pas encore ouverte.';
+  @override
+  String get shopBrowseHint => 'Ouvrez le profil d’un membre pour lui offrir un cadeau ou un compliment.';
+  @override
+  String get shopHistoryTitle => 'Mes cadeaux';
+  @override
+  String get shopReceived => 'Reçus';
+  @override
+  String get shopSentTab => 'Envoyés';
+  @override
+  String get shopHistoryEmpty => 'Aucun cadeau pour le moment.';
+  @override
+  String get shopGiveGift => 'Offrir un cadeau';
+  @override
+  String shopPrice(int n) => '$n pièces';
+  @override
+  String shopSendTo(String name) => 'Offrir à $name';
+  @override
+  String shopConfirm(String item, String name) => 'Offrir « $item » à $name ?';
+  @override
+  String shopConfirmBody(int price) => '$price pièces seront débitées de votre solde. Cet envoi est définitif.';
+  @override
+  String shopFrom(String name) => 'De $name';
+  @override
+  String shopTo(String name) => 'À $name';
+
   // ── Langue
   @override
   String get languageTitle => 'Langue de l’application';

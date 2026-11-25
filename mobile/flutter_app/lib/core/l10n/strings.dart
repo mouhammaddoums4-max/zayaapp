@@ -168,6 +168,32 @@ abstract class ZStrings {
   String lockWait(int seconds);
   String lockDelay(int seconds);
 
+  // ── Boutique : cadeaux et compliments (0035)
+  String get shopTitle;
+  String get shopSubtitle;
+  String get shopGifts;
+  String get shopCompliments;
+  String get shopBuyCoins;
+  String get shopNotOnSale;
+  String get shopSend;
+  String get shopSent;
+  String get shopInsufficient;
+  String get shopLimit;
+  String get shopUnavailable;
+  String get shopDisabled;
+  String get shopBrowseHint;
+  String get shopHistoryTitle;
+  String get shopReceived;
+  String get shopSentTab;
+  String get shopHistoryEmpty;
+  String get shopGiveGift;
+  String shopPrice(int n);
+  String shopSendTo(String name);
+  String shopConfirm(String item, String name);
+  String shopConfirmBody(int price);
+  String shopFrom(String name);
+  String shopTo(String name);
+
   // ── Langue
   String get languageTitle;
   String get languageIntro;

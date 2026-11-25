@@ -13,6 +13,7 @@ import '../profile/edit_profile_screen.dart';
 import '../profile/privacy_center_screen.dart';
 import '../safety/safety_sheets.dart';
 import '../security/app_lock_settings_screen.dart';
+import '../shop/shop_screen.dart';
 import 'help_screen.dart';
 import 'language_screen.dart';
 import '../wallet/wallet_screen.dart';
@@ -197,6 +198,12 @@ class SettingsScreen extends StatelessWidget {
             title: s.walletTitle,
             subtitle: s.walletSubtitle,
             onTap: () => _push(context, const WalletScreen()),
+          ),
+          SettingsTile(
+            icon: Icons.storefront_outlined,
+            title: s.shopTitle,
+            subtitle: s.shopSubtitle,
+            onTap: () => _push(context, const ShopScreen()),
           ),
           SettingsTile(
             icon: Icons.receipt_long_outlined,
