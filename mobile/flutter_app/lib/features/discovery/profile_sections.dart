@@ -5,6 +5,7 @@ import '../../app.dart';
 import '../../core/motion.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
+import '../../core/zaya_icons.dart';
 import '../../data/models.dart';
 import 'photo_viewer.dart';
 import 'profile_widgets.dart';
@@ -27,6 +28,7 @@ class ProfilePhotoPager extends StatefulWidget {
     this.swipeable = false,
     this.onUnlock,
     this.onIndexChanged,
+    this.onEdge,
     this.topInset = 10,
   });
 
@@ -42,6 +44,9 @@ class ProfilePhotoPager extends StatefulWidget {
   /// Ouvre l'offre Premium depuis une photo floutée par la règle du forfait.
   final VoidCallback? onUnlock;
   final ValueChanged<int>? onIndexChanged;
+
+  /// Toucher au-delà de la première (-1) ou de la dernière (1) photo : la carte peut répondre par un petit rebond.
+  final ValueChanged<int>? onEdge;
 
   /// Marge au-dessus des segments (barre d'état sur la fiche plein écran).
   final double topInset;
@@ -78,7 +83,7 @@ class ProfilePhotoPagerState extends State<ProfilePhotoPager> {
       final path = p.isBlurred ? p.blurPath : p.path;
       if (path == null || !_precached.add(path)) continue;
       repo.photoUrl(path, blurred: p.isBlurred).then((url) {
-        if (url != null && mounted) precacheImage(NetworkImage(url), context, onError: (_, __) {});
+        if (url != null && mounted) precacheImage(zayaPhoto(url, path, blurred: p.isBlurred), context, onError: (_, __) {});
       }, onError: (_) {});
     }
   }
@@ -91,7 +96,10 @@ class ProfilePhotoPagerState extends State<ProfilePhotoPager> {
 
   void _go(int delta, int count) {
     final next = (_index + delta).clamp(0, count - 1);
-    if (next == _index) return;
+    if (next == _index) {
+      widget.onEdge?.call(delta);
+      return;
+    }
     if (widget.swipeable && _pages.hasClients) {
       _pages.jumpToPage(next);
     } else {
@@ -142,8 +150,9 @@ class ProfilePhotoPagerState extends State<ProfilePhotoPager> {
       label: count > 1 ? 'Photo ${index + 1} sur $count de ${widget.name}' : 'Photo de ${widget.name}',
       child: Stack(fit: StackFit.expand, children: [
         pages,
-        if (count > 1) ...[
-          // Zones de toucher : un tiers à gauche pour revenir, le reste pour avancer.
+        // Zones de toucher : un tiers à gauche pour revenir, le reste pour avancer (avec une seule photo, seulement
+        // pour le rebond de la carte).
+        if (count > 1 || widget.onEdge != null)
           Positioned.fill(
             child: Row(children: [
               Expanded(
@@ -155,6 +164,7 @@ class ProfilePhotoPagerState extends State<ProfilePhotoPager> {
               ),
             ]),
           ),
+        if (count > 1)
           Positioned(
             top: widget.topInset,
             left: 12,
@@ -177,7 +187,6 @@ class ProfilePhotoPagerState extends State<ProfilePhotoPager> {
               ]),
             ),
           ),
-        ],
       ]),
     );
   }
@@ -234,46 +243,100 @@ class _BlurredNotice extends StatelessWidget {
   }
 }
 
-/// Pastilles d'informations posées sur la photo (ville, profession, projet de mariage…).
-class PhotoInfoChip extends StatelessWidget {
-  const PhotoInfoChip({super.key, required this.icon, required this.text});
+
+/// Prénom en gras et âge plus léger, comme une signature : « Awa 27 ». Lu « Awa, 27 ans » par le lecteur d'écran.
+class ProfileNameAge extends StatelessWidget {
+  const ProfileNameAge({super.key, required this.name, this.age, this.size = 32, this.color = Colors.white});
+  final String name;
+  final int? age;
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Text.rich(
+        TextSpan(children: [
+          TextSpan(
+              text: name,
+              style: GoogleFonts.sora(fontSize: size, fontWeight: FontWeight.w700, color: color, height: 1.1)),
+          if (age != null)
+            TextSpan(
+                text: ' $age',
+                style: GoogleFonts.inter(fontSize: size * 0.92, fontWeight: FontWeight.w400, color: color, height: 1.1)),
+        ]),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        semanticsLabel: age == null ? name : '$name, $age ans',
+      );
+}
+
+/// Lignes d'informations sous le nom, sur la photo : ville, puis profession.
+class ProfileCoverLines extends StatelessWidget {
+  const ProfileCoverLines({super.key, required this.profile});
+  final DiscoveryProfile profile;
+
+  @override
+  Widget build(BuildContext context) {
+    final lines = <(IconData, String)>[
+      if (profile.city != null) (Icons.place_outlined, profile.city!),
+      if (profile.profession != null) (Icons.work_outline_rounded, profile.profession!),
+    ];
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+      for (final (icon, text) in lines)
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Row(children: [
+            Icon(icon, size: 20, color: Colors.white.withValues(alpha: 0.92)),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(text,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                      fontSize: 16.5,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white.withValues(alpha: 0.95),
+                      shadows: const [Shadow(color: Color(0x55000000), blurRadius: 8)])),
+            ),
+          ]),
+        ),
+    ]);
+  }
+}
+
+/// Pastille blanche posée sur la photo, au-dessus du nom (« Premium »).
+class ProfileCoverBadge extends StatelessWidget {
+  const ProfileCoverBadge({super.key, required this.icon, required this.text, this.color = ZColors.primary});
   final IconData icon;
   final String text;
+  final Color color;
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+        padding: const EdgeInsets.fromLTRB(10, 6, 12, 6),
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.32),
+          color: Colors.white.withValues(alpha: 0.94),
           borderRadius: BorderRadius.circular(99),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+          boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 10, offset: Offset(0, 3))],
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 15, color: Colors.white),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(text,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
-          ),
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 5),
+          Text(text, style: GoogleFonts.inter(fontSize: 13.5, fontWeight: FontWeight.w700, color: ZColors.ink)),
         ]),
       );
 }
 
-/// Pastilles principales d'un profil, dans l'ordre où elles sont affichées sur la photo.
-List<PhotoInfoChip> profileChips(DiscoveryProfile p, {ProfileDetail? detail}) => [
-      if (p.city != null) PhotoInfoChip(icon: Icons.place_outlined, text: p.city!),
-      if (p.profession != null) PhotoInfoChip(icon: Icons.work_outline, text: p.profession!),
-      if (p.horizon != null && horizonLabels[p.horizon] != null)
-        PhotoInfoChip(icon: Icons.favorite_border, text: 'Mariage : ${horizonLabels[p.horizon]}'),
-      if (detail?.maritalStatus != null && maritalLabels[detail!.maritalStatus] != null)
-        PhotoInfoChip(icon: Icons.people_outline, text: maritalLabels[detail.maritalStatus]!),
+/// Pastilles d'un profil posées sur sa photo, tirées de données réelles (Premium). Les points communs ne sont plus
+/// affichés (demande du propriétaire).
+List<Widget> profileCoverBadges(MyProfile? me, DiscoveryProfile p) => [
+      if (p.isPremium)
+        const ProfileCoverBadge(icon: Icons.workspace_premium_rounded, text: 'Premium', color: ZColors.premium),
     ];
 
-/// Informations d'un profil sous ses photos, dans les limites de ce que son propriétaire a choisi de montrer :
-/// points communs, présentation, projet, « en bref », langues, centres d'intérêt, photos privées, vérifications.
-/// Partagé par la carte de Découvrir (on glisse vers le haut) et par la fiche profil.
+/// Informations d'un profil sous ses photos, dans les limites de ce que son propriétaire a choisi de montrer, en
+/// encadrés lisibles d'un coup d'œil : projet de mariage, présentation, l'essentiel, langues, centres d'intérêt,
+/// photos privées, vérifications. Partagé par la carte de l'onglet Mariage (on la fait défiler) et par la fiche
+/// profil. Les points communs ne sont plus affichés (demande du propriétaire), ni mis en avant dans les étiquettes.
 class ProfileInfoSections extends StatelessWidget {
   const ProfileInfoSections({
     super.key,
@@ -292,85 +355,73 @@ class ProfileInfoSections extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final me = Session.of(context).me;
     final detail = this.detail;
-    final textTheme = Theme.of(context).textTheme;
     final sections = <Widget>[];
     void add(Widget section) =>
         sections.add(animate ? FadeSlideIn(index: sections.length, child: section) : section);
 
-    final points = me == null ? const <String>[] : commonPoints(me, base);
-    if (points.isNotEmpty) {
-      add(_InfoCard(
-        tinted: true,
-        title: 'Vos points communs',
-        child: Column(children: [
-          for (final point in points)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Padding(
-                    padding: EdgeInsets.only(top: 2), child: Icon(Icons.favorite, size: 16, color: ZColors.primary)),
-                const SizedBox(width: 8),
-                Expanded(child: Text(point, style: textTheme.bodyLarge)),
-              ]),
-            ),
-        ]),
-      ));
-    }
-
-    if (base.bio != null && base.bio!.isNotEmpty) {
-      add(_InfoCard(title: 'À propos', child: Text(base.bio!, style: textTheme.bodyLarge)));
-    }
-
-    if (base.horizon != null) {
-      add(_InfoCard(
+    if (base.horizon != null && horizonLabels[base.horizon] != null) {
+      add(_InfoBox(
+        leading: const ZIcon(ZGlyph.ring, size: 20, color: ZColors.muted),
         title: 'Projet de mariage',
-        child: Row(children: [
-          const Icon(Icons.event_available_outlined, color: ZColors.primary),
-          const SizedBox(width: 10),
-          Expanded(child: Text(horizonLabels[base.horizon] ?? '', style: textTheme.bodyLarge)),
-        ]),
+        child: Text(horizonLabels[base.horizon]!,
+            style: GoogleFonts.sora(fontSize: 23, fontWeight: FontWeight.w700, color: ZColors.ink, height: 1.25)),
       ));
     }
 
-    final facts = <Widget>[
-      if (base.profession != null) ZTag(base.profession!, icon: Icons.work_outline),
-      if (detail?.maritalStatus != null)
-        ZTag(maritalLabels[detail!.maritalStatus] ?? detail.maritalStatus!, icon: Icons.people_outline),
-      if (detail?.childrenCount != null) ZTag(_children(detail!.childrenCount!), icon: Icons.child_care_outlined),
-      if (detail?.education != null) ZTag(detail!.education!, icon: Icons.school_outlined),
-      if (detail?.heightCm != null) ZTag('${detail!.heightCm} cm', icon: Icons.height),
+    if (base.bio != null && base.bio!.trim().isNotEmpty) {
+      add(_InfoBox(
+        icon: Icons.format_quote_rounded,
+        title: 'À propos de moi',
+        child: Text(base.bio!.trim(),
+            style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w500, color: ZColors.ink, height: 1.45)),
+      ));
+    }
+
+
+    final facts = <(IconData, String)>[
+      if (base.city != null) (Icons.place_outlined, base.city!),
+      if (base.profession != null) (Icons.work_outline_rounded, base.profession!),
+      if (detail?.maritalStatus != null) (Icons.people_outline, maritalLabels[detail!.maritalStatus] ?? detail.maritalStatus!),
+      if (detail?.childrenCount != null) (Icons.child_care_outlined, _children(detail!.childrenCount!)),
+      if (detail?.education != null) (Icons.school_outlined, detail!.education!),
+      if (detail?.heightCm != null) (Icons.height_rounded, '${detail!.heightCm} cm'),
       if (detail?.confession != null)
-        ZTag(confessionLabels[detail!.confession] ?? detail.confession!, icon: Icons.self_improvement),
-      if (detail?.ethnicGroup != null) ZTag(detail!.ethnicGroup!, icon: Icons.public),
+        (Icons.self_improvement, confessionLabels[detail!.confession] ?? detail.confession!),
+      if (detail?.ethnicGroup != null) (Icons.public, detail!.ethnicGroup!),
     ];
-    if (facts.isNotEmpty) {
-      add(_InfoCard(title: 'En bref', child: Wrap(spacing: 8, runSpacing: 8, children: facts)));
-    } else if (detail == null && error == null) {
-      add(const Padding(padding: EdgeInsets.only(bottom: 14), child: Skeleton(height: 90)));
+    if (detail == null && error == null) {
+      add(const Padding(padding: EdgeInsets.only(bottom: 12), child: Skeleton(height: 150, radius: 24)));
+    } else if (facts.isNotEmpty) {
+      add(_InfoBox(
+        icon: Icons.badge_outlined,
+        title: 'L’essentiel',
+        child: Column(children: [for (final (icon, text) in facts) _FactLine(icon: icon, text: text)]),
+      ));
     }
 
     if (base.languages.isNotEmpty) {
-      add(_InfoCard(
+      add(_InfoBox(
+        icon: Icons.translate_rounded,
         title: 'Langues parlées',
         child: Wrap(spacing: 8, runSpacing: 8, children: [
-          for (final l in base.languages) ZTag(l, highlighted: me?.languages.contains(l) ?? false),
+          for (final l in base.languages) ZTag(l),
         ]),
       ));
     }
     if (base.interests.isNotEmpty) {
-      add(_InfoCard(
+      add(_InfoBox(
+        icon: Icons.interests_outlined,
         title: 'Centres d’intérêt',
         child: Wrap(spacing: 8, runSpacing: 8, children: [
-          for (final i in base.interests) ZTag(i, highlighted: me?.interests.contains(i) ?? false),
+          for (final i in base.interests) ZTag(i),
         ]),
       ));
     }
 
     if (detail != null && detail.hiddenPhotoCount > 0) {
       add(Padding(
-        padding: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.only(bottom: 12),
         child: InfoBanner(
           icon: Icons.lock_outline,
           text: detail.hiddenPhotoCount == 1
@@ -380,22 +431,25 @@ class ProfileInfoSections extends StatelessWidget {
       ));
     }
 
-    add(_InfoCard(
+    add(_InfoBox(
+      icon: Icons.verified_user_outlined,
       title: 'Vérifications',
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _CheckLine(
-            done: base.isVerified,
-            label: base.isVerified ? 'Profil vérifié (photo et selfie)' : 'Profil non vérifié',
-            color: ZColors.verified),
+        _FactLine(
+          icon: base.isVerified ? Icons.verified : Icons.radio_button_unchecked,
+          iconColor: base.isVerified ? ZColors.verified : ZColors.muted,
+          text: base.isVerified ? 'Profil vérifié (photo et selfie)' : 'Profil non vérifié',
+        ),
         if (detail != null)
-          _CheckLine(
-              done: detail.isPhoneVerified,
-              label: detail.isPhoneVerified ? 'Téléphone vérifié' : 'Téléphone non vérifié',
-              color: ZColors.success),
-        const SizedBox(height: 8),
+          _FactLine(
+            icon: detail.isPhoneVerified ? Icons.verified : Icons.radio_button_unchecked,
+            iconColor: detail.isPhoneVerified ? ZColors.success : ZColors.muted,
+            text: detail.isPhoneVerified ? 'Téléphone vérifié' : 'Téléphone non vérifié',
+          ),
+        const SizedBox(height: 10),
         Text(
           'Ces badges indiquent uniquement les contrôles réalisés. Ils ne garantissent ni l’honnêteté ni les intentions d’une personne.',
-          style: textTheme.bodyMedium,
+          style: Theme.of(context).textTheme.bodyMedium,
         ),
       ]),
     ));
@@ -409,7 +463,7 @@ class ProfileInfoSections extends StatelessWidget {
         ],
       ]));
     }
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: sections);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: sections);
   }
 
   static String _children(int count) => switch (count) {
@@ -419,43 +473,56 @@ class ProfileInfoSections extends StatelessWidget {
       };
 }
 
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({required this.title, required this.child, this.tinted = false});
+/// Encadré d'informations : une petite icône et un intitulé discret, puis le contenu, en grand.
+class _InfoBox extends StatelessWidget {
+  const _InfoBox({required this.title, required this.child, this.icon, this.leading});
   final String title;
   final Widget child;
-  final bool tinted;
+  final IconData? icon;
+  final Widget? leading;
 
   @override
   Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        margin: const EdgeInsets.only(bottom: 14),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
         decoration: BoxDecoration(
-          color: tinted ? ZColors.primarySoft : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: tinted ? ZColors.primarySoft : ZColors.line),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: ZColors.line),
+          boxShadow: const [BoxShadow(color: Color(0x0A1B1020), blurRadius: 14, offset: Offset(0, 4))],
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
+          Row(children: [
+            leading ?? Icon(icon, size: 20, color: ZColors.muted),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(title,
+                  style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700, color: ZColors.muted)),
+            ),
+          ]),
+          const SizedBox(height: 12),
           child,
         ]),
       );
 }
 
-class _CheckLine extends StatelessWidget {
-  const _CheckLine({required this.done, required this.label, required this.color});
-  final bool done;
-  final String label;
-  final Color color;
+/// Ligne « icône + texte » d'un encadré (l'essentiel, vérifications).
+class _FactLine extends StatelessWidget {
+  const _FactLine({required this.icon, required this.text, this.iconColor = ZColors.muted});
+  final IconData icon;
+  final String text;
+  final Color iconColor;
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Row(children: [
-          Icon(done ? Icons.verified : Icons.radio_button_unchecked, size: 20, color: done ? color : ZColors.muted),
-          const SizedBox(width: 8),
-          Expanded(child: Text(label, style: Theme.of(context).textTheme.bodyLarge)),
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Padding(padding: const EdgeInsets.only(top: 1), child: Icon(icon, size: 22, color: iconColor)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(text,
+                style: GoogleFonts.inter(fontSize: 16.5, fontWeight: FontWeight.w500, color: ZColors.ink, height: 1.35)),
+          ),
         ]),
       );
 }

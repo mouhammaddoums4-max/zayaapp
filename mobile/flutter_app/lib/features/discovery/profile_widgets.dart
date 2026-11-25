@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show SynchronousFuture;
 import 'package:material_ui/material_ui.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -7,6 +8,11 @@ import '../../core/motion.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/models.dart';
+
+/// Image d'une photo de profil, gardée sur le disque du téléphone. L'URL signée change à chaque session : la clé de
+/// cache est donc le chemin du fichier, pour que la photo déjà vue s'affiche aussitôt à l'ouverture suivante.
+ImageProvider zayaPhoto(String url, String path, {bool blurred = false}) =>
+    CachedNetworkImageProvider(url, cacheKey: '${blurred ? 'blur' : 'photo'}:$path');
 
 /// Photo d'un profil : image (URL signée) si disponible, sinon dégradé de marque avec l'initiale.
 class ProfilePhotoView extends StatefulWidget {
@@ -87,8 +93,8 @@ class _ProfilePhotoViewState extends State<ProfilePhotoView> {
         if (url == null) return placeholder;
         return Stack(fit: StackFit.expand, children: [
           placeholder,
-          Image.network(
-            url,
+          Image(
+            image: zayaPhoto(url, widget.photoPath!, blurred: widget.blurred),
             fit: widget.fit,
             gaplessPlayback: true,
             errorBuilder: (_, __, ___) => const SizedBox.shrink(),

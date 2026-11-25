@@ -1,5 +1,4 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../app.dart';
 import '../../core/motion.dart';
@@ -11,6 +10,7 @@ import '../safety/safety_sheets.dart';
 import 'photo_viewer.dart';
 import 'profile_sections.dart';
 import 'profile_widgets.dart';
+import 'swipe_buttons.dart';
 
 /// Fiche complète d'un profil, dans les limites de ce que son propriétaire a choisi de montrer.
 /// Les photos défilent dans l'en-tête (glisser, ou toucher à droite / à gauche) ; le bouton « Agrandir » les ouvre en
@@ -120,26 +120,28 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         onUnlock: _openPremium,
         onIndexChanged: (i) => _photoIndex = i,
       ),
-      const IgnorePointer(child: PhotoScrim(start: 0.55)),
+      const IgnorePointer(child: PhotoScrim(start: 0.5)),
       Positioned(
         left: 20,
         right: 20,
-        bottom: 18,
+        bottom: 20,
         child: IgnorePointer(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Row(children: [
-              Flexible(
-                child: Text(base == null ? name : '$name, ${base.age}',
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.sora(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.white)),
-              ),
-              if (base?.isVerified ?? false) ...[const SizedBox(width: 8), const VerifiedBadge(size: 24)],
-              if (base?.isPremium ?? false) ...[const SizedBox(width: 8), const PremiumBadge()],
-            ]),
             if (base != null) ...[
-              const SizedBox(height: 8),
-              Wrap(spacing: 6, runSpacing: 6, children: profileChips(base, detail: detail).take(3).toList()),
+              Builder(builder: (context) {
+                final badges = profileCoverBadges(Session.of(context).me, base);
+                if (badges.isEmpty) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Wrap(spacing: 6, runSpacing: 6, children: badges),
+                );
+              }),
             ],
+            Row(children: [
+              Flexible(child: ProfileNameAge(name: name, age: base?.age, size: 30)),
+              if (base?.isVerified ?? false) ...[const SizedBox(width: 8), const VerifiedBadge(size: 24)],
+            ]),
+            if (base != null) ProfileCoverLines(profile: base),
           ]),
         ),
       ),
@@ -236,51 +238,56 @@ class _RoundIconButton extends StatelessWidget {
       );
 }
 
-/// Barre d'actions en bas de la fiche : passer ou aimer.
-class _ActionBar extends StatelessWidget {
+/// Barre d'actions en bas de la fiche : passer ou aimer, avec les mêmes boutons animés que la carte.
+/// L'écran se ferme juste après le début de l'animation de l'appui, pour qu'on la voie ; un seul choix est pris en
+/// compte (un second appui pendant la fermeture refermerait l'écran d'en dessous).
+class _ActionBar extends StatefulWidget {
   const _ActionBar({required this.onPass, required this.onLike});
   final VoidCallback onPass;
   final VoidCallback onLike;
 
   @override
-  Widget build(BuildContext context) => DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            stops: const [0, 0.45],
-            colors: [ZColors.bg.withValues(alpha: 0), ZColors.bg],
-          ),
+  State<_ActionBar> createState() => _ActionBarState();
+}
+
+class _ActionBarState extends State<_ActionBar> {
+  bool _chosen = false;
+
+  void _choose(VoidCallback action) {
+    if (_chosen) return;
+    _chosen = true;
+    final wait = ZMotion.of(context, const Duration(milliseconds: 220));
+    if (wait == Duration.zero) {
+      action();
+    } else {
+      Future<void>.delayed(wait, () {
+        if (mounted) action();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          stops: const [0, 0.5],
+          colors: [ZColors.bg.withValues(alpha: 0), ZColors.bg],
         ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 28, 20, 14),
-            child: Row(children: [
-              Semantics(
-                button: true,
-                label: 'Passer',
-                excludeSemantics: true,
-                onTap: onPass,
-                child: PressScale(
-                  pressedScale: 0.9,
-                  onTap: onPass,
-                  child: Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: ZColors.line, width: 1.5),
-                    ),
-                    child: const Icon(Icons.close, color: ZColors.ink, size: 26),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(child: GradientButton(label: 'J’aime ce profil', icon: Icons.favorite, onPressed: onLike)),
-            ]),
-          ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 30, 20, 14),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            SwipeActionButton(action: SwipeAction.pass, label: 'Passer', onTap: () => _choose(widget.onPass)),
+            const SizedBox(width: 28),
+            SwipeActionButton(action: SwipeAction.like, label: 'Aimer', onTap: () => _choose(widget.onLike)),
+          ]),
         ),
-      );
+      ),
+    );
+  }
 }

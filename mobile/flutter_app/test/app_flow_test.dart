@@ -170,14 +170,14 @@ void main() {
     await finishOnboarding(tester);
 
     // ── Découvrir : première carte, profil non encore vérifié signalé
-    expect(find.textContaining('Ibrahima, 30'), findsWidgets);
+    expect(find.textContaining('Ibrahima 30'), findsWidgets);
     expect(find.textContaining('n’est pas encore visible'), findsOneWidget);
 
     // Like simple : pas de match, carte suivante
     await tester.tap(find.bySemanticsLabel('Aimer'));
     await settle(tester);
     expect(find.text('C’est un match !'), findsNothing);
-    expect(find.textContaining('Mamadou, 33'), findsWidgets);
+    expect(find.textContaining('Mamadou 33'), findsWidgets);
 
     // Like réciproque : écran de match
     await tester.tap(find.bySemanticsLabel('Aimer'));
@@ -187,27 +187,33 @@ void main() {
     expect(find.text('C’est un match !'), findsNothing);
 
     // Passer un profil avec le bouton
-    final cardBefore = find.textContaining('Alpha, 28');
+    final cardBefore = find.textContaining('Alpha 28');
     expect(cardBefore, findsWidgets);
     await tester.tap(find.bySemanticsLabel('Passer'));
     await settle(tester);
-    expect(find.textContaining('Alpha, 28'), findsNothing);
+    expect(find.textContaining('Alpha 28'), findsNothing);
 
     // ── Retour au profil précédent : le profil passé revient en tête, puis on le passe à nouveau
     await tester.tap(find.bySemanticsLabel('Revenir au profil précédent'));
     await settle(tester);
-    expect(find.textContaining('Alpha, 28'), findsWidgets);
+    expect(find.textContaining('Alpha 28'), findsWidgets);
     await tester.tap(find.bySemanticsLabel('Passer'));
     await settle(tester);
-    expect(find.textContaining('Alpha, 28'), findsNothing);
+    expect(find.textContaining('Alpha 28'), findsNothing);
 
-    // ── On fait défiler la carte vers le haut pour lire tout le profil, sur le même écran, puis on aime
-    final nextCard = find.textContaining(RegExp(r', \d\d$')).last;
-    final nextName = (tester.widget<Text>(nextCard)).data!;
-    expect(find.text('Glissez vers le haut pour en savoir plus'), findsWidgets);
-    await tester.dragFrom(tester.getCenter(nextCard), const Offset(0, -420));
+    // ── La flèche ouvre la lecture du profil en encadrés, sur le même écran ; la flèche du haut revient à la photo.
+    // On peut aussi faire défiler la carte du doigt, puis aimer depuis la lecture.
+    final nextCard = find.textContaining(RegExp(r'^\S+ \d\d$')).last;
+    final nextName = tester.widget<Text>(nextCard).textSpan!.toPlainText();
+    await tester.tap(find.bySemanticsLabel('Voir tout le profil').last);
     await settle(tester);
     expect(find.text('Vérifications'), findsWidgets);
+    expect(find.text('L’essentiel'), findsWidgets);
+    await tester.tap(find.bySemanticsLabel('Revenir à la photo').last);
+    await settle(tester);
+    await tester.dragFrom(const Offset(180, 300), const Offset(0, -420));
+    await settle(tester);
+    expect(find.bySemanticsLabel('Revenir à la photo'), findsWidgets);
     await tester.tap(find.bySemanticsLabel('Aimer'));
     await settle(tester);
     expect(find.text(nextName), findsNothing);
@@ -286,7 +292,7 @@ void main() {
     await finishOnboarding(tester);
 
     // Un homme se voit proposer des profils féminins.
-    expect(find.textContaining('Aïssatou, 27'), findsWidgets);
+    expect(find.textContaining('Aïssatou 27'), findsWidgets);
     await tester.tap(find.bySemanticsLabel('Aimer'));
     await settle(tester);
     await tester.tap(find.bySemanticsLabel('Aimer'));
