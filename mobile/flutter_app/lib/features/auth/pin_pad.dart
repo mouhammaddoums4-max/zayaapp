@@ -72,16 +72,26 @@ class PinPadState extends State<PinPad> with SingleTickerProviderStateMixin {
           liveRegion: true,
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             for (var i = 0; i < widget.length; i++)
-              AnimatedContainer(
-                duration: ZMotion.of(context, ZMotion.fast),
-                curve: ZMotion.spring,
-                margin: const EdgeInsets.symmetric(horizontal: 11),
-                width: i < _value.length ? 18 : 16,
-                height: i < _value.length ? 18 : 16,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: i < _value.length ? ZColors.primary : Colors.transparent,
-                  border: Border.all(color: i < _value.length ? ZColors.primary : ZColors.muted, width: 2),
+              // Boîte de taille fixe : le point grossit à l'intérieur sans changer la mise en page, sinon tout
+              // l'écran centré bougeait à chaque chiffre (« l'écran tremble et se décale », 25/11/2026).
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 11),
+                child: SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: Center(
+                    child: AnimatedContainer(
+                      duration: ZMotion.of(context, ZMotion.fast),
+                      curve: Curves.easeOut,
+                      width: i < _value.length ? 18 : 16,
+                      height: i < _value.length ? 18 : 16,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: i < _value.length ? ZColors.primary : Colors.transparent,
+                        border: Border.all(color: i < _value.length ? ZColors.primary : ZColors.muted, width: 2),
+                      ),
+                    ),
+                  ),
                 ),
               ),
           ]),

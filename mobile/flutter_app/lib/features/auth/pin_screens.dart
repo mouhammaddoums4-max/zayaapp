@@ -95,6 +95,8 @@ class _PinLoginScreenState extends State<PinLoginScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
+        // Aucun champ texte ici : l'écran ne suit pas la fermeture du clavier de l'écran du numéro (il glissait).
+        resizeToAvoidBottomInset: false,
         appBar: AppBar(),
         body: SafeArea(
           child: Center(
@@ -271,6 +273,8 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
   Widget build(BuildContext context) => PopScope(
         canPop: !widget.forced,
         child: Scaffold(
+          // Aucun champ texte ici : l'écran ne suit pas la fermeture du clavier de l'écran précédent (il glissait).
+          resizeToAvoidBottomInset: false,
           appBar: AppBar(automaticallyImplyLeading: !widget.forced),
           body: SafeArea(
             child: Center(
