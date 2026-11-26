@@ -5,6 +5,14 @@ const corsHeaders = {
 
 type Signal = { user_id?: string; kind?: string };
 
+// Signaux qui méritent une alerte sonore ; les autres (photo, Premium, profil, visite, portefeuille) servent seulement
+// à synchroniser l'application en temps réel. Textes neutres : aucun nom ni contenu privé sur l'écran verrouillé.
+const NOTIFIED_KINDS: Record<string, { title: string; body: string }> = {
+  message: { title: 'Nouveau message', body: 'Vous avez reçu un message.' },
+  match: { title: 'Nouveau match', body: 'Une nouvelle rencontre vous attend.' },
+  like: { title: 'Nouvel intérêt', body: 'Quelqu’un s’intéresse à votre profil.' },
+};
+
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
@@ -23,7 +31,8 @@ Deno.serve(async (request) => {
   }
 
   if (!signal.user_id || !signal.kind) return new Response('Missing signal fields', { status: 400 });
-  if (signal.kind !== 'message' && signal.kind !== 'match') return new Response(null, { status: 204 });
+  const content = NOTIFIED_KINDS[signal.kind];
+  if (!content) return new Response(null, { status: 204 });
 
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -33,7 +42,15 @@ Deno.serve(async (request) => {
   }
 
   try {
-    const account = JSON.parse(accountValue);
+    let account: { client_email: string; private_key: string; project_id: string };
+    try {
+      account = JSON.parse(accountValue);
+    } catch {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON is not valid JSON');
+    }
+    if (!account.client_email || !account.private_key || !account.project_id) {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON lacks client_email, private_key or project_id');
+    }
     const accessToken = await getGoogleAccessToken(account);
     const tokenResponse = await fetch(
       `${supabaseUrl}/rest/v1/member_push_tokens?select=token&user_id=eq.${encodeURIComponent(signal.user_id)}`,
@@ -53,9 +70,6 @@ Deno.serve(async (request) => {
       ? await getUnreadMessageCount(supabaseUrl, serviceRoleKey, signal.user_id)
       : undefined;
 
-    const content = signal.kind === 'message'
-      ? { title: 'Nouveau message', body: 'Vous avez reçu un message.' }
-      : { title: 'Nouveau match', body: 'Une nouvelle rencontre vous attend.' };
     const results = await Promise.all(devices.map(({ token }) => fetch(
       `https://fcm.googleapis.com/v1/projects/${encodeURIComponent(account.project_id)}/messages:send`,
       {
@@ -87,19 +101,34 @@ Deno.serve(async (request) => {
         }),
       },
     )));
-    if (results.some((result) => !result.ok)) {
-      for (const result of results.filter((entry) => !entry.ok)) {
-        const providerError = await result.json().catch(() => null) as { error?: { status?: unknown } } | null;
-        console.error('FCM delivery failed', { httpStatus: result.status, providerStatus: providerError?.error?.status });
+    const failures: string[] = [];
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
+      if (result.ok) continue;
+      const providerError = await result.json().catch(() => null) as
+        { error?: { status?: string; details?: Array<{ errorCode?: string }> } } | null;
+      const code = providerError?.error?.details?.find((d) => d.errorCode)?.errorCode ?? providerError?.error?.status;
+      console.error('FCM delivery failed', { httpStatus: result.status, providerStatus: code });
+      // Téléphone désinstallé ou jeton périmé : on le retire, il ne recevra plus rien.
+      if (code === 'UNREGISTERED' || code === 'INVALID_ARGUMENT') {
+        await fetch(`${supabaseUrl}/rest/v1/member_push_tokens?token=eq.${encodeURIComponent(devices[i].token)}`, {
+          method: 'DELETE',
+          headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` },
+        }).catch(() => null);
       }
-      return new Response('One or more notifications could not be sent', { status: 502 });
+      failures.push(`${result.status} ${code ?? ''}`.trim());
     }
-    return new Response(JSON.stringify({ sent: devices.length }), {
+    if (failures.length === devices.length) {
+      return new Response(`FCM refused every device: ${failures.join(', ')}`, { status: 502 });
+    }
+    return new Response(JSON.stringify({ sent: devices.length - failures.length, failed: failures }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Push dispatch failed', error instanceof Error ? error.message : 'Unknown error');
-    return new Response('Push dispatch failed', { status: 502 });
+    const reason = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Push dispatch failed', reason);
+    // Raison sans secret (étape et code d'erreur de Google), lisible dans net._http_response par l'équipe.
+    return new Response(`Push dispatch failed: ${reason}`, { status: 502 });
   }
 });
 
@@ -149,7 +178,10 @@ async function getGoogleAccessToken(account: {
       assertion,
     }),
   });
-  if (!response.ok) throw new Error('Google OAuth token request failed');
+  if (!response.ok) {
+    const detail = await response.json().catch(() => null) as { error?: string; error_description?: string } | null;
+    throw new Error(`Google OAuth ${response.status} ${detail?.error ?? ''} ${detail?.error_description ?? ''}`.trim());
+  }
   const result = await response.json();
   return result.access_token as string;
 }
